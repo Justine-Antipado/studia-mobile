@@ -860,7 +860,11 @@ const STUDIA_LOGO = require("@/assets/images/studia-mobile-logo.png");
 const OMSC_LOGO = require("@/assets/images/omsc.logo.png");
 
 const BANNER_MS = 4500;
-const HOME_ROUTE = "/" as Href; // TODO: replace with your home / tabs route
+//const HOME_ROUTE = "@/app/home" as Href; // TODO: replace with your home / tabs route
+const HOME_ROUTES: Record<Role, Href> = {
+  student: "/student/home",
+  instructor: "/instructor/home",
+};
 
 type Mode = "login" | "signup" | "verify" | "forgot" | "reset" | "profile";
 type Form = Record<FieldKey, string>;
@@ -1024,11 +1028,16 @@ export default function Auth() {
     }
   };
 
+  // const onAuthenticated = (session: Session) => {
+  //   // TODO: persist session.accessToken with expo-secure-store (never AsyncStorage), then navigate.
+  //   router.replace(HOME_ROUTE);
+  //   void session;
+  // };
   const onAuthenticated = (session: Session) => {
-    // TODO: persist session.accessToken with expo-secure-store (never AsyncStorage), then navigate.
-    router.replace(HOME_ROUTE);
-    void session;
-  };
+  // TODO: persist session.accessToken with expo-secure-store (never AsyncStorage)
+  const sessionRole = (session as { user?: { role?: Role } }).user?.role;
+  router.replace(HOME_ROUTES[sessionRole ?? role]);
+};
 
   const startOtp = (email: string, purpose: OtpPurpose, info: OtpInfo, message?: string) => {
     setOtpCtx({ email, purpose });

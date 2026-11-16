@@ -1,0 +1,73 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+
+import { ListCard, QuickAction, SectionHeader, t } from "@/components/ui/parts";
+import { Screen } from "@/components/ui/screen";
+import { C } from "@/constants/studia-colors";
+import { STUDENT_COURSES } from "@/lib/mock-data";
+import { displayName, useRoleUser } from "@/lib/session-store";
+
+export default function StudentHome() {
+  const user = useRoleUser("student");
+  const router = useRouter();
+  const [showNotice, setShowNotice] = useState(true);
+
+  return (
+    <Screen role="student">
+      <View>
+        <Text style={t.muted}>Good morning</Text>
+        <Text style={t.h1}>{user ? displayName(user) : "Juan Dela Cruz"}</Text>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={s.qaRow}>
+        <QuickAction icon="book-outline" label="My Courses" onPress={() => router.push("@/student/courses")} />
+        <QuickAction icon="sparkles-outline" label="AI Assistant" onPress={() => router.push("@/student/ai")} />
+        <QuickAction icon="document-text-outline" label="Quizzes" onPress={() => router.push("@/student/notifications")} />
+        <QuickAction icon="bar-chart-outline" label="Grades" onPress={() => router.push("@/student/notifications")} />
+      </View>
+
+      {/* Dismissible Announcement */}
+      {showNotice && (
+        <ListCard
+          icon="megaphone-outline"
+          title="Midterm exam schedule"
+          meta="Nov 10–14, 2026 · tap to read"
+          right={
+            <Pressable onPress={() => setShowNotice(false)} hitSlop={8}>
+              <Ionicons name="close" size={18} color={C.muted} />
+            </Pressable>
+          }
+          onPress={() => router.push("/student/notifications")}
+        />
+      )}
+
+      {/* My Courses */}
+      <SectionHeader title="My Courses" action="View All" onAction={() => router.push("/student/courses")} />
+      {STUDENT_COURSES.slice(0, 2).map((c) => (
+        <ListCard
+          key={c.id}
+          icon="book-outline"
+          eyebrow={c.code}
+          title={c.title}
+          meta={c.teacher}
+          onPress={() => router.push({ pathname: "/student/course-detail", params: { id: c.id } })}
+        />
+      ))}
+
+      {/* Today's Tasks */}
+      <ListCard
+        icon="calendar-outline"
+        title="Today's tasks"
+        meta="Quiz 2 due 5:00 PM · 3 tasks"
+        onPress={() => router.push("/student/notifications")}
+      />
+    </Screen>
+  );
+}
+
+const s = StyleSheet.create({
+  qaRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 },
+});
