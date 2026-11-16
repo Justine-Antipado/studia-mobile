@@ -17,9 +17,11 @@
       "predictiveBackGestureEnabled": false
     },
     
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
-    }
+    "platforms": [
+      "ios",
+      "android"
+     
+    ]
+
   }
 }

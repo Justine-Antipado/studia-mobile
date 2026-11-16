@@ -1051,7 +1051,7 @@ export default function ExploreScreen() {
   const handleContinue = () => {
     if (!role) return;
     // TODO: palitan kapag gawa na ang login/register screen
-    // router.push({ pathname: "/login", params: { role } });
+    router.push({ pathname: "/auth", params: { role } });
     console.log("Selected role:", role);
   };
 

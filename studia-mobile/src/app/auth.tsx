@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppButton } from "@/components/ui/app-button";
-import { Banner, Field, OtpInput, PasswordMeter, type BannerType } from "@/components/auth/auth-parts";
+import { Banner, Field, OtpInput, PasswordMeter, type BannerType, type TextInputRef } from "@/components/auth/auth-parts";
 import { C } from "@/constants/studia-colors";
 import { isOtp, isStrongPassword, validateAll, type FieldErrors, type FieldKey } from "@/lib/auth-validation";
 import {
@@ -62,10 +62,15 @@ const FIELD_ORDER: Record<"signup" | "profile", Record<Role, FieldKey[]>> = {
   },
 };
 
-const makeRefs = (): Record<FieldKey, RefObject<TextInput | null>> => ({
-  fullName: createRef<TextInput>(), section: createRef<TextInput>(), department: createRef<TextInput>(),
-  email: createRef<TextInput>(), phone: createRef<TextInput>(), password: createRef<TextInput>(),
-  confirm: createRef<TextInput>(),
+// const makeRefs = (): Record<FieldKey, RefObject<TextInput | null>> => ({
+//   fullName: createRef<TextInput>(), section: createRef<TextInput>(), department: createRef<TextInput>(),
+//   email: createRef<TextInput>(), phone: createRef<TextInput>(), password: createRef<TextInput>(),
+//   confirm: createRef<TextInput>(),
+// });
+const makeRefs = (): Record<FieldKey, RefObject<TextInputRef | null>> => ({
+  fullName: createRef<TextInputRef>(), section: createRef<TextInputRef>(), department: createRef<TextInputRef>(),
+  email: createRef<TextInputRef>(), phone: createRef<TextInputRef>(), password: createRef<TextInputRef>(),
+  confirm: createRef<TextInputRef>(),
 });
 
 const OTP_COPY: Record<OtpPurpose, string> = {
@@ -77,7 +82,7 @@ const OTP_COPY: Record<OtpPurpose, string> = {
 
 export default function Auth() {
 
-  
+
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -106,7 +111,8 @@ export default function Auth() {
   const [resetToken, setResetToken] = useState<string | null>(null);
 
   const refs = useRef(makeRefs()).current;
-  const otpRef = useRef<TextInput>(null);
+  // const otpRef = useRef<TextInput>(null);
+  const otpRef = useRef<TextInputRef>(null);
   const busyRef = useRef(false);
   const mounted = useRef(true);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

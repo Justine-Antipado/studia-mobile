@@ -1,6 +1,6 @@
 // components/auth/auth-parts.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   Animated,
   StyleSheet,
@@ -17,6 +17,8 @@ import { PASSWORD_RULES, passwordScore } from "@/lib/auth-validation";
 /* ───────────── Banner (parent auto-dismisses it) ───────────── */
 
 export type BannerType = "error" | "success" | "info";
+
+export type TextInputRef = ComponentRef<typeof TextInput>;
 
 const BANNER_STYLE: Record<BannerType, { bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
   error: { bg: C.red, icon: "alert-circle" },
@@ -64,8 +66,7 @@ type FieldProps = Omit<TextInputProps, "style" | "secureTextEntry" | "onPressIn"
   /** Called when the person taps the field, so the parent can clear its red error. */
   onClearError?: () => void;
 };
-
-export const Field = forwardRef<TextInput, FieldProps>(function Field(
+export const Field = forwardRef<TextInputRef, FieldProps>(function Field(
   { label, error, secure, optional, onClearError, onFocus, onBlur, ...rest },
   ref,
 ) {
@@ -170,7 +171,7 @@ type OtpProps = {
   length?: number;
 };
 
-export const OtpInput = forwardRef<TextInput, OtpProps>(function OtpInput(
+export const OtpInput = forwardRef<TextInputRef, OtpProps>(function OtpInput(
   { value, onChange, onComplete, onClearError, error, disabled, length = 6 },
   ref,
 ) {
@@ -288,5 +289,6 @@ const s = StyleSheet.create({
   otpBoxActive: { borderColor: C.primary, backgroundColor: C.lavenderSoft },
   otpBoxError: { borderColor: C.red, backgroundColor: "#FDF1F1" },
   otpDigit: { color: C.text, fontSize: 22, fontFamily: "Poppins_700Bold" },
-  otpHidden: { ...StyleSheet.absoluteFillObject, opacity: 0 },
+  // otpHidden: { ...StyleSheet.absoluteFillObject, opacity: 0 },
+  otpHidden: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0 },
 });
