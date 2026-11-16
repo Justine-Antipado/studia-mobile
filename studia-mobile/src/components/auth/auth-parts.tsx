@@ -294,7 +294,8 @@
 // });
 // components/auth/auth-parts.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { forwardRef, useEffect, useRef, useState, type ComponentRef } from "react";
+// import { forwardRef, useEffect, useRef, useState, type ComponentRef } from "react";
+import { forwardRef, useEffect, useRef, useState, useSyncExternalStore, type ComponentRef } from "react";
 // import {
 //   Animated,
 //   Keyboard,
@@ -336,13 +337,27 @@ import { forwardRef, useEffect, useRef, useState, type ComponentRef } from "reac
 //   type TextInputProps,
 //   type ViewStyle,
 // } from "react-native";
+// import {
+//   Animated,
+//   Keyboard,
+//   Modal,
+//   Platform,
+//   ScrollView,
+//   StatusBar,
+//   StyleSheet,
+//   Pressable,
+//   Text,
+//   TextInput,
+//   View,
+//   type StyleProp,
+//   type TextInputProps,
+//   type ViewStyle,
+// } from "react-native";
+
 import {
   Animated,
   Keyboard,
-  Modal,
-  Platform,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Pressable,
   Text,
@@ -609,6 +624,105 @@ export const Field = forwardRef<TextInputRef, FieldProps>(function Field(
 
 /* ───────────── Dropdown (floating popup directly under its field) ───────────── */
 
+// type DropdownProps = {
+//   label: string;
+//   value: string;
+//   options: readonly string[];
+//   placeholder?: string;
+//   error?: string;
+//   onSelect: (v: string) => void;
+//   style?: StyleProp<ViewStyle>;
+// };
+
+// const MENU_ROW_H = 44;
+// const MENU_GAP = 4; // <- ITO ANG BABAGUHIN kung kulang pa: gawing 8, 12, 16...
+// const STATUS_BAR_FIX = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+
+// export function Dropdown({ label, value, options, placeholder, error, onSelect, style }: DropdownProps) {
+//   const [open, setOpen] = useState(false);
+//   const [box, setBox] = useState({ x: 0, y: 0, w: 0, h: 0 }); // the field, in window coordinates
+//   const [origin, setOrigin] = useState<{ x: number; y: number; h: number } | null>(null); // the Modal, in window coordinates
+//   const anchor = useRef<ComponentRef<typeof View>>(null);
+//   const root = useRef<ComponentRef<typeof View>>(null);
+
+//   const openMenu = () => {
+//     Keyboard.dismiss();
+//     anchor.current?.measureInWindow((x, y, w, h) => {
+//       setBox({ x, y, w, h });
+//       setOrigin(null); // re-measure the Modal every time it opens
+//       setOpen(true);
+//     });
+//   };
+
+//   const fullH = options.length * MENU_ROW_H + 8; // + border
+//   const left = origin ? box.x - origin.x : 0;
+//   // const top = origin ? box.y - origin.y + box.h + 4 : 0; // always directly below the field
+//   const top = origin ? box.y - origin.y + box.h + MENU_GAP + STATUS_BAR_FIX : 0; // always directly below the field
+//   const maxH = origin ? Math.min(fullH, Math.max(MENU_ROW_H * 2 + 3, origin.h - top - 12)) : fullH;
+
+//   return (
+//     <View style={[s.fieldWrap, style]}>
+//       <Text style={s.label}>{label}</Text>
+
+//       <View ref={anchor} collapsable={false}>
+//         <Pressable
+//           onPress={openMenu}
+//           accessibilityRole="button"
+//           accessibilityLabel={`${label}: ${value || "not selected"}`}
+//           style={[s.inputRow, open && s.inputFocused, !!error && s.inputError]}
+//         >
+//           <Text style={[s.input, { paddingVertical: 14 }, !value && { color: C.muted }]} numberOfLines={1}>
+//             {value || placeholder || "Select"}
+//           </Text>
+//           <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={C.muted} />
+//         </Pressable>
+//       </View>
+
+//       {error ? (
+//         <View style={s.errRow} accessibilityLiveRegion="polite">
+//           <Ionicons name="alert-circle" size={14} color={C.red} />
+//           <Text style={s.errText}>{error}</Text>
+//         </View>
+//       ) : null}
+
+//       <Modal visible={open} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setOpen(false)}>
+//         <View
+//           ref={root}
+//           style={s.modalRoot}
+//           collapsable={false}
+//           onLayout={(e) => {
+//             const h = e.nativeEvent.layout.height;
+//             root.current?.measureInWindow((x, y) => setOrigin({ x, y, h }));
+//           }}
+//         >
+//           <Pressable style={s.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close menu" />
+//           {origin ? (
+//             <View style={[s.menu, { left, top, width: box.w, maxHeight: maxH }]}>
+//               <ScrollView bounces={false} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+//                 {options.map((o) => (
+//                   <Pressable
+//                     key={o}
+//                     onPress={() => {
+//                       onSelect(o);
+//                       setOpen(false);
+//                     }}
+//                     style={[s.menuItem, o === value && s.menuItemActive]}
+//                     accessibilityRole="menuitem"
+//                   >
+//                     <Text style={[s.menuText, o === value && { color: C.primaryDark }]}>{o}</Text>
+//                     {o === value ? <Ionicons name="checkmark" size={16} color={C.primary} /> : null}
+//                   </Pressable>
+//                 ))}
+//               </ScrollView>
+//             </View>
+//           ) : null}
+//         </View>
+//       </Modal>
+//     </View>
+//   );
+// }
+/* ───────────── Dropdown (menu is drawn by <DropdownHost />: no Modal, no backdrop) ───────────── */
+
 type DropdownProps = {
   label: string;
   value: string;
@@ -620,30 +734,104 @@ type DropdownProps = {
 };
 
 const MENU_ROW_H = 44;
-const MENU_GAP = 4; // <- ITO ANG BABAGUHIN kung kulang pa: gawing 8, 12, 16...
-const STATUS_BAR_FIX = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+const MENU_GAP = 4; // distance between the field and its menu
+
+let hostNode: ComponentRef<typeof View> | null = null; // set by <DropdownHost />
+
+type MenuState = {
+  id: number;
+  box: { x: number; y: number; w: number; h: number }; // the field, in window coordinates
+  hostH: number;
+  options: readonly string[];
+  value: string;
+  onSelect: (v: string) => void;
+  onClose: () => void;
+} | null;
+
+let menuState: MenuState = null;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((l) => l());
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
+};
+const getMenu = () => menuState;
+
+/** Closes whichever dropdown is open. Safe to call anytime (the screen calls it on every touch). */
+export function closeAllDropdowns() {
+  if (!menuState) return;
+  const m = menuState;
+  menuState = null;
+  emit();
+  m.onClose();
+}
+
+function showMenu(m: NonNullable<MenuState>) {
+  closeAllDropdowns();
+  menuState = m;
+  emit();
+}
+
+let nextDropdownId = 1;
 
 export function Dropdown({ label, value, options, placeholder, error, onSelect, style }: DropdownProps) {
   const [open, setOpen] = useState(false);
-  const [box, setBox] = useState({ x: 0, y: 0, w: 0, h: 0 }); // the field, in window coordinates
-  const [origin, setOrigin] = useState<{ x: number; y: number; h: number } | null>(null); // the Modal, in window coordinates
+  const [id] = useState(() => nextDropdownId++);
   const anchor = useRef<ComponentRef<typeof View>>(null);
-  const root = useRef<ComponentRef<typeof View>>(null);
+  const suppress = useRef(false);
 
-  const openMenu = () => {
-    Keyboard.dismiss();
-    anchor.current?.measureInWindow((x, y, w, h) => {
-      setBox({ x, y, w, h });
-      setOrigin(null); // re-measure the Modal every time it opens
-      setOpen(true);
-    });
+  // The screen closes the menu on touch-start. If that touch was on this same field,
+  // the press that follows must not reopen it.
+  const onClose = () => {
+    setOpen(false);
+    suppress.current = true;
+    setTimeout(() => {
+      suppress.current = false;
+    }, 400);
   };
 
-  const fullH = options.length * MENU_ROW_H + 8; // + border
-  const left = origin ? box.x - origin.x : 0;
-  // const top = origin ? box.y - origin.y + box.h + 4 : 0; // always directly below the field
-  const top = origin ? box.y - origin.y + box.h + MENU_GAP + STATUS_BAR_FIX : 0; // always directly below the field
-  const maxH = origin ? Math.min(fullH, Math.max(MENU_ROW_H * 2 + 3, origin.h - top - 12)) : fullH;
+  useEffect(
+    () => () => {
+      if (menuState?.id === id) {
+        menuState = null;
+        emit();
+      }
+    },
+    [id],
+  );
+
+  const openMenu = () => {
+    if (suppress.current) {
+      suppress.current = false;
+      return;
+    }
+    // const measureAndShow = () =>
+    //   anchor.current?.measureInWindow((x, y, w, h) => {
+    //     setOpen(true);
+    //     showMenu({ id, box: { x, y, w, h }, options, value, onSelect, onClose });
+    //   });
+    const measureAndShow = () => {
+      const host = hostNode;
+      const field = anchor.current;
+      if (!host || !field) return;
+      // Measure BOTH now, in the same coordinate system, so any offset cancels out.
+      host.measureInWindow((hx, hy, _hw, hh) => {
+        field.measureInWindow((x, y, w, h) => {
+          setOpen(true);
+          showMenu({ id, box: { x: x - hx, y: y - hy, w, h }, hostH: hh, options, value, onSelect, onClose });
+        });
+      });
+    };
+
+    if (Keyboard.isVisible()) {
+      Keyboard.dismiss();
+      setTimeout(measureAndShow, 250); // wait for the layout to settle after the keyboard closes
+    } else {
+      measureAndShow();
+    }
+  };
 
   return (
     <View style={[s.fieldWrap, style]}>
@@ -669,40 +857,93 @@ export function Dropdown({ label, value, options, placeholder, error, onSelect, 
           <Text style={s.errText}>{error}</Text>
         </View>
       ) : null}
+    </View>
+  );
+}
 
-      <Modal visible={open} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setOpen(false)}>
-        <View
-          ref={root}
-          style={s.modalRoot}
-          collapsable={false}
-          onLayout={(e) => {
-            const h = e.nativeEvent.layout.height;
-            root.current?.measureInWindow((x, y) => setOrigin({ x, y, h }));
-          }}
-        >
-          <Pressable style={s.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close menu" />
-          {origin ? (
-            <View style={[s.menu, { left, top, width: box.w, maxHeight: maxH }]}>
-              <ScrollView bounces={false} nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                {options.map((o) => (
-                  <Pressable
-                    key={o}
-                    onPress={() => {
-                      onSelect(o);
-                      setOpen(false);
-                    }}
-                    style={[s.menuItem, o === value && s.menuItemActive]}
-                    accessibilityRole="menuitem"
-                  >
-                    <Text style={[s.menuText, o === value && { color: C.primaryDark }]}>{o}</Text>
-                    {o === value ? <Ionicons name="checkmark" size={16} color={C.primary} /> : null}
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
+/** Put this ONCE, as the LAST child of the screen's root View. It draws the open menu above everything. */
+// export function DropdownHost() {
+//   const menu = useSyncExternalStore(subscribe, getMenu, getMenu);
+//   const [origin, setOrigin] = useState<{ x: number; y: number; h: number } | null>(null);
+//   const root = useRef<ComponentRef<typeof View>>(null);
+
+//   const fullH = menu ? menu.options.length * MENU_ROW_H + 3 : 0; // + border
+//   const left = menu && origin ? menu.box.x - origin.x : 0;
+//   const top = menu && origin ? menu.box.y - origin.y + menu.box.h + MENU_GAP : 0;
+//   const maxH = origin ? Math.min(fullH, Math.max(MENU_ROW_H * 2 + 3, origin.h - top - 12)) : fullH;
+
+//   return (
+//     <View
+//       ref={root}
+//       pointerEvents="box-none"
+//       collapsable={false}
+//       style={s.host}
+//       onLayout={(e) => {
+//         const h = e.nativeEvent.layout.height;
+//         root.current?.measureInWindow((x, y) => setOrigin({ x, y, h }));
+//       }}
+//     >
+//       {menu && origin ? (
+//         <View style={[s.menu, { left, top, width: menu.box.w, maxHeight: maxH }]}>
+//           <ScrollView bounces={false} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+//             {menu.options.map((o) => (
+//               <Pressable
+//                 key={o}
+//                 onPress={() => {
+//                   menu.onSelect(o);
+//                   closeAllDropdowns();
+//                 }}
+//                 style={[s.menuItem, o === menu.value && s.menuItemActive]}
+//                 accessibilityRole="menuitem"
+//               >
+//                 <Text style={[s.menuText, o === menu.value && { color: C.primaryDark }]}>{o}</Text>
+//                 {o === menu.value ? <Ionicons name="checkmark" size={16} color={C.primary} /> : null}
+//               </Pressable>
+//             ))}
+//           </ScrollView>
+//         </View>
+//       ) : null}
+//     </View>
+//   );
+// }
+/** Put this ONCE, as the LAST child of the screen's root View. It draws the open menu above everything. */
+export function DropdownHost() {
+  const menu = useSyncExternalStore(subscribe, getMenu, getMenu);
+
+  const fullH = menu ? menu.options.length * MENU_ROW_H + 3 : 0; // + border
+  const left = menu ? menu.box.x : 0;
+  const top = menu ? menu.box.y + menu.box.h + MENU_GAP : 0; // always directly below its field
+  const maxH = menu ? Math.min(fullH, Math.max(MENU_ROW_H * 2 + 3, menu.hostH - top - 12)) : fullH;
+
+  return (
+    <View
+      ref={(n) => {
+        hostNode = n;
+      }}
+      pointerEvents="box-none"
+      collapsable={false}
+      style={s.host}
+    >
+      {menu ? (
+        <View style={[s.menu, { left, top, width: menu.box.w, maxHeight: maxH }]}>
+          <ScrollView bounces={false} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+            {menu.options.map((o) => (
+              <Pressable
+                key={o}
+                onPress={() => {
+                  menu.onSelect(o);
+                  closeAllDropdowns();
+                }}
+                style={[s.menuItem, o === menu.value && s.menuItemActive]}
+                accessibilityRole="menuitem"
+              >
+                <Text style={[s.menuText, o === menu.value && { color: C.primaryDark }]}>{o}</Text>
+                {o === menu.value ? <Ionicons name="checkmark" size={16} color={C.primary} /> : null}
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
-      </Modal>
+      ) : null}
     </View>
   );
 }
@@ -847,8 +1088,9 @@ const s = StyleSheet.create({
   errText: { flexShrink: 1, color: C.red, fontSize: 12, lineHeight: 17, fontFamily: "Poppins_400Regular" },
 
   // backdrop: { ...StyleSheet.absoluteFillObject },
-  backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  modalRoot: { flex: 1 },
+  // backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  // modalRoot: { flex: 1 },
+  host: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 30 },
   menu: {
     position: "absolute",
     borderWidth: 1.5,

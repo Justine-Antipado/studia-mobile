@@ -808,12 +808,23 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppButton } from "@/components/ui/app-button";
+// import {
+//   Banner,
+//   Dropdown,
+//   Field,
+//   OtpInput,
+//   PasswordMeter,
+//   type BannerType,
+//   type TextInputRef,
+// } from "@/components/auth/auth-parts";
 import {
   Banner,
   Dropdown,
+  DropdownHost,
   Field,
   OtpInput,
   PasswordMeter,
+  closeAllDropdowns,
   type BannerType,
   type TextInputRef,
 } from "@/components/auth/auth-parts";
@@ -1293,6 +1304,7 @@ export default function Auth() {
           showsVerticalScrollIndicator={false}
           bounces={false}
           overScrollMode="never"
+          onTouchStart={closeAllDropdowns}
         >
           {/* Hero */}
           <View style={[s.hero, { paddingTop: topPad, paddingBottom: compact ? 22 : 30 }]}>
@@ -1540,6 +1552,7 @@ export default function Auth() {
             <Image source={OMSC_LOGO} style={s.footerLogo} contentFit="contain" accessible={false} />
             <Text style={s.footerText}>Occidental Mindoro State University – Mamburao Campus</Text>
           </View>
+          <DropdownHost />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
