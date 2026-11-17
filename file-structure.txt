@@ -1,4 +1,4 @@
-.
+.(Name: studia-mobile)
 ├── backend
 │   └── index.php
 ├── file-structures.txt
