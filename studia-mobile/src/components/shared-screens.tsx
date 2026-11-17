@@ -790,18 +790,9 @@
 // components/shared-screens.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useRef, useState, type ComponentRef } from "react";
-import {
-  Alert,
-  Keyboard,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Avatar, EmptyState, IconBox, ListCard, Pill, TabChips, shadow, t, type IconName } from "@/components/ui/parts";
 import { Screen } from "@/components/ui/screen";
@@ -810,32 +801,221 @@ import { CHAT_CONFIG, mockReply } from "@/lib/mock-data";
 import { displayName, setUser, tagLabel, useRoleUser } from "@/lib/session-store";
 import type { Role } from "@/services/auth-service";
 
+// /* ---------------- AI Assistant Screen ---------------- */
+
+// export function AiAssistantScreen({ role }: { role: Role }) {
+//   const cfg = CHAT_CONFIG[role];
+//   const [messages, setMessages] = useState(cfg.seed);
+//   const [input, setInput] = useState("");
+//   const listRef = useRef<ComponentRef<typeof ScrollView>>(null);
+//   // const wrapRef = useRef<View>(null);
+//   const wrapRef = useRef<ComponentRef<typeof View>>(null);
+//   const [kbPad, setKbPad] = useState(0);
+// const baseBottom = useRef<number | null>(null); // bottom ng wrapper kapag sarado ang keyboard
+// const kbOpen = useRef(false);
+
+//   // Lift the input above the keyboard. We measure how much of this screen the keyboard
+//   // actually covers, so it works on iOS, Android, and edge-to-edge without double-padding.
+//   useEffect(() => {
+//     const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+//     const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+//     const show = Keyboard.addListener(showEvt, (e) => {
+//       setTimeout(() => {
+//         wrapRef.current?.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+//           const overlap = y + h - e.endCoordinates.screenY;
+//           setKbPad(Math.max(0, Math.round(overlap)));
+//           setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+//         });
+//       }, 60);
+//     });
+//     const hide = Keyboard.addListener(hideEvt, () => setKbPad(0));
+//     return () => {
+//       show.remove();
+//       hide.remove();
+//     };
+//   }, []);
+
+//   useEffect(() => {
+//     const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60);
+//     return () => clearTimeout(id);
+//   }, [messages.length]);
+
+//   const send = (textToSend?: string) => {
+//     const q = (textToSend ?? input).trim();
+//     if (!q) return;
+//     const userMsg = { id: String(Date.now()), from: "user" as const, text: q };
+//     const aiMsg = { id: String(Date.now() + 1), from: "ai" as const, text: mockReply(role, q) };
+//     setMessages((prev) => [...prev, userMsg, aiMsg]);
+//     if (!textToSend) setInput("");
+//   };
+
+//   return (
+//     <Screen role={role} scroll={false} contentStyle={s.aiFixed}>
+//       <View ref={wrapRef} collapsable={false} style={[s.flex, { paddingBottom: kbPad }]}>
+//         <View style={s.aiHeader}>
+//           <View style={s.aiAvatar}>
+//             <Ionicons name="sparkles" size={18} color={C.white} />
+//           </View>
+//           <View style={s.flex}>
+//             <Text style={t.h2}>STUDIA AI</Text>
+//             <Text style={t.muted} numberOfLines={1}>
+//               {cfg.subtitle}
+//             </Text>
+//           </View>
+//         </View>
+
+//         <ScrollView
+//           ref={listRef}
+//           style={s.flex}
+//           contentContainerStyle={s.chatList}
+//           showsVerticalScrollIndicator={false}
+//           keyboardShouldPersistTaps="handled"
+//           keyboardDismissMode="interactive"
+//         >
+//           {messages.map((m) => {
+//             const isUser = m.from === "user";
+//             return (
+//               <View key={m.id} style={[s.bubble, isUser ? s.userBubble : s.aiBubble]}>
+//                 {!isUser && (
+//                   <View style={s.aiBadge}>
+//                     <Ionicons name="sparkles-outline" size={12} color={C.primary} />
+//                     <Text style={s.aiBadgeText}>AI-generated</Text>
+//                   </View>
+//                 )}
+//                 <Text style={[s.msgText, { color: isUser ? C.white : C.text }]}>{m.text}</Text>
+//               </View>
+//             );
+//           })}
+//         </ScrollView>
+
+//         <View style={s.bottomArea}>
+//           <ScrollView
+//             horizontal
+//             showsHorizontalScrollIndicator={false}
+//             contentContainerStyle={s.sugRow}
+//             keyboardShouldPersistTaps="handled"
+//             style={s.sugScroll}
+//           >
+//             {cfg.suggestions.map((sug) => (
+//               <Pressable key={sug} onPress={() => send(sug)} style={s.sugChip}>
+//                 <Text style={s.sugText} numberOfLines={1}>
+//                   {sug}
+//                 </Text>
+//               </Pressable>
+//             ))}
+//           </ScrollView>
+
+//           <View style={s.inputRow}>
+//             <View style={s.inputBox}>
+//               <TextInput
+//                 value={input}
+//                 onChangeText={setInput}
+//                 placeholder="Message STUDIA AI..."
+//                 placeholderTextColor={C.muted}
+//                 style={s.input}
+//                 multiline
+//                 textAlignVertical="center"
+//                 blurOnSubmit={false}
+//                 returnKeyType="send"
+//                 onSubmitEditing={() => send()}
+//                 accessibilityLabel="Message STUDIA AI"
+//               />
+//             </View>
+//             <Pressable
+//               onPress={() => send()}
+//               style={[s.sendBtn, !input.trim() && { opacity: 1, backgroundColor: C.lavender }]}
+//               accessibilityRole="button"
+//               accessibilityLabel="Send"
+//             >
+//               <Ionicons name="send" size={18} color={input.trim() ? C.white : C.primaryDark} />
+//             </Pressable>
+//           </View>
+//         </View>
+//       </View>
+//     </Screen>
+//   );
+// }
 /* ---------------- AI Assistant Screen ---------------- */
+
+// Gawing true kung Android mo ay naka "resize" at HINDI edge-to-edge
+// (OS na ang nagre-resize ng window, kaya hindi na kailangan ng kbPad).
+const ANDROID_OS_RESIZES = false;
 
 export function AiAssistantScreen({ role }: { role: Role }) {
   const cfg = CHAT_CONFIG[role];
   const [messages, setMessages] = useState(cfg.seed);
   const [input, setInput] = useState("");
   const listRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  // const wrapRef = useRef<View>(null);
   const wrapRef = useRef<ComponentRef<typeof View>>(null);
+  // const [kbPad, setKbPad] = useState(0);
+  // const baseBottom = useRef<number | null>(null); // bottom ng wrapper kapag sarado ang keyboard
+  // const kbOpen = useRef(false);
+  // const insets = useSafeAreaInsets();
   const [kbPad, setKbPad] = useState(0);
+  const kbTop = useRef<number | null>(null); // Y ng taas ng keyboard, null kapag sarado
 
-  // Lift the input above the keyboard. We measure how much of this screen the keyboard
-  // actually covers, so it works on iOS, Android, and edge-to-edge without double-padding.
-  useEffect(() => {
-    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const show = Keyboard.addListener(showEvt, (e) => {
-      setTimeout(() => {
-        wrapRef.current?.measureInWindow((_x: number, y: number, _w: number, h: number) => {
-          const overlap = y + h - e.endCoordinates.screenY;
-          setKbPad(Math.max(0, Math.round(overlap)));
-          setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
-        });
-      }, 60);
+  // Sukatin kung gaano tinatakpan ng keyboard ang wrapper
+  const recalc = () => {
+    const top = kbTop.current;
+    if (top == null) {
+      setKbPad(0);
+      return;
+    }
+    wrapRef.current?.measureInWindow((_x, y, _w, h) => {
+      setKbPad(Math.max(0, Math.round(y + h - top)));
     });
-    const hide = Keyboard.addListener(hideEvt, () => setKbPad(0));
+  };
+
+  // Itaas ang input sa ibabaw ng keyboard.
+  // iOS: gamit ang actual overlap (bottom ng wrapper vs screenY ng keyboard).
+  // Android: gamit ang height ng keyboard minus ang bottom inset (nav bar).
+  // useEffect(() => {
+  //   const ios = Platform.OS === "ios";
+  //   const showEvt = ios ? "keyboardWillChangeFrame" : "keyboardDidShow";
+  //   const hideEvt = ios ? "keyboardWillHide" : "keyboardDidHide";
+
+  //   const show = Keyboard.addListener(showEvt, (e) => {
+  //     const kbHeight = e.endCoordinates.height;
+  //     const screenY = e.endCoordinates.screenY;
+  //     const bottom = baseBottom.current;
+
+  //     let pad = 0;
+  //     if (ios) {
+  //       pad = bottom == null ? 0 : bottom - screenY;
+  //     } else if (!ANDROID_OS_RESIZES) {
+  //       pad = kbHeight - insets.bottom;
+  //     }
+
+  //     pad = Math.max(0, Math.round(pad));
+  //     kbOpen.current = pad > 0;
+  //     setKbPad(pad);
+  //     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+  //   });
+
+  //   const hide = Keyboard.addListener(hideEvt, () => {
+  //     kbOpen.current = false;
+  //     setKbPad(0);
+  //   });
+
+  //   return () => {
+  //     show.remove();
+  //     hide.remove();
+  //   };
+  // }, [insets.bottom]);
+  useEffect(() => {
+    const ios = Platform.OS === "ios";
+    const showEvt = ios ? "keyboardWillChangeFrame" : "keyboardDidShow";
+    const hideEvt = ios ? "keyboardWillHide" : "keyboardDidHide";
+
+    const show = Keyboard.addListener(showEvt, (e) => {
+      kbTop.current = e.endCoordinates.screenY;
+      recalc();
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    });
+    const hide = Keyboard.addListener(hideEvt, () => {
+      kbTop.current = null;
+      setKbPad(0);
+    });
     return () => {
       show.remove();
       hide.remove();
@@ -858,7 +1038,19 @@ export function AiAssistantScreen({ role }: { role: Role }) {
 
   return (
     <Screen role={role} scroll={false} contentStyle={s.aiFixed}>
-      <View ref={wrapRef} collapsable={false} style={[s.flex, { paddingBottom: kbPad }]}>
+      {/* <View
+        ref={wrapRef}
+        collapsable={false}
+        onLayout={() => {
+          // I-capture ang base bottom habang sarado ang keyboard
+          if (kbOpen.current) return;
+          wrapRef.current?.measureInWindow((_x, y, _w, h) => {
+            baseBottom.current = y + h;
+          });
+        }}
+        style={[s.flex, { paddingBottom: kbPad }]}
+      > */}
+      <View ref={wrapRef} collapsable={false} onLayout={recalc} style={[s.flex, { paddingBottom: kbPad }]}>
         <View style={s.aiHeader}>
           <View style={s.aiAvatar}>
             <Ionicons name="sparkles" size={18} color={C.white} />
@@ -871,14 +1063,7 @@ export function AiAssistantScreen({ role }: { role: Role }) {
           </View>
         </View>
 
-        <ScrollView
-          ref={listRef}
-          style={s.flex}
-          contentContainerStyle={s.chatList}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-        >
+        <ScrollView ref={listRef} style={s.flex} contentContainerStyle={s.chatList} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
           {messages.map((m) => {
             const isUser = m.from === "user";
             return (
@@ -896,13 +1081,7 @@ export function AiAssistantScreen({ role }: { role: Role }) {
         </ScrollView>
 
         <View style={s.bottomArea}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={s.sugRow}
-            keyboardShouldPersistTaps="handled"
-            style={s.sugScroll}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.sugRow} keyboardShouldPersistTaps="handled" style={s.sugScroll}>
             {cfg.suggestions.map((sug) => (
               <Pressable key={sug} onPress={() => send(sug)} style={s.sugChip}>
                 <Text style={s.sugText} numberOfLines={1}>
@@ -914,26 +1093,9 @@ export function AiAssistantScreen({ role }: { role: Role }) {
 
           <View style={s.inputRow}>
             <View style={s.inputBox}>
-              <TextInput
-                value={input}
-                onChangeText={setInput}
-                placeholder="Message STUDIA AI..."
-                placeholderTextColor={C.muted}
-                style={s.input}
-                multiline
-                textAlignVertical="center"
-                blurOnSubmit={false}
-                returnKeyType="send"
-                onSubmitEditing={() => send()}
-                accessibilityLabel="Message STUDIA AI"
-              />
+              <TextInput value={input} onChangeText={setInput} placeholder="Message STUDIA AI..." placeholderTextColor={C.muted} style={s.input} multiline textAlignVertical="center" blurOnSubmit={false} returnKeyType="send" onSubmitEditing={() => send()} accessibilityLabel="Message STUDIA AI" />
             </View>
-            <Pressable
-              onPress={() => send()}
-              style={[s.sendBtn, !input.trim() && { opacity: 1, backgroundColor: C.lavender }]}
-              accessibilityRole="button"
-              accessibilityLabel="Send"
-            >
+            <Pressable onPress={() => send()} style={[s.sendBtn, !input.trim() && { opacity: 1, backgroundColor: C.lavender }]} accessibilityRole="button" accessibilityLabel="Send">
               <Ionicons name="send" size={18} color={input.trim() ? C.white : C.primaryDark} />
             </Pressable>
           </View>
@@ -983,21 +1145,7 @@ export function NotificationsScreen({ role }: { role: Role }) {
       </View>
       <TabChips items={["All", "Unread"]} value={filter} onChange={setFilter} />
 
-      {shown.length === 0 ? (
-        <EmptyState icon="notifications-off-outline" title="You're all caught up" sub="New notifications will show up here." />
-      ) : (
-        shown.map((n) => (
-          <ListCard
-            key={n.id}
-            icon={n.icon}
-            eyebrow={n.tag}
-            title={n.title}
-            meta={`${n.meta} · ${n.time}`}
-            right={n.unread ? <View style={s.unreadDot} /> : <View />}
-            onPress={() => open(n.id)}
-          />
-        ))
-      )}
+      {shown.length === 0 ? <EmptyState icon="notifications-off-outline" title="You're all caught up" sub="New notifications will show up here." /> : shown.map((n) => <ListCard key={n.id} icon={n.icon} eyebrow={n.tag} title={n.title} meta={`${n.meta} · ${n.time}`} right={n.unread ? <View style={s.unreadDot} /> : <View />} onPress={() => open(n.id)} />)}
     </Screen>
   );
 }
@@ -1050,14 +1198,7 @@ export function AccountScreen({ role }: { role: Role }) {
       <ListCard icon="shield-checkmark-outline" title="Privacy Policy" meta="Read how data is used" onPress={() => {}} />
       <ListCard icon="information-circle-outline" title="About Application" meta="STUDIA Mobile v1.0.0" onPress={() => {}} />
       <ListCard icon="camera-outline" title="Change Profile" meta="Camera, gallery or remove" onPress={() => {}} />
-      <ListCard
-        icon="swap-horizontal-outline"
-        title={`Switch to ${role === "instructor" ? "Student" : "Instructor"} View`}
-        meta="Preview other role UI"
-        iconBg={`${C.blue}1F`}
-        iconColor={C.blue}
-        onPress={switchDemoRole}
-      />
+      <ListCard icon="swap-horizontal-outline" title={`Switch to ${role === "instructor" ? "Student" : "Instructor"} View`} meta="Preview other role UI" iconBg={`${C.blue}1F`} iconColor={C.blue} onPress={switchDemoRole} />
 
       <Pressable onPress={handleLogout} style={s.logoutCard} accessibilityRole="button" accessibilityLabel="Log out">
         <View style={s.logoutIcon}>
