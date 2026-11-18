@@ -1,5 +1,5 @@
-.(Name: studia-mobile)
-├── backend
+﻿├── backend
+│   ├── .env.example
 │   ├── config
 │   │   └── README.md
 │   ├── database
@@ -99,11 +99,13 @@
 │   ├── database.md
 │   └── README.md
 ├── file-structure.txt
-├── REFACTOR_LOG.md
 ├── studia-admin
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── .oxlintrc.json
 │   ├── index.html
-│   ├── package-lock.json
 │   ├── package.json
+│   ├── package-lock.json
 │   ├── public
 │   │   ├── favicon.svg
 │   │   └── icons.svg
@@ -207,6 +209,11 @@
 │   │   └── theme.js
 │   └── vite.config.js
 └── studia-mobile
+    ├── .env.example
+    ├── .gitignore
+    ├── .vscode
+    │   ├── extensions.json
+    │   └── settings.json
     ├── AGENTS.md
     ├── app.json
     ├── assets
@@ -219,8 +226,8 @@
     │       └── studia-mobile-logo.png
     ├── eslint.config.js
     ├── LICENSE
-    ├── package-lock.json
     ├── package.json
+    ├── package-lock.json
     ├── README.md
     ├── scripts
     │   └── reset-project.js
@@ -367,3 +374,6 @@
     │       └── utils
     │           └── README.md
     └── tsconfig.json
+
+
+

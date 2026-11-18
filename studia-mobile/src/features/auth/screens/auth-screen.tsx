@@ -1,5 +1,5 @@
 // TODO(refactor): split UI / logic / data
-// auth.tsx
+// auth.tsx, nilipat sa auth-screen.tsx
 // Navigate from explore.tsx with:  router.push({ pathname: "/auth", params: { role } });
 
 import { Ionicons } from "@expo/vector-icons";
