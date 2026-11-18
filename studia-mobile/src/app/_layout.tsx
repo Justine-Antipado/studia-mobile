@@ -11,7 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { C } from "@/constants/studia-colors";
+import { C } from "@/shared/constants/studia-colors";
 
 SplashScreen.preventAutoHideAsync();
 

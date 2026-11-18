@@ -1,0 +1,100 @@
+// lib/session-store.ts
+// Tiny in-memory store for the logged-in user (no extra library needed).
+// TODO: when your backend is ready, hydrate this from expo-secure-store / your /me endpoint.
+import { useSyncExternalStore } from "react";
+
+import type { Role } from "@/core/types/role";
+
+export type UserProfile = {
+  role: Role;
+  fullName: string;
+  email: string;
+  department?: string; // instructor
+  course?: string; // student
+  year?: string; // student
+  section?: string; // student
+  phone?: string;
+};
+
+let current: UserProfile | null = null;
+const listeners = new Set<() => void>();
+
+export function setUser(user: UserProfile | null) {
+  current = user;
+  listeners.forEach((l) => l());
+}
+
+const subscribe = (cb: () => void) => {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+};
+const snapshot = () => current;
+
+export function useUser(): UserProfile | null {
+  return useSyncExternalStore(subscribe, snapshot, snapshot);
+}
+
+/** DEV only: lets you open /student/home or /instructor/home directly (e.g. after a hot reload) without logging in again. */
+const DEMO: Record<Role, UserProfile> = {
+  student: {
+    role: "student",
+    fullName: "Juan Dela Cruz",
+    email: "juan.delacruz@omsu.edu.ph",
+    course: "BSIT",
+    year: "3",
+    section: "A",
+  },
+  instructor: {
+    role: "instructor",
+    fullName: "Maria Santos",
+    email: "maria.santos@omsu.edu.ph",
+    department: "IT Department",
+  },
+};
+
+export function useRoleUser(role: Role): UserProfile | null {
+  const u = useUser();
+  if (u) return u;
+  return __DEV__ ? DEMO[role] : null;
+}
+
+/* ---------- display helpers ---------- */
+
+export function initials(name: string, max = 2): string {
+  const words = name
+    .replace(/^(prof|dr|engr|mr|ms|mrs)\.?\s+/i, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return words.slice(0, max).map((w) => w[0]!.toUpperCase()).join("") || "?";
+}
+
+export const displayName = (u: UserProfile) =>
+  u.fullName.trim() || u.email.split("@")[0] || "User";
+
+/** "Prof. Maria Santos" for instructors, plain name for students. */
+export function greetName(u: UserProfile): string {
+  const n = displayName(u);
+  if (u.role !== "instructor" || /^(prof|dr|engr|mr|ms|mrs)\.?\s/i.test(n)) return n;
+  return `Prof. ${n}`;
+}
+
+export const roleLabel = (u: UserProfile) => (u.role === "instructor" ? "Instructor" : "Student");
+
+const digit = (v = "") => v.match(/\d/)?.[0] ?? v;
+
+/** Student: "BSIT 3-A". Instructor: the department. */
+export function detailLabel(u: UserProfile): string {
+  if (u.role === "instructor") return u.department?.trim() ?? "";
+  const sec = (u.section ?? "").trim();
+  const yearSec = sec.includes("-") ? sec : [digit(u.year), sec].filter(Boolean).join("-");
+  return [u.course?.trim(), yearSec].filter(Boolean).join(" ");
+}
+
+/** "Instructor · IT Department" / "Student · BSIT 3-A" */
+export function tagLabel(u: UserProfile): string {
+  const d = detailLabel(u);
+  return d ? `${roleLabel(u)} · ${d}` : roleLabel(u);
+}

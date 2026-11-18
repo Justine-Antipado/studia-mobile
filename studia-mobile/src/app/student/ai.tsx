@@ -1,5 +1,1 @@
-// app/student/ai.tsx
-import { AiAssistantScreen } from "@/components/shared-screens";
-export default  function StudentAi() {
-  return <AiAssistantScreen role="student" />;
-}
+export { default } from "@/features/student/screens/ai-screen";

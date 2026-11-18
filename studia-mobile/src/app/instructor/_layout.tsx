@@ -1,6 +1,6 @@
 // _layout.tsx
 import { Tabs } from "expo-router";
-import { StudiaTabBar, type TabItem } from "@/components/ui/studia-tab-bar";
+import { StudiaTabBar, type TabItem } from "@/shared/components/ui/studia-tab-bar";
 
 const TABS: Record<string, TabItem> = {
   home: { label: "Home", icon: "home-outline", activeIcon: "home" },

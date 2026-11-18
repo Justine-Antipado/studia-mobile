@@ -1,5 +1,1 @@
-// app/student/notifications.tsx
-import { NotificationsScreen } from "@/components/shared-screens";
-export default function StudentNotifications() {
-  return <NotificationsScreen role="student" />;
-}
+export { default } from "@/features/student/screens/notifications-screen";
