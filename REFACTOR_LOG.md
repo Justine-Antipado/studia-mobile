@@ -86,3 +86,21 @@ Structural refactor only: no UI, logic, or dependency changes.
 - explore.tsx is NOT template leftover: _layout.tsx registers <Stack.Screen name="explore" />. Moved to features/onboarding/screens/explore-screen.tsx with a thin route.
 - No route file had named exports besides default (checked), so thin routes re-export default only.
 - _layout.tsx files stayed in place; only their import paths changed.
+
+## Phase C - backend scaffold + docs
+
+- backend/index.php left untouched. Scaffold folders each hold one README.md; two .sql migrations and .env.example files added (not executed or wired).
+- docs/ created; api-contract.md holds the endpoint map copied from auth-service.ts plus admin endpoints inferred from api.js.
+- file-structure.txt regenerated.
+
+## Future step
+- Split studia-admin/src/core/data/api.js per feature (not done in this pass).
+
+## Database integration checklist
+1. Fill core/data/api-client (mobile) and core/data/http (admin).
+2. Replace the BODIES in features/auth/data/auth-service.ts (mobile) and core/data/api.js (admin) with fetch() calls to the PHP API.
+3. Implement backend Repositories and run the migrations.
+4. Delete core/data/mock (mobile and admin).
+
+## Summary
+No visual, logic, or dependency changes were made. Only moves, import-path fixes, comments, the type-only Role move, thin route re-exports, and placeholder docs.

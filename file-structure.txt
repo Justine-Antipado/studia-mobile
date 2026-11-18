@@ -1,104 +1,369 @@
 .(Name: studia-mobile)
 ├── backend
-│   └── index.php
-├── file-structures.txt
+│   ├── config
+│   │   └── README.md
+│   ├── database
+│   │   ├── migrations
+│   │   │   ├── 001_create_users.sql
+│   │   │   ├── 002_create_otp_codes.sql
+│   │   │   └── README.md
+│   │   ├── README.md
+│   │   ├── schema
+│   │   │   └── README.md
+│   │   └── seeders
+│   │       └── README.md
+│   ├── index.php
+│   ├── routes
+│   │   └── README.md
+│   ├── src
+│   │   ├── Core
+│   │   │   ├── Database
+│   │   │   │   └── README.md
+│   │   │   ├── Http
+│   │   │   │   └── README.md
+│   │   │   ├── Middleware
+│   │   │   │   └── README.md
+│   │   │   ├── README.md
+│   │   │   ├── Security
+│   │   │   │   └── README.md
+│   │   │   └── Support
+│   │   │       └── README.md
+│   │   ├── Modules
+│   │   │   ├── Admin
+│   │   │   │   ├── Controllers
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── Models
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── README.md
+│   │   │   │   ├── Repositories
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── Services
+│   │   │   │   │   └── README.md
+│   │   │   │   └── Validators
+│   │   │   │       └── README.md
+│   │   │   ├── Auth
+│   │   │   │   ├── Controllers
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── Models
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── README.md
+│   │   │   │   ├── Repositories
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── Services
+│   │   │   │   │   └── README.md
+│   │   │   │   └── Validators
+│   │   │   │       └── README.md
+│   │   │   ├── Instructor
+│   │   │   │   ├── Controllers
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── Models
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── README.md
+│   │   │   │   ├── Repositories
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── Services
+│   │   │   │   │   └── README.md
+│   │   │   │   └── Validators
+│   │   │   │       └── README.md
+│   │   │   ├── README.md
+│   │   │   └── Student
+│   │   │       ├── Controllers
+│   │   │       │   └── README.md
+│   │   │       ├── Models
+│   │   │       │   └── README.md
+│   │   │       ├── README.md
+│   │   │       ├── Repositories
+│   │   │       │   └── README.md
+│   │   │       ├── Services
+│   │   │       │   └── README.md
+│   │   │       └── Validators
+│   │   │           └── README.md
+│   │   └── README.md
+│   ├── storage
+│   │   ├── cache
+│   │   │   └── README.md
+│   │   ├── logs
+│   │   │   └── README.md
+│   │   ├── README.md
+│   │   └── uploads
+│   │       └── README.md
+│   └── tests
+│       ├── Feature
+│       │   └── README.md
+│       ├── README.md
+│       └── Unit
+│           └── README.md
+├── docs
+│   ├── api-contract.md
+│   ├── architecture.md
+│   ├── database.md
+│   └── README.md
+├── file-structure.txt
+├── REFACTOR_LOG.md
 ├── studia-admin
-│   ├── README.md
-│   ├── index.html
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── public
-│   │   ├── favicon.svg
-│   │   └── icons.svg
-│   ├── src
-│   │   ├── App.jsx
-│   │   ├── assets
-│   │   │   ├── omsu-campus.jpg
-│   │   │   ├── omsu-logo.png
-│   │   │   ├── studia-logo.png
-│   │   │   └── studia-mascot.png
-│   │   ├── components
-│   │   │   ├── Layout.jsx
-│   │   │   ├── ProtectedRoute.jsx
-│   │   │   └── ui.jsx
-│   │   ├── context
-│   │   │   └── AuthContext.jsx
-│   │   ├── data
-│   │   │   └── mockData.js
-│   │   ├── index.css
-│   │   ├── main.jsx
-│   │   ├── pages
-│   │   │   ├── Home.jsx
-│   │   │   ├── Login.jsx
-│   │   │   ├── Settings.jsx
-│   │   │   └── Users.jsx
-│   │   ├── services
-│   │   │   ├── api.js
-│   │   │   └── mockBackend.js
-│   │   └── theme.js
-│   └── vite.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   ├── README.md
+│   ├── src
+│   │   ├── App.jsx
+│   │   ├── assets
+│   │   │   ├── omsu-campus.jpg
+│   │   │   ├── omsu-logo.png
+│   │   │   ├── studia-logo.png
+│   │   │   └── studia-mascot.png
+│   │   ├── core
+│   │   │   ├── config
+│   │   │   │   └── README.md
+│   │   │   ├── data
+│   │   │   │   ├── api.js
+│   │   │   │   ├── http
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── mock
+│   │   │   │   │   ├── mockBackend.js
+│   │   │   │   │   ├── mockData.js
+│   │   │   │   │   └── README.md
+│   │   │   │   └── README.md
+│   │   │   ├── logic
+│   │   │   │   └── README.md
+│   │   │   └── README.md
+│   │   ├── features
+│   │   │   ├── auth
+│   │   │   │   ├── components
+│   │   │   │   │   ├── ProtectedRoute.jsx
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── context
+│   │   │   │   │   ├── AuthContext.jsx
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── data
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── index.js
+│   │   │   │   ├── logic
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── pages
+│   │   │   │   │   ├── Login.jsx
+│   │   │   │   │   └── README.md
+│   │   │   │   └── README.md
+│   │   │   ├── dashboard
+│   │   │   │   ├── components
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── data
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── index.js
+│   │   │   │   ├── logic
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── pages
+│   │   │   │   │   ├── Home.jsx
+│   │   │   │   │   └── README.md
+│   │   │   │   └── README.md
+│   │   │   ├── README.md
+│   │   │   ├── settings
+│   │   │   │   ├── components
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── data
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── index.js
+│   │   │   │   ├── logic
+│   │   │   │   │   └── README.md
+│   │   │   │   ├── pages
+│   │   │   │   │   ├── README.md
+│   │   │   │   │   └── Settings.jsx
+│   │   │   │   └── README.md
+│   │   │   └── users
+│   │   │       ├── components
+│   │   │       │   └── README.md
+│   │   │       ├── data
+│   │   │       │   └── README.md
+│   │   │       ├── hooks
+│   │   │       │   └── README.md
+│   │   │       ├── index.js
+│   │   │       ├── logic
+│   │   │       │   └── README.md
+│   │   │       ├── pages
+│   │   │       │   ├── README.md
+│   │   │       │   └── Users.jsx
+│   │   │       └── README.md
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── shared
+│   │   │   ├── components
+│   │   │   │   ├── Layout.jsx
+│   │   │   │   ├── README.md
+│   │   │   │   └── ui.jsx
+│   │   │   ├── hooks
+│   │   │   │   └── README.md
+│   │   │   ├── README.md
+│   │   │   └── utils
+│   │   │       └── README.md
+│   │   └── theme.js
+│   └── vite.config.js
 └── studia-mobile
     ├── AGENTS.md
-    ├── LICENSE
-    ├── README.md
     ├── app.json
     ├── assets
-    │   └── images
-    │       ├── instructor.png
-    │       ├── omsc.logo.png
-    │       ├── omsu.jpg
-    │       ├── student.png
-    │       ├── studia-mascot.png
-    │       └── studia-mobile-logo.png
-    ├── expo-env.d.ts
+    │   └── images
+    │       ├── instructor.png
+    │       ├── omsc.logo.png
+    │       ├── omsu.jpg
+    │       ├── student.png
+    │       ├── studia-mascot.png
+    │       └── studia-mobile-logo.png
+    ├── eslint.config.js
+    ├── LICENSE
     ├── package-lock.json
     ├── package.json
+    ├── README.md
     ├── scripts
-    │   └── reset-project.js
+    │   └── reset-project.js
     ├── src
-    │   ├── app
-    │   │   ├── _layout.tsx
-    │   │   ├── auth.tsx
-    │   │   ├── explore.tsx
-    │   │   ├── index.tsx
-    │   │   ├── instructor
-    │   │   │   ├── _layout.tsx
-    │   │   │   ├── account.tsx
-    │   │   │   ├── ai.tsx
-    │   │   │   ├── assessments.tsx
-    │   │   │   ├── class-detail.tsx
-    │   │   │   ├── classes.tsx
-    │   │   │   ├── home.tsx
-    │   │   │   └── notifications.tsx
-    │   │   ├── learn-more.tsx
-    │   │   └── student
-    │   │       ├── _layout.tsx
-    │   │       ├── account.tsx
-    │   │       ├── ai.tsx
-    │   │       ├── course-detail.tsx
-    │   │       ├── courses.tsx
-    │   │       ├── home.tsx
-    │   │       └── notifications.tsx
-    │   ├── components
-    │   │   ├── auth
-    │   │   │   └── auth-parts.tsx
-    │   │   ├── shared-screens.tsx
-    │   │   └── ui
-    │   │       ├── app-button.tsx
-    │   │       ├── app-header.tsx
-    │   │       ├── parts.tsx
-    │   │       ├── screen.tsx
-    │   │       └── studia-tab-bar.tsx
-    │   ├── constants
-    │   │   └── studia-colors.ts
-    │   ├── hooks
-    │   │   └── use-color-scheme.ts
-    │   ├── lib
-    │   │   ├── auth-validation.ts
-    │   │   ├── mock-data.ts
-    │   │   └── session-store.ts
-    │   └── services
-    │       └── auth-service.ts
+    │   ├── app
+    │   │   ├── _layout.tsx
+    │   │   ├── auth.tsx
+    │   │   ├── explore.tsx
+    │   │   ├── index.tsx
+    │   │   ├── instructor
+    │   │   │   ├── _layout.tsx
+    │   │   │   ├── account.tsx
+    │   │   │   ├── ai.tsx
+    │   │   │   ├── assessments.tsx
+    │   │   │   ├── class-detail.tsx
+    │   │   │   ├── classes.tsx
+    │   │   │   ├── home.tsx
+    │   │   │   └── notifications.tsx
+    │   │   ├── learn-more.tsx
+    │   │   └── student
+    │   │       ├── _layout.tsx
+    │   │       ├── account.tsx
+    │   │       ├── ai.tsx
+    │   │       ├── course-detail.tsx
+    │   │       ├── courses.tsx
+    │   │       ├── home.tsx
+    │   │       └── notifications.tsx
+    │   ├── core
+    │   │   ├── config
+    │   │   │   └── README.md
+    │   │   ├── data
+    │   │   │   ├── api-client
+    │   │   │   │   └── README.md
+    │   │   │   ├── mock
+    │   │   │   │   ├── mock-data.ts
+    │   │   │   │   └── README.md
+    │   │   │   ├── README.md
+    │   │   │   └── storage
+    │   │   │       ├── README.md
+    │   │   │       └── session-store.ts
+    │   │   ├── logic
+    │   │   │   └── README.md
+    │   │   ├── README.md
+    │   │   └── types
+    │   │       ├── README.md
+    │   │       └── role.ts
+    │   ├── features
+    │   │   ├── auth
+    │   │   │   ├── components
+    │   │   │   │   ├── auth-parts.tsx
+    │   │   │   │   └── README.md
+    │   │   │   ├── data
+    │   │   │   │   ├── auth-service.ts
+    │   │   │   │   └── README.md
+    │   │   │   ├── hooks
+    │   │   │   │   └── README.md
+    │   │   │   ├── index.ts
+    │   │   │   ├── logic
+    │   │   │   │   ├── auth-validation.ts
+    │   │   │   │   └── README.md
+    │   │   │   ├── README.md
+    │   │   │   ├── screens
+    │   │   │   │   ├── auth-screen.tsx
+    │   │   │   │   └── README.md
+    │   │   │   └── types
+    │   │   │       └── README.md
+    │   │   ├── instructor
+    │   │   │   ├── components
+    │   │   │   │   └── README.md
+    │   │   │   ├── data
+    │   │   │   │   └── README.md
+    │   │   │   ├── hooks
+    │   │   │   │   └── README.md
+    │   │   │   ├── index.ts
+    │   │   │   ├── logic
+    │   │   │   │   └── README.md
+    │   │   │   ├── README.md
+    │   │   │   ├── screens
+    │   │   │   │   ├── account-screen.tsx
+    │   │   │   │   ├── ai-screen.tsx
+    │   │   │   │   ├── assessments-screen.tsx
+    │   │   │   │   ├── class-detail-screen.tsx
+    │   │   │   │   ├── classes-screen.tsx
+    │   │   │   │   ├── home-screen.tsx
+    │   │   │   │   ├── notifications-screen.tsx
+    │   │   │   │   └── README.md
+    │   │   │   └── types
+    │   │   │       └── README.md
+    │   │   ├── onboarding
+    │   │   │   ├── components
+    │   │   │   │   └── README.md
+    │   │   │   ├── index.ts
+    │   │   │   ├── README.md
+    │   │   │   └── screens
+    │   │   │       ├── explore-screen.tsx
+    │   │   │       ├── learn-more-screen.tsx
+    │   │   │       ├── README.md
+    │   │   │       └── welcome-screen.tsx
+    │   │   ├── README.md
+    │   │   ├── shared-screens
+    │   │   │   ├── components
+    │   │   │   │   ├── README.md
+    │   │   │   │   └── shared-screens.tsx
+    │   │   │   ├── index.ts
+    │   │   │   └── README.md
+    │   │   └── student
+    │   │       ├── components
+    │   │       │   └── README.md
+    │   │       ├── data
+    │   │       │   └── README.md
+    │   │       ├── hooks
+    │   │       │   └── README.md
+    │   │       ├── index.ts
+    │   │       ├── logic
+    │   │       │   └── README.md
+    │   │       ├── README.md
+    │   │       ├── screens
+    │   │       │   ├── account-screen.tsx
+    │   │       │   ├── ai-screen.tsx
+    │   │       │   ├── course-detail-screen.tsx
+    │   │       │   ├── courses-screen.tsx
+    │   │       │   ├── home-screen.tsx
+    │   │       │   ├── notifications-screen.tsx
+    │   │       │   └── README.md
+    │   │       └── types
+    │   │           └── README.md
+    │   └── shared
+    │       ├── components
+    │       │   ├── README.md
+    │       │   └── ui
+    │       │       ├── app-button.tsx
+    │       │       ├── app-header.tsx
+    │       │       ├── parts.tsx
+    │       │       ├── README.md
+    │       │       ├── screen.tsx
+    │       │       └── studia-tab-bar.tsx
+    │       ├── constants
+    │       │   ├── README.md
+    │       │   └── studia-colors.ts
+    │       ├── hooks
+    │       │   ├── README.md
+    │       │   └── use-color-scheme.ts
+    │       ├── README.md
+    │       └── utils
+    │           └── README.md
     └── tsconfig.json
-
-26 directories, 76 files
