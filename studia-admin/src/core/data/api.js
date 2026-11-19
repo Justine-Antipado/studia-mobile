@@ -27,6 +27,7 @@ export const getDashboard = () => backend.getDashboard();
 
 export const getUsers = () => backend.getUsers();
 export const blockUsers = (ids) => backend.blockUsers(ids);
+export const unblockUsers = (ids) => backend.unblockUsers(ids);
 export const deleteUsers = (ids) => backend.deleteUsers(ids);
 export const approveUser = (id) => backend.approveUser(id);
 

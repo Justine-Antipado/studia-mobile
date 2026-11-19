@@ -22,7 +22,6 @@ const STATUS_CLASS = {
   Active: 'badge-green',
   Pending: 'badge-orange',
   Blocked: 'badge-red',
-  Deactivated: 'badge-blue',
   Student: 'badge-lav',
   Instructor: 'badge-lav',
   'Up to date': 'badge-green',
@@ -47,9 +46,9 @@ export function Toggle({ checked, onChange, label }) {
   );
 }
 
-export function Card({ title, action, children, className = '' }) {
+export function Card({ id, title, action, children, className = '' }) {
   return (
-    <section className={`card ${className}`}>
+    <section id={id} className={`card ${className}`}>
       {(title || action) && (
         <header className="card-head">
           {title && <h3>{title}</h3>}
@@ -98,6 +97,8 @@ export const Icon = {
   Logout: () => (<svg {...p}><path d="M9 4H5v16h4" /><path d="M16 8l4 4-4 4M20 12H9" /></svg>),
   Search: () => (<svg {...p}><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4-4" /></svg>),
   Lock: () => (<svg {...p}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>),
+  Unlock: () => (<svg {...p}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 017.7-1.5" /></svg>),
+  Menu: () => (<svg {...p} width="22" height="22"><path d="M4 7h16M4 12h16M4 17h16" /></svg>),
   Close: () => (<svg {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>),
   Check: () => (<svg {...p}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>),
   Eye: () => (<svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>),

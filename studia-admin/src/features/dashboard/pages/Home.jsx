@@ -1,6 +1,6 @@
 // TODO(refactor): split UI / logic / data
 import { useEffect, useState } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import * as api from '../../../core/data/api';
 import { Card, Badge } from '../../../shared/components/ui';
 import { C } from '../../../theme';
@@ -42,7 +42,6 @@ function Donut({ students, instructors }) {
 }
 
 export default function Home() {
-  const { search } = useOutletContext();
   const [data, setData] = useState(null);
 
   useEffect(() => {
@@ -60,9 +59,6 @@ export default function Home() {
     ['Pending', stats.pending],
     ['AI Requests', stats.aiRequests],
   ];
-
-  const q = search.trim().toLowerCase();
-  const rows = recent.filter((u) => !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
 
   return (
     <>
@@ -88,9 +84,10 @@ export default function Home() {
 
       <div className="grid-2-1">
         <Card title="Recent Registrations" action={<Link to="/users" className="link-danger">Delete Users</Link>}>
+          <div className="table-scroll">
           <table className="table compact">
             <tbody>
-              {rows.map((u) => (
+              {recent.map((u) => (
                 <tr key={u.id}>
                   <td><strong>{u.name}</strong></td>
                   <td>{u.role}</td>
@@ -98,11 +95,12 @@ export default function Home() {
                   <td><Badge>{u.status}</Badge></td>
                 </tr>
               ))}
-              {rows.length === 0 && (
-                <tr><td colSpan={4} className="muted">No matching registrations.</td></tr>
+              {recent.length === 0 && (
+                <tr><td colSpan={4} className="muted">No recent registrations.</td></tr>
               )}
             </tbody>
           </table>
+          </div>
         </Card>
 
         <Card title="System health">

@@ -59,9 +59,16 @@ export const backend = {
     return structuredClone(db.users);
   },
 
+  // Statuses: 'Active' | 'Blocked' | 'Pending'. Block only touches Active users, unblock only Blocked ones.
   async blockUsers(ids) {
     await delay();
-    db.users = db.users.map((u) => (ids.includes(u.id) ? { ...u, status: 'Blocked' } : u));
+    db.users = db.users.map((u) => (ids.includes(u.id) && u.status === 'Active' ? { ...u, status: 'Blocked' } : u));
+    return structuredClone(db.users);
+  },
+
+  async unblockUsers(ids) {
+    await delay();
+    db.users = db.users.map((u) => (ids.includes(u.id) && u.status === 'Blocked' ? { ...u, status: 'Active' } : u));
     return structuredClone(db.users);
   },
 

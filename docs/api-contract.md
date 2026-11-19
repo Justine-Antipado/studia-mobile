@@ -677,7 +677,8 @@ Inferred from function names only; paths and HTTP methods are not final.
 - login
 - getDashboard
 - getUsers
-- blockUsers
+- blockUsers (only affects Active users)
+- unblockUsers (only affects Blocked users)
 - deleteUsers
 - approveUser
 - getSettings

@@ -1,6 +1,8 @@
 // TODO(refactor): split UI / logic / data
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import * as api from '../../../core/data/api';
+import { flashElement } from '../../../shared/utils/flash';
 // TODO(refactor): cross-feature import (settings -> auth); move AuthContext to core/ later
 import { useAuth } from '../../auth/context/AuthContext';
 import { Avatar, Badge, Card, Icon, Toast, Toggle } from '../../../shared/components/ui';
@@ -94,7 +96,7 @@ function ProfileCard({ settings, notify }) {
   };
 
   return (
-    <Card title="Profile & Password">
+    <Card id="settings-profile" title="Profile & Password">
       <div className="profile-row">
         <Avatar name="AD" size={52} />
         <div>
@@ -166,7 +168,7 @@ function TermAndEmailCard({ settings, onSave, notify }) {
 
   return (
     <div className="stack">
-      <Card title="Academic Term">
+      <Card id="settings-term" title="Academic Term">
         <div className="two-col">
           <label className="field"><span>School year</span>
             <select className="input" value={term.schoolYear} onChange={(e) => setTerm({ ...term, schoolYear: e.target.value })}>
@@ -188,7 +190,7 @@ function TermAndEmailCard({ settings, onSave, notify }) {
         <button className="btn btn-primary btn-block mt" onClick={saveTerm}>Save term</button>
       </Card>
 
-      <Card title="Email & OTP">
+      <Card id="settings-email" title="Email & OTP">
         <div className="two-col">
           <label className="field"><span>Sender email</span>
             <input className="input" value={email.senderEmail} onChange={(e) => setEmail({ ...email, senderEmail: e.target.value })} onBlur={() => saveEmail({})} />
@@ -226,7 +228,7 @@ function SystemCard({ settings, onSave, notify, reload }) {
   };
 
   return (
-    <Card title="System">
+    <Card id="settings-system" title="System">
       <div className="switch-row">
         <div><strong>Maintenance mode</strong><small className="muted block">Blocks student and instructor logins</small></div>
         <Toggle
@@ -243,21 +245,25 @@ function SystemCard({ settings, onSave, notify, reload }) {
         {settings.system.upToDate && <Badge>Up to date</Badge>}
       </div>
 
-      <h4 className="subhead">Backup status</h4>
-      <div className="backup-row">
-        <span className="check-tile"><Icon.Check /></span>
-        <div><strong>Last backup successful</strong><small className="muted block">{settings.backup.lastBackup}</small></div>
+      <div id="settings-backup" className="flash-target">
+        <h4 className="subhead">Backup status</h4>
+        <div className="backup-row">
+          <span className="check-tile"><Icon.Check /></span>
+          <div><strong>Last backup successful</strong><small className="muted block">{settings.backup.lastBackup}</small></div>
+        </div>
+        <button className="btn btn-soft btn-block" onClick={backup} disabled={backing}>{backing ? 'Backing up…' : 'Back up now'}</button>
       </div>
-      <button className="btn btn-soft btn-block" onClick={backup} disabled={backing}>{backing ? 'Backing up…' : 'Back up now'}</button>
 
-      <h4 className="subhead">Terms & Privacy</h4>
-      <textarea className="input textarea" value={terms} onChange={(e) => setTerms(e.target.value)} />
-      <button
-        className="btn btn-primary btn-block mt"
-        onClick={async () => { await onSave({ terms }); notify('Policy published.'); }}
-      >
-        Publish policy
-      </button>
+      <div id="settings-terms" className="flash-target">
+        <h4 className="subhead">Terms & Privacy</h4>
+        <textarea className="input textarea" value={terms} onChange={(e) => setTerms(e.target.value)} />
+        <button
+          className="btn btn-primary btn-block mt"
+          onClick={async () => { await onSave({ terms }); notify('Policy published.'); }}
+        >
+          Publish policy
+        </button>
+      </div>
     </Card>
   );
 }
@@ -272,6 +278,17 @@ export default function Settings() {
   useEffect(() => { reload(); }, [reload]);
 
   const onSave = async (patch) => setSettings(await api.saveSettings(patch));
+
+  // Arriving from the global search: scroll to the requested card and flash it (once per navigation).
+  const location = useLocation();
+  const focusId = location.state?.focus;
+  const ready = settings !== null;
+  const handledKey = useRef(null);
+  useEffect(() => {
+    if (!ready || !focusId || handledKey.current === location.key) return;
+    handledKey.current = location.key;
+    flashElement(document.getElementById(focusId));
+  }, [ready, focusId, location.key]);
 
   if (!settings) return <div className="loading">Loading settings…</div>;
 

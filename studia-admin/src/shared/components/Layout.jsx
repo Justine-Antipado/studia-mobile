@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 // TODO(refactor): shared must not import features - move AuthContext to core/ later
 import { useAuth } from '../../features/auth/context/AuthContext';
 import { Avatar, Icon } from './ui';
+import GlobalSearch from './GlobalSearch';
 import omsuLogo from '../../assets/omsu-logo.png';
 import studiaLogo from '../../assets/studia-logo.png';
 
@@ -12,10 +13,20 @@ const NAV = [
   { to: '/settings', label: 'Settings', icon: <Icon.Settings /> },
 ];
 
+const PAGES_WITHOUT_SEARCH = ['/users'];
+
 export default function Layout() {
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const { pathname } = useLocation();
+  const [navOpen, setNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e) => e.key === 'Escape' && setNavOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navOpen]);
 
   const handleLogout = () => {
     logout();
@@ -24,7 +35,7 @@ export default function Layout() {
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      <aside className={`sidebar ${navOpen ? 'open' : ''}`}>
         <div className="sidebar-logos">
           <img src={omsuLogo} alt="OMSU seal" />
           <img src={studiaLogo} alt="STUDIA Mobile" />
@@ -32,7 +43,13 @@ export default function Layout() {
 
         <nav>
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.end}
+              onClick={() => setNavOpen(false)}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
               {n.icon}
               <span>{n.label}</span>
             </NavLink>
@@ -45,16 +62,14 @@ export default function Layout() {
         </button>
       </aside>
 
+      {navOpen && <div className="drawer-backdrop" onClick={() => setNavOpen(false)} />}
+
       <main className="main">
         <div className="topbar">
-          <label className="search">
-            <Icon.Search />
-            <input
-              placeholder="Search users, classes, logs…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </label>
+          <button className="menu-btn" aria-label="Open menu" aria-expanded={navOpen} onClick={() => setNavOpen(true)}>
+            <Icon.Menu />
+          </button>
+          {PAGES_WITHOUT_SEARCH.includes(pathname) ? <div className="topbar-spacer" /> : <GlobalSearch />}
           <div className="topbar-user">
             <Avatar name="Admin" size={38} />
             <div>
@@ -64,7 +79,7 @@ export default function Layout() {
           </div>
         </div>
 
-        <Outlet context={{ search }} />
+        <Outlet />
       </main>
     </div>
   );

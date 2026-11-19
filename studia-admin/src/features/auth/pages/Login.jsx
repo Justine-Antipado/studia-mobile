@@ -42,13 +42,13 @@ export default function Login() {
       <div className="login-hero" style={{ backgroundImage: `url(${campus})` }}>
         <div className="login-hero-overlay" />
         <div className="login-hero-content">
+          <img className="login-mascot" src={mascot} alt="STUDIA mascot" />
           <div className="login-hero-logos">
             <img src={omsuLogo} alt="OMSU seal" />
             <img src={studiaLogo} alt="STUDIA Mobile" />
           </div>
           <h1>STUDIA Admin Portal</h1>
           <p>Occidental Mindoro State University — manage users, academic terms and system settings in one place.</p>
-          <img className="login-mascot" src={mascot} alt="STUDIA mascot" />
         </div>
       </div>
 

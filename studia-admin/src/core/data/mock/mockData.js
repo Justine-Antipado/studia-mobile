@@ -7,7 +7,7 @@ export const mockUsers = [
   { id: 4, name: 'Mark Bautista', email: 'mark.b@omsu.edu.ph', role: 'Student', section: 'BSIT 3-A', status: 'Blocked', joined: 'Aug 14, 2026', lastActive: 'Nov 2' },
   { id: 5, name: 'Prof. Ramon Reyes', email: 'ramon.r@omsu.edu.ph', role: 'Instructor', section: 'IT Dept', status: 'Pending', joined: 'Nov 14, 2026', lastActive: '—' },
   { id: 6, name: 'Liza Mercado', email: 'liza.m@omsu.edu.ph', role: 'Student', section: 'BSIT 3-B', status: 'Active', joined: 'Aug 15, 2026', lastActive: 'Yesterday' },
-  { id: 7, name: 'Carlo Dizon', email: 'carlo.d@omsu.edu.ph', role: 'Student', section: 'BSIT 3-C', status: 'Deactivated', joined: 'Aug 16, 2026', lastActive: 'Oct 10' },
+  { id: 7, name: 'Carlo Dizon', email: 'carlo.d@omsu.edu.ph', role: 'Student', section: 'BSIT 3-C', status: 'Blocked', joined: 'Aug 16, 2026', lastActive: 'Oct 10' },
 ];
 
 export const mockStats = {
