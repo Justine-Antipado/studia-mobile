@@ -5,9 +5,14 @@ export const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 
 export const blankQuestion = (): QuizQuestion => ({
   id: newId("q"),
+  type: "multiple_choice",
   text: "",
   options: ["", "", "", ""],
   correctIndex: 0,
+  correctAnswer: null,
+  bloom: null,
+  difficulty: null,
+  points: 1,
 });
 
 /** Returns an error message, or null when valid. Drafts only need a title + class. */
@@ -17,13 +22,17 @@ export function validateQuizDraft(d: QuizDraft, publish: boolean): string | null
   if (!publish) return null;
   if (d.questions.length === 0) return "Add at least one question.";
   for (let i = 0; i < d.questions.length; i++) {
-    const q = d.questions[i];
+    const q = d.questions[i]!;
     const n = i + 1;
     if (!q.text.trim()) return `Question ${n} needs text.`;
-    const filled = q.options.filter((o) => o.trim()).length;
-    if (filled < 2) return `Question ${n} needs at least 2 answer options.`;
-    if (!q.options[q.correctIndex]?.trim())
-      return `Question ${n}: the correct answer can't be empty.`;
+    if (q.type === "multiple_choice") {
+      const filled = (q.options ?? []).filter((o) => o.trim()).length;
+      if (filled < 2) return `Question ${n} needs at least 2 answer options.`;
+      if (!q.options?.[q.correctIndex ?? -1]?.trim()) return `Question ${n}: the correct answer can't be empty.`;
+    }
+    if (q.type === "identification" && !q.correctAnswer?.trim()) {
+      return `Question ${n} needs the correct answer.`;
+    }
   }
   return null;
 }

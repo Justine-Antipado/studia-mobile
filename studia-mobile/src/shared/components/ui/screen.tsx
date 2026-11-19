@@ -1,7 +1,11 @@
-// screen.tsx  (header + content wrapper used by every tab screen)
-
+// screen.tsx — header + content wrapper used by EVERY screen.
+// Responsibilities: app header, offline banner, safe scroll area, keyboard-safe content,
+// pull-to-refresh, centered max-width content on tablets, and an ErrorBoundary around the body.
 import type { ReactNode } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -9,48 +13,104 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { AppHeader } from "@/shared/components/ui/app-header";
-import { C } from "@/shared/constants/studia-colors";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { useRoleUser } from "@/core/data/storage/session-store";
 import type { Role } from "@/core/types/role";
+import { AppHeader } from "@/shared/components/ui/app-header";
+import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
+import { OfflineBanner } from "@/shared/components/ui/offline-banner";
+import { C } from "@/shared/constants/studia-colors";
+import { SPACE } from "@/shared/constants/tokens";
+import { MAX_CONTENT_WIDTH, useResponsive } from "@/shared/hooks/use-responsive";
 
 type Props = {
   role: Role;
+  /** false for screens that own their scrolling (FlatList, chat, video player). */
   scroll?: boolean;
+  /** Hide the app header (full-bleed screens such as quiz taking). */
+  header?: boolean;
+  /** Pull-to-refresh (scroll screens only). */
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  /** Label used in crash reports for this screen. */
+  scope?: string;
+  /** Hide the offline banner (screens that show their own connectivity state). */
+  offlineBanner?: boolean;
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
 };
 
-export function Screen({ role, scroll = true, children, contentStyle }: Props) {
+export function Screen({
+  role,
+  scroll = true,
+  header = true,
+  refreshing,
+  onRefresh,
+  scope,
+  offlineBanner = true,
+  children,
+  contentStyle,
+}: Props) {
   const user = useRoleUser(role);
+  const { isTablet } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const inner: StyleProp<ViewStyle> = [s.inner, { maxWidth: isTablet ? MAX_CONTENT_WIDTH : 640 }];
+  // Sub pages are pushed over the tab bar, so nothing else keeps their last row clear of the
+  // home indicator / gesture bar. Inside a tab screen the navigator has already consumed the
+  // bottom inset, so this adds nothing there.
+  const safeBottom = { paddingBottom: SPACE.xl + insets.bottom };
+
+  const body = (
+    <ErrorBoundary scope={scope ?? role}>
+      {/* One banner for the whole app: it renders nothing while online. */}
+      {offlineBanner ? <OfflineBanner /> : null}
+      {children}
+    </ErrorBoundary>
+  );
+
   return (
     <View style={s.root}>
       {/* Header sits above the scroll area so content never slides over it. */}
-      {user ? (
+      {header && user ? (
         <View style={s.header}>
           <AppHeader user={user} />
         </View>
       ) : null}
 
-      <View style={s.body}>
+      <KeyboardAvoidingView
+        style={s.body}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         {scroll ? (
           <ScrollView
             style={s.flex}
-            contentContainerStyle={[s.content, contentStyle]}
+            contentContainerStyle={[s.content, safeBottom, contentStyle]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            bounces={false}
+            keyboardDismissMode="on-drag"
+            bounces={!!onRefresh}
             alwaysBounceVertical={false}
-            overScrollMode="never"
+            overScrollMode={onRefresh ? "always" : "never"}
+            refreshControl={
+              onRefresh ? (
+                <RefreshControl
+                  refreshing={!!refreshing}
+                  onRefresh={onRefresh}
+                  colors={[C.primary]}
+                  tintColor={C.primary}
+                />
+              ) : undefined
+            }
           >
-            <View style={s.inner}>{children}</View>
+            <View style={inner}>{body}</View>
           </ScrollView>
         ) : (
-          <View style={[s.flex, s.fixed, contentStyle]}>
-            <View style={[s.flex, s.inner]}>{children}</View>
+          <View style={[s.flex, s.fixed, safeBottom, contentStyle]}>
+            <View style={[s.flex, inner]}>{body}</View>
           </View>
         )}
-      </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -63,11 +123,11 @@ const s = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingTop: SPACE.lg,
+    paddingBottom: SPACE.xl,
     flexGrow: 1,
   },
-  fixed: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 12 },
+  fixed: { paddingHorizontal: 18, paddingTop: SPACE.md + 2, paddingBottom: SPACE.md },
   // keeps layout readable on tablets / wide screens
-  inner: { width: "100%", maxWidth: 640, alignSelf: "center", gap: 14 },
+  inner: { width: "100%", alignSelf: "center", gap: SPACE.md + 2 },
 });

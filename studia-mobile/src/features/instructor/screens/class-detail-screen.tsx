@@ -1,39 +1,49 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import { Text } from "react-native";
-
-import { Avatar, BackTitle, ListCard, SearchField, TabChips } from "@/shared/components/ui/parts";
+// class-detail-screen.tsx — tabs: Stream · Materials · Assessments · People · Grades (docs/ROUTE-MAP.md).
+import { ListState, PageTitle, SegmentedTabs } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
-// TODO(refactor): route through data/ layer
-import { CLASS_STUDENTS, INSTRUCTOR_CLASSES } from "@/core/data/mock/mock-data";
+import { useRouteEnum, useRouteId } from "@/core/logic/route-params";
+import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { AssessmentsTab } from "@/features/instructor/components/class-detail/assessments-tab";
+import { GradesTab } from "@/features/instructor/components/class-detail/grades-tab";
+import { MaterialsTab } from "@/features/instructor/components/class-detail/materials-tab";
+import { PeopleTab } from "@/features/instructor/components/class-detail/people-tab";
+import { StreamTab } from "@/features/instructor/components/class-detail/stream-tab";
+import { useInstructorClass } from "@/features/instructor/hooks/use-classes";
 
-const TABS = ["Stream", "Lessons", "Materials", "Quizzes", "Students"] as const;
+const TABS = ["Stream", "Materials", "Assessments", "People", "Grades"] as const;
+type Tab = (typeof TABS)[number];
 
-export default function InstructorClassDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const cls = INSTRUCTOR_CLASSES.find((c) => c.id === id) ?? INSTRUCTOR_CLASSES[0]!;
-
-  const [tab, setTab] = useState<string>("Students");
-  const [search, setSearch] = useState("");
-
-  const filtered = CLASS_STUDENTS.filter((st) => st.name.toLowerCase().includes(search.toLowerCase()));
+export default function InstructorClassDetailScreen() {
+  const id = useRouteId();
+  const goBack = useSafeBack("/instructor/classes");
+  const { data: cls, loading, error, refetch } = useInstructorClass(id);
+  // In the URL, so opening a material or a student and coming back keeps the same tab.
+  const [tab, setTab] = useRouteEnum<Tab>("tab", TABS, "Stream");
 
   return (
-    <Screen role="instructor">
-      <BackTitle title={`${cls.code} · ${cls.section}`} onBack={() => router.back()} />
-      <TabChips items={TABS} value={tab} onChange={setTab} />
-      <SearchField value={search} onChangeText={setSearch} placeholder="Search students" />
+    <Screen role="instructor" scope="instructor/class-detail">
+      <PageTitle title={cls ? `${cls.code} · ${cls.section}` : "Class"} onBack={goBack} />
 
-      {filtered.map((st) => (
-        <ListCard
-          key={st.id}
-          icon="person-outline"
-          title={st.name}
-          meta={`${st.section} · ${st.progress}% progress`}
-          right={<Text />} // Hides chevron if desired, or keep default
-        />
-      ))}
+      <ListState
+        loading={loading}
+        error={error}
+        empty={!loading && !cls}
+        onRetry={refetch}
+        emptyIcon="school-outline"
+        emptyTitle="Class not found"
+        emptyMessage="This class may have been archived or removed."
+      >
+        {cls ? (
+          <>
+            <SegmentedTabs items={TABS} value={tab} onChange={setTab} />
+            {tab === "Stream" && <StreamTab classId={cls.id} />}
+            {tab === "Materials" && <MaterialsTab classId={cls.id} />}
+            {tab === "Assessments" && <AssessmentsTab classId={cls.id} />}
+            {tab === "People" && <PeopleTab classId={cls.id} />}
+            {tab === "Grades" && <GradesTab classId={cls.id} />}
+          </>
+        ) : null}
+      </ListState>
     </Screen>
   );
 }

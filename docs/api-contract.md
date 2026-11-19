@@ -1,689 +1,303 @@
 # API contract
 
-## Auth (mobile) - Endpoint map
-(copied from the header comment of features/auth/data/auth-service.ts)
+What the backend has to build for the existing clients. Every row maps a client call that exists
+today to the endpoint it must become.
 
-```
-auth-service.ts
+Status: **no client talks to a real server yet.** The mobile app runs on mock repository
+implementations and `studia-admin` on `core/data/mock/mockBackend.js`. This file is the handover
+document: implement these endpoints and each mock implementation can be replaced one file at a
+time, without touching a hook or a screen.
 
-import * as Crypto from "expo-crypto";
-import {
-  composeSection,
-  isStrongPassword,
-  normalizeEmail,
-  normalizeName,
-  normalizePhone,
-  validateAll,
-  type FieldErrors,
-  type FieldKey,
-  type Role,
-} from "@/features/auth/logic/auth-validation";
-export type { Role };
+Updated at P5 (2026-11-19). Keep it in step with the repository interfaces, the mock auth service
+and `backend/database/migrations/*.sql` — when a data shape changes, all four change together.
 
-/* ---------- Config ---------- */
+## Conventions
 
-const LATENCY_MS = 600;
-const OTP_TTL_MS = 5 * 60_000;
-const OTP_RESEND_MS = 30_000;
-const OTP_MAX_ATTEMPTS = 5;
-const LOGIN_MAX_FAILS = 5;
-const LOGIN_LOCK_MS = 60_000;
-const TOKEN_TTL_MS = 10 * 60_000;
+- Base URL: `EXPO_PUBLIC_API_URL` (mobile), `VITE_API_URL` (admin). Paths below are relative to it.
+- JSON in, JSON out, UTF-8. All times are ISO 8601 with an offset (`2026-11-19T17:00:00+08:00`);
+  the clients format for Asia/Manila.
+- Auth: `Authorization: Bearer <accessToken>` on everything except the auth endpoints.
+- Every id in a path is an opaque server-generated string. The client sends ids it was given,
+  and validates their shape before use (`core/logic/route-params.ts`), but **the server must not
+  trust any client id**: check ownership on every request.
+- Errors: HTTP status plus `{ "code": "...", "message": "..." }`. The client maps the status to an
+  `AppError` (`core/data/errors/app-error.ts`) and shows its own wording, so `message` is for logs,
+  not for users. Codes the client already distinguishes:
 
-/** Instructors can grant themselves powers if anyone can self-register. Turn on once you have an admin screen. */
-export const REQUIRE_INSTRUCTOR_APPROVAL = false;
+  | Status | AppError code | Retried by the client |
+  |---|---|---|
+  | 400/422 | `validation` | no |
+  | 401 | `unauthorized` | no |
+  | 404 | `not_found` | no |
+  | 409 | `conflict` | no |
+  | 5xx, network failure | `network` | yes, 3 attempts, exponential backoff |
+  | timeout (10 s client-side) | `timeout` | yes |
 
-/* ---------- Types ---------- */
+- **Reads** may be retried automatically, so `GET` must be side-effect free.
+  **Writes** are never retried automatically. Creates and submits should still accept an
+  `Idempotency-Key` header (`shared/utils/id.ts` → `newIdempotencyKey()`) so a user-initiated
+  retry cannot produce a duplicate record.
+- **Pagination** is not yet in the repository interfaces (every list method returns the whole
+  collection). List endpoints should take `?cursor=&limit=` and return
+  `{ items: [...], nextCursor: string | null }` from day one; the `AppList` component already
+  supports `onEndReached`, and adding the parameters is then a repository-only change.
+- Caching: the client caches reads by key with a TTL (5 min for static lists, 30 s for streams and
+  notifications, AI results until the source changes) and revalidates in the background. Send
+  `ETag`/`Cache-Control` if you want to make that cheaper; the client does not require it.
 
-export type OtpPurpose = "signup" | "google_login" | "google_signup" | "reset";
+## Auth
 
-export type AuthErrorCode =
-  | "VALIDATION"
-  | "INVALID_CREDENTIALS"
-  | "EMAIL_TAKEN"
-  | "ROLE_MISMATCH"
-  | "EMAIL_NOT_VERIFIED"
-  | "ACCOUNT_PENDING"
-  | "OTP_INVALID"
-  | "OTP_EXPIRED"
-  | "OTP_LOCKED"
-  | "RATE_LIMITED"
-  | "NETWORK"
-  | "UNKNOWN";
+Source of truth for behaviour: `studia-mobile/src/features/auth/data/auth-service.ts` (a complete
+mock server: validation, OTP lifecycle, resend throttling, attempt limits, lockouts, typed error
+codes). The client-side rules that the server must enforce for real are listed under
+"Server requirements" below.
 
-export class AuthError extends Error {
-  code: AuthErrorCode;
-  fields?: FieldErrors;
-  constructor(code: AuthErrorCode, message: string, fields?: FieldErrors) {
-    super(message);
-    Object.setPrototypeOf(this, AuthError.prototype); // keeps `instanceof` reliable after transpiling
-    this.name = "AuthError";
-    this.code = code;
-    this.fields = fields;
-  }
+| Client call (`auth-service.ts`) | Endpoint | Notes |
+|---|---|---|
+| `login({ email, password, role })` | `POST /auth/login` | Verifies the role matches the account. 423/`OTP_LOCKED` after 5 failures, 60 s lock. |
+| `register(input, role)` | `POST /auth/register` | Creates an unverified account and sends a signup OTP. |
+| `resendOtp(email, purpose)` | `POST /auth/otp/resend` | Throttled: one per 30 s. |
+| `verifyOtp({ email, code, purpose })` | `POST /auth/otp/verify` | Max 5 attempts per code, 5 min TTL. Returns a session, or a short-lived token for `reset` / `google_signup`. |
+| `loginWithGoogle(idToken, role)` | `POST /auth/google` | The **server** verifies the Google ID token; never trust a client-decoded payload. |
+| `completeGoogleProfile(input)` | `POST /auth/google/complete` | Finishes a first-time Google signup with the profile token from the previous step. |
+| `requestPasswordReset(email)` | `POST /auth/password/forgot` | Always answers 200, whether or not the address exists (no account enumeration). |
+| `resetPassword({ token, password })` | `POST /auth/password/reset` | Consumes the reset token from `verifyOtp`. |
+
+Session shape the client expects:
+
+```json
+{
+  "user": { "id": "...", "role": "student|instructor", "fullName": "...", "email": "...",
+            "course": "BSIT", "year": "3", "section": "A", "department": null, "phone": null },
+  "accessToken": "...",
+  "expiresAt": 1763536800000
 }
-
-export const isAuthError = (e: unknown): e is AuthError =>
-  e instanceof AuthError ||
-  (typeof e === "object" &&
-    e !== null &&
-    (e as { name?: string }).name === "AuthError");
-
-export type User = {
-  id: string;
-  role: Role;
-  fullName: string;
-  email: string;
-  section?: string; // e.g. "BSIT 3-A" (course + year + section)
-  department?: string;
-  phone?: string;
-  authProvider: "password" | "google";
-  emailVerified: boolean;
-  status: "active" | "pending_approval";
-  createdAt: string;
-};
-
-export type Session = { user: User; accessToken: string; expiresAt: number };
-
-export type OtpInfo = {
-  resendInSec: number;
-  expiresInSec: number;
-  devCode?: string;
-};
-
-export type VerifyResult =
-  | { kind: "session"; session: Session }
-  | { kind: "needs_profile"; profileToken: string; fullName: string }
-  | { kind: "reset_token"; resetToken: string };
-
-export type RegisterInput = {
-  role: Role;
-  fullName: string;
-  email: string;
-  password: string;
-  course?: string;
-  year?: string;
-  section?: string;
-  department?: string;
-  phone?: string;
-};
-
-/* ---------- Mock storage (replace with your database) ---------- */
-
-type UserRow = User & { passwordHash: string | null; googleId?: string };
-
-const users = new Map<string, UserRow>(); // key = normalized email (the UNIQUE index in SQL)
-const otps = new Map<
-  string,
-  { code: string; expiresAt: number; attempts: number; sentAt: number }
->();
-const failures = new Map<string, { count: number; lockedUntil: number }>();
-const pendingGoogle = new Map<string, { fullName: string; googleId: string }>();
-const profileTokens = new Map<string, { email: string; expiresAt: number }>();
-const resetTokens = new Map<string, { email: string; expiresAt: number }>();
-
-const SEEDS = [
-  {
-    password: "Student@123",
-    user: {
-      id: "u-seed-1",
-      role: "student" as const,
-      fullName: "Juan Dela Cruz",
-      email: "student@omsc.edu.ph",
-      section: "BSIT 3-A",
-      authProvider: "password" as const,
-      emailVerified: true,
-      status: "active" as const,
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-  {
-    password: "Instructor@123",
-    user: {
-      id: "u-seed-2",
-      role: "instructor" as const,
-      fullName: "Maria Santos",
-      email: "instructor@omsc.edu.ph",
-      department: "IT",
-      authProvider: "password" as const,
-      emailVerified: true,
-      status: "active" as const,
-      createdAt: "2026-01-01T00:00:00.000Z",
-    },
-  },
-];
-
-let seeding: Promise<void> | null = null;
-function ensureSeed() {
-  seeding ??= (async () => {
-    for (const s of SEEDS) {
-      users.set(s.user.email, {
-        ...s.user,
-        passwordHash: await hashPassword(s.user.email, s.password),
-      });
-    }
-  })();
-  return seeding;
-}
-
-Mock Google account. Real flow: expo-auth-session -> idToken -> backend verifies it with Google.
-const MOCK_GOOGLE = {
-  googleId: "google-mock-001",
-  email: "mock.user@gmail.com",
-  fullName: "Mock Google User",
-};
-
-/* ---------- Helpers ---------- */
-
-const latency = () => new Promise<void>((r) => setTimeout(r, LATENCY_MS));
-
-function randomOtp() {
-  const b = Crypto.getRandomBytes(4); // CSPRNG, never Math.random() for codes or tokens
-  const n = ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]) >>> 0;
-  return String(n % 1_000_000).padStart(6, "0");
-}
-
-const randomToken = () =>
-  Array.from(Crypto.getRandomBytes(24), (x) =>
-    x.toString(16).padStart(2, "0"),
-  ).join("");
-
-Mock only, so the mock "DB" does not hold plaintext passwords. The real server uses argon2id / bcrypt.
-NEVER hash passwords on the client in production.
-const hashPassword = (email: string, pw: string) =>
-  Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    `${email}:${pw}`,
-  );
-
-function safeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-const toUser = (row: UserRow): User => {
-  const { passwordHash, googleId, ...user } = row;
-  void passwordHash;
-  void googleId;
-  return user;
-};
-
-const newSession = (row: UserRow): Session => ({
-  user: toUser(row),
-  accessToken: randomToken(), // TODO: real JWT / opaque token from the server
-  expiresAt: Date.now() + 60 * 60_000,
-});
-
-function assertValid(
-  keys: readonly FieldKey[],
-  values: Partial<Record<FieldKey, string>>,
-  role: Role,
-  strict: boolean,
-) {
-  const fields = validateAll(keys, values, { role, strict });
-  if (Object.keys(fields).length)
-    throw new AuthError(
-      "VALIDATION",
-      "Please fix the highlighted fields.",
-      fields,
-    );
-}
-
-function assertRole(row: UserRow, role: Role) {
-  if (row.role !== role) {
-    throw new AuthError(
-      "ROLE_MISMATCH",
-      `This account is registered as ${row.role}. Go back and choose ${row.role}.`,
-    );
-  }
-}
-
-function assertActive(row: UserRow) {
-  if (row.status === "pending_approval") {
-    throw new AuthError(
-      "ACCOUNT_PENDING",
-      "Your instructor account is waiting for administrator approval.",
-    );
-  }
-}
-
-function assertNotLocked(email: string) {
-  const f = failures.get(email);
-  if (f && f.lockedUntil > Date.now()) {
-    const s = Math.ceil((f.lockedUntil - Date.now()) / 1000);
-    throw new AuthError(
-      "RATE_LIMITED",
-      `Too many attempts. Try again in ${s}s.`,
-    );
-  }
-}
-
-function recordFailure(email: string) {
-  const f = failures.get(email) ?? { count: 0, lockedUntil: 0 };
-  f.count += 1;
-  if (f.count >= LOGIN_MAX_FAILS) {
-    f.count = 0;
-    f.lockedUntil = Date.now() + LOGIN_LOCK_MS;
-  }
-  failures.set(email, f);
-}
-
-function issueOtp(email: string, purpose: OtpPurpose): OtpInfo {
-  const key = `${email}|${purpose}`;
-  const now = Date.now();
-  const prev = otps.get(key);
-  if (prev && now - prev.sentAt < OTP_RESEND_MS) {
-    const s = Math.ceil((OTP_RESEND_MS - (now - prev.sentAt)) / 1000);
-    throw new AuthError(
-      "RATE_LIMITED",
-      `Please wait ${s}s before requesting another code.`,
-    );
-  }
-  const code = randomOtp();
-  otps.set(key, {
-    code,
-    expiresAt: now + OTP_TTL_MS,
-    attempts: 0,
-    sentAt: now,
-  }); // new code replaces the old one
-  // TODO(backend): send the email here and store only a HASH of the code. Also cap sends per email/IP per day.
-  return {
-    resendInSec: OTP_RESEND_MS / 1000,
-    expiresInSec: OTP_TTL_MS / 1000,
-    devCode: __DEV__ ? code : undefined,
-  };
-}
-
-function createUser(p: {
-  role: Role;
-  fullName: string;
-  email: string;
-  passwordHash: string | null;
-  provider: "password" | "google";
-  section?: string;
-  department?: string;
-  phone?: string;
-  googleId?: string;
-}): UserRow {
-  const status =
-    p.role === "instructor" && REQUIRE_INSTRUCTOR_APPROVAL
-      ? "pending_approval"
-      : "active";
-  const row: UserRow = {
-    id: `u-${randomToken().slice(0, 12)}`,
-    role: p.role,
-    fullName: p.fullName,
-    email: p.email,
-    section: p.role === "student" ? p.section : undefined,
-    department: p.role === "instructor" ? p.department : undefined,
-    phone: p.phone || undefined,
-    authProvider: p.provider,
-    emailVerified: p.provider === "google",
-    status,
-    createdAt: new Date().toISOString(),
-    passwordHash: p.passwordHash,
-    googleId: p.googleId,
-  };
-  users.set(p.email, row);
-  return row;
-}
-
-const roleKeys = (role: Role): FieldKey[] =>
-  role === "student" ? ["course", "year", "section"] : ["department"];
-
-const sectionOf = (i: {
-  role: Role;
-  course?: string;
-  year?: string;
-  section?: string;
-}) => (i.role === "student" ? composeSection(i.course, i.year, i.section) : "");
-
-/* ---------- Public API ---------- */
-
-export async function login(input: {
-  email: string;
-  password: string;
-  role: Role;
-}): Promise<Session> {
-  await latency();
-  await ensureSeed();
-  assertValid(["email", "password"], input, input.role, false);
-  const email = normalizeEmail(input.email);
-
-  assertNotLocked(email);
-  const hash = await hashPassword(email, input.password); // hash even for unknown emails: similar timing
-  const row = users.get(email);
-
-  if (!row || !row.passwordHash || !safeEqual(row.passwordHash, hash)) {
-    recordFailure(email);
-    // One generic message for "no such email" and "wrong password" (no account enumeration).
-    throw new AuthError(
-      "INVALID_CREDENTIALS",
-      "Incorrect email or password. If you signed up with Google, use “Continue with Google”.",
-    );
-  }
-  failures.delete(email);
-  assertRole(row, input.role);
-  if (!row.emailVerified)
-    throw new AuthError(
-      "EMAIL_NOT_VERIFIED",
-      "Please verify your email to continue.",
-    );
-  assertActive(row);
-  return newSession(row);
-}
-
-export async function register(
-  input: RegisterInput,
-): Promise<OtpInfo & { email: string }> {
-  await latency();
-  await ensureSeed();
-  assertValid(
-    ["fullName", ...roleKeys(input.role), "email", "phone", "password"],
-    input,
-    input.role,
-    true,
-  );
-
-  const email = normalizeEmail(input.email);
-  const existing = users.get(email);
-  if (existing?.emailVerified) {
-    // Trade-off: this reveals that the email is registered. It is required by the spec ("duplicate account"),
-    // so protect the real endpoint with rate limiting + CAPTCHA.
-    throw new AuthError(
-      "EMAIL_TAKEN",
-      "An account with this email already exists. Try logging in.",
-      {
-        email: "This email is already registered.",
-      },
-    );
-  }
-
-  const row = createUser({
-    role: input.role,
-    fullName: normalizeName(input.fullName),
-    email,
-    passwordHash: await hashPassword(email, input.password),
-    provider: "password",
-    section: sectionOf(input),
-    department: input.role === "instructor" ? input.department : undefined,
-    phone: normalizePhone(input.phone ?? "") ?? "",
-  });
-  void row; // an unverified re-registration overwrites the old unverified row (same key)
-
-  return { ...issueOtp(email, "signup"), email };
-}
-
-export async function resendOtp(
-  emailRaw: string,
-  purpose: OtpPurpose,
-): Promise<OtpInfo> {
-  await latency();
-  await ensureSeed();
-  const email = normalizeEmail(emailRaw);
-
-  if (purpose === "reset") return requestPasswordReset(email, true);
-
-  const ok =
-    (purpose === "signup" && users.get(email)?.emailVerified === false) ||
-    (purpose === "google_login" && users.has(email)) ||
-    (purpose === "google_signup" && pendingGoogle.has(email));
-  if (!ok)
-    throw new AuthError(
-      "OTP_EXPIRED",
-      "This session expired. Please start again.",
-    );
-  return issueOtp(email, purpose);
-}
-
-export async function verifyOtp(input: {
-  email: string;
-  purpose: OtpPurpose;
-  code: string;
-}): Promise<VerifyResult> {
-  await latency();
-  await ensureSeed();
-  const email = normalizeEmail(input.email);
-  const key = `${email}|${input.purpose}`;
-  const entry = otps.get(key);
-
-  if (!entry)
-    throw new AuthError("OTP_EXPIRED", "No active code. Request a new one.");
-  if (Date.now() > entry.expiresAt) {
-    otps.delete(key);
-    throw new AuthError(
-      "OTP_EXPIRED",
-      "This code has expired. Request a new one.",
-    );
-  }
-  if (entry.attempts >= OTP_MAX_ATTEMPTS) {
-    otps.delete(key);
-    throw new AuthError(
-      "OTP_LOCKED",
-      "Too many wrong codes. Request a new one.",
-    );
-  }
-  if (!safeEqual(entry.code, input.code)) {
-    entry.attempts += 1;
-    const left = OTP_MAX_ATTEMPTS - entry.attempts;
-    if (left <= 0) {
-      otps.delete(key);
-      throw new AuthError(
-        "OTP_LOCKED",
-        "Too many wrong codes. Request a new one.",
-      );
-    }
-    throw new AuthError(
-      "OTP_INVALID",
-      `Wrong code. ${left} ${left === 1 ? "attempt" : "attempts"} left.`,
-    );
-  }
-  otps.delete(key); // single use
-
-  switch (input.purpose) {
-    case "signup": {
-      const row = users.get(email);
-      if (!row)
-        throw new AuthError(
-          "OTP_EXPIRED",
-          "This session expired. Please start again.",
-        );
-      row.emailVerified = true;
-      assertActive(row);
-      return { kind: "session", session: newSession(row) };
-    }
-    case "google_login": {
-      const row = users.get(email);
-      if (!row)
-        throw new AuthError(
-          "OTP_EXPIRED",
-          "This session expired. Please start again.",
-        );
-      assertActive(row);
-      return { kind: "session", session: newSession(row) };
-    }
-    case "google_signup": {
-      const g = pendingGoogle.get(email);
-      if (!g)
-        throw new AuthError(
-          "OTP_EXPIRED",
-          "This session expired. Please start again.",
-        );
-      const profileToken = randomToken();
-      profileTokens.set(profileToken, {
-        email,
-        expiresAt: Date.now() + TOKEN_TTL_MS,
-      });
-      return { kind: "needs_profile", profileToken, fullName: g.fullName };
-    }
-    case "reset": {
-      const resetToken = randomToken();
-      resetTokens.set(resetToken, {
-        email,
-        expiresAt: Date.now() + TOKEN_TTL_MS,
-      });
-      return { kind: "reset_token", resetToken };
-    }
-  }
-}
-
-export async function loginWithGoogle(
-  role: Role,
-): Promise<OtpInfo & { email: string; purpose: OtpPurpose }> {
-  await latency();
-  await ensureSeed();
-  // TODO(real): const idToken = await GoogleSignin.signIn(); send idToken to the backend, which verifies it with
-  // Google and reads email / sub from the VERIFIED token. Never trust an email string sent by the client.
-  const g = MOCK_GOOGLE;
-  const email = normalizeEmail(g.email);
-  const existing = users.get(email);
-
-  if (existing) {
-    assertRole(existing, role); // before sending any OTP
-    return {
-      ...issueOtp(email, "google_login"),
-      email,
-      purpose: "google_login",
-    };
-  }
-  pendingGoogle.set(email, { fullName: g.fullName, googleId: g.googleId });
-  return {
-    ...issueOtp(email, "google_signup"),
-    email,
-    purpose: "google_signup",
-  };
-}
-
-export async function completeGoogleProfile(input: {
-  profileToken: string;
-  role: Role;
-  fullName: string;
-  course?: string;
-  year?: string;
-  section?: string;
-  department?: string;
-  phone?: string;
-}): Promise<Session> {
-  await latency();
-  assertValid(
-    ["fullName", ...roleKeys(input.role), "phone"],
-    input,
-    input.role,
-    true,
-  );
-
-  const t = profileTokens.get(input.profileToken);
-  if (!t || t.expiresAt < Date.now()) {
-    profileTokens.delete(input.profileToken);
-    throw new AuthError(
-      "OTP_EXPIRED",
-      "This session expired. Please start again.",
-    );
-  }
-  const g = pendingGoogle.get(t.email);
-  if (!g)
-    throw new AuthError(
-      "OTP_EXPIRED",
-      "This session expired. Please start again.",
-    );
-  if (users.get(t.email)?.emailVerified)
-    throw new AuthError(
-      "EMAIL_TAKEN",
-      "An account with this email already exists.",
-    );
-
-  profileTokens.delete(input.profileToken); // single use
-  pendingGoogle.delete(t.email);
-  const row = createUser({
-    role: input.role,
-    fullName: normalizeName(input.fullName),
-    email: t.email,
-    passwordHash: null,
-    provider: "google",
-    googleId: g.googleId,
-    section: sectionOf(input),
-    department: input.role === "instructor" ? input.department : undefined,
-    phone: normalizePhone(input.phone ?? "") ?? "",
-  });
-  assertActive(row);
-  return newSession(row);
-}
-
-/**
- * Always resolves the same way whether or not the email exists (no account enumeration).
- * MOCK: for unknown emails we still store a decoy code, so the UI flow (verify -> reset screen)
- * looks identical. A real backend sends nothing for unknown emails and the code never verifies.
- */
-export async function requestPasswordReset(
-  emailRaw: string,
-  skipLatency = false,
-): Promise<OtpInfo> {
-  if (!skipLatency) await latency();
-  await ensureSeed();
-  const email = normalizeEmail(emailRaw);
-  const generic: OtpInfo = {
-    resendInSec: OTP_RESEND_MS / 1000,
-    expiresInSec: OTP_TTL_MS / 1000,
-  };
-
-  try {
-    const info = issueOtp(email, "reset");
-    // devCode shows only for real accounts, so you can still see that the decoy path stays silent.
-    return users.has(email)
-      ? info
-      : { ...info, devCode: __DEV__ ? info.devCode : undefined };
-  } catch (e) {
-    if (isAuthError(e) && e.code === "RATE_LIMITED") return generic; // swallow: throttling must not leak existence
-    throw e;
-  }
-}
-
-export async function resetPassword(input: {
-  resetToken: string;
-  newPassword: string;
-}): Promise<void> {
-  await latency();
-  if (!isStrongPassword(input.newPassword)) {
-    throw new AuthError("VALIDATION", "Please fix the highlighted fields.", {
-      password: "Password does not meet all requirements.",
-    });
-  }
-  const t = resetTokens.get(input.resetToken);
-  if (!t || t.expiresAt < Date.now()) {
-    resetTokens.delete(input.resetToken);
-    throw new AuthError(
-      "OTP_EXPIRED",
-      "This reset session expired. Start again.",
-    );
-  }
-
-  resetTokens.delete(input.resetToken); // single use
-  const row = users.get(t.email);
-  if (!row) return; // unknown email: succeed silently (no account enumeration)
-
-  row.passwordHash = await hashPassword(t.email, input.newPassword);
-  row.emailVerified = true;
-  failures.delete(t.email);
-  // TODO(backend): invalidate every existing session / refresh token for this user.
-}
-
 ```
 
-## Admin (web) - inferred from function names in studia-admin/src/core/data/api.js
-Inferred from function names only; paths and HTTP methods are not final.
+Server requirements (these are **not** satisfiable on the client, see the comments in
+`auth-service.ts`):
 
-- login
-- getDashboard
-- getUsers
-- blockUsers (only affects Active users)
-- unblockUsers (only affects Blocked users)
-- deleteUsers
-- approveUser
-- getSettings
-- saveSettings
-- runBackup
-- sendOtp
-- verifyOtp
-- updatePassword
+- Hash passwords with argon2id or bcrypt. Store only a hash of each OTP, with its expiry.
+- Verify Google ID tokens server-side against Google's keys, and check the `aud` claim.
+- Rate-limit login, register, OTP resend and password reset per account **and** per IP.
+- Never reveal whether an email exists — same response and timing either way.
+- Enforce the role on every request from the token's claim. `REQUIRE_INSTRUCTOR_APPROVAL` in
+  `auth-service.ts` exists because self-registration as an instructor is a privilege escalation:
+  instructor accounts must be approved by the admin before they can create classes.
+- Return a refresh token (or a short-lived access token plus a re-auth path). The mobile client
+  will persist tokens with `expo-secure-store` — see "Known gaps".
+
+## Student
+
+Each row is one method of one repository in `studia-mobile/src/features/student/data/`. The hook
+column is what screens actually call.
+
+### `ClassRepository` — `classes-repository.ts` · hooks `useClasses`, `useClass`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `list()` | `GET /student/classes` | The caller's joined classes, with `progress` (0..1). |
+| `get(id)` | `GET /student/classes/{id}` | 404 when the student is not a member — do not leak existence. |
+| `joinByCode(code)` | `POST /student/classes/join` | Body `{ code }`, 6 chars `[A-Z0-9]`. 404 unknown code, 409 already a member. |
+| `leave(id)` | `DELETE /student/classes/{id}/membership` | Leaves the class; submissions are kept. |
+
+### `AnnouncementRepository` — `announcements-repository.ts` · `useAnnouncements`, `useAnnouncement`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /student/classes/{classId}/announcements` | Pinned first, then newest. 30 s TTL. |
+| `get(classId, id)` | `GET /student/classes/{classId}/announcements/{id}` | Includes `comments[]`. |
+| `addComment(classId, id, text)` | `POST /student/classes/{classId}/announcements/{id}/comments` | Body `{ text }`, ≤ 500 chars. Store and return it as **plain text**. |
+| `deleteComment(classId, id, commentId)` | `DELETE /.../comments/{commentId}` | Only the comment's author (403 otherwise). |
+
+### `LessonRepository` — `lessons-repository.ts` · `useLessons`, `useLesson`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /student/classes/{classId}/lessons` | |
+| `get(classId, id)` | `GET /student/classes/{classId}/lessons/{id}` | Returns `videoUrl`, `attachments[]`, `transcript[]` and the AI summary state. Videos are **streamed by URI**, never downloaded whole. |
+
+### `AssignmentRepository` — `assignments-repository.ts` · `useAssignments`, `useAssignment`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /student/classes/{classId}/assignments` | `status`: `assigned` · `draft` · `submitted` · `late` · `graded`. |
+| `get(classId, id)` | `GET /student/classes/{classId}/assignments/{id}` | |
+| `attach(classId, id, { text, file })` | `POST /student/classes/{classId}/assignments/{id}/submission` | Multipart. **The server decides the outcome**, not the client: past due and late allowed → `late`; past due and late not allowed → keep as `draft`; otherwise `submitted`. Needs `Idempotency-Key`. |
+| `turnIn(classId, id)` | `POST /.../submission/turn-in` | Only valid from `draft`; 409 otherwise. Needs `Idempotency-Key`. |
+
+### `QuizRepository` — `quizzes-repository.ts` · `useClassQuizzes`, `useQuiz`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /student/classes/{classId}/quizzes` | Published quizzes only. |
+| `get(classId, id)` | `GET /student/classes/{classId}/quizzes/{id}` | **Must not include the correct answers** before the attempt is submitted. |
+| `submitAttempt(classId, quizId, answers)` | `POST /student/classes/{classId}/quizzes/{quizId}/attempts` | The server scores it and returns the attempt with per-question rationale. One attempt unless the quiz allows more (409). Needs `Idempotency-Key`. |
+
+### `TaskRepository` — `tasks-repository.ts` · `useTasks`, `useToggleTask`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `list()` | `GET /student/tasks` | **Derived server-side** from the student's assignments and quizzes across all classes — not a list the user maintains. The mock composes it from the other repositories; one endpoint avoids that fan-out. 30 s TTL. |
+| `toggleDone(id)` | `PATCH /student/tasks/{id}` | Body `{ done }`. Only for items with no submission behind them; 409 `conflict` when the task is already completed by a real submission. |
+
+### `PlannerRepository` — `planner-repository.ts` · `usePlanner`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `getWeek()` | `GET /student/planner/week` | The AI-generated study schedule plus exam dates. |
+| `moveBlock(blockId, dayIso, startHour)` | `PATCH /student/planner/blocks/{blockId}` | Body `{ dayIso, startHour }`. |
+| `markBlockDone(blockId, done)` | `PATCH /student/planner/blocks/{blockId}` | Body `{ done }`. |
+| `addExam(title, dateIso)` | `POST /student/planner/exams` | |
+| `regenerate()` | `POST /student/planner/regenerate` | Re-runs the planner from current deadlines. Expect it to be slow; the client shows its own progress state. |
+
+## Instructor
+
+From `studia-mobile/src/features/instructor/data/`. Every endpoint must check that the caller owns
+the class before doing anything.
+
+### `InstructorClassRepository` — `classes-repository.ts` · `useInstructorClasses`, `useInstructorClass`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `list()` | `GET /instructor/classes` | |
+| `get(id)` | `GET /instructor/classes/{id}` | |
+| `create({ title, section, code })` | `POST /instructor/classes` | The **server** generates the 6-character `joinCode` and guarantees it is unique. Needs `Idempotency-Key`. |
+| `archive(id, archived)` | `PATCH /instructor/classes/{id}` | Body `{ archived }`. |
+| `remove(id)` | `DELETE /instructor/classes/{id}` | Destructive; the client confirms first. |
+
+### `InstructorAnnouncementRepository` — `announcements-repository.ts` · `useClassAnnouncements`, `useAnnouncement`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /instructor/classes/{classId}/announcements` | |
+| `get(classId, id)` | `GET /instructor/classes/{classId}/announcements/{id}` | With `comments[]` for moderation. |
+| `create(classId, { title, body, pinned })` | `POST /instructor/classes/{classId}/announcements` | `title` ≤ 100, `body` ≤ 2000. Plain text. Needs `Idempotency-Key`. |
+| `deleteComment(classId, id, commentId)` | `DELETE /.../comments/{commentId}` | Moderation: the instructor may delete **any** comment in their class. |
+| `remove(classId, id)` | `DELETE /instructor/classes/{classId}/announcements/{id}` | |
+
+### `MaterialRepository` — `materials-repository.ts` · `useClassMaterials`, `useMaterial`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /instructor/classes/{classId}/materials` | |
+| `get(classId, id)` | `GET /instructor/classes/{classId}/materials/{id}` | Includes `state` (`processing`/`ready`/`failed`), `transcript[]` and `objectives[]`. |
+| `upload(classId, { title, attachment })` | `POST /instructor/classes/{classId}/materials` | Multipart, resumable preferred. See "File uploads". Transcription is asynchronous: return `state: "processing"` immediately; the client polls the `get` endpoint. Needs `Idempotency-Key`. |
+| `remove(classId, id)` | `DELETE /instructor/classes/{classId}/materials/{id}` | Must also delete the stored file. |
+
+### `InstructorAssignmentRepository` — `assignments-repository.ts` · `useClassAssignments`, `useInstructorAssignment`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /instructor/classes/{classId}/assignments` | |
+| `get(classId, id)` | `GET /instructor/classes/{classId}/assignments/{id}` | |
+| `create(classId, draft)` | `POST /instructor/classes/{classId}/assignments` | `{ title, instructions, dueAt, points, allowLate, attachments }`. `allowLate` drives the student submission rule above, so it must be enforced server-side. |
+| `update(classId, id, draft)` | `PATCH /instructor/classes/{classId}/assignments/{id}` | |
+| `remove(classId, id)` | `DELETE /instructor/classes/{classId}/assignments/{id}` | |
+
+### `ClassStudentRepository` — `students-repository.ts` · `useClassStudents`, `useStudent`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByClass(classId)` | `GET /instructor/classes/{classId}/students` | With `progress`, `submittedCount`, `pendingCount`. |
+| `get(classId, studentId)` | `GET /instructor/classes/{classId}/students/{studentId}` | Only data for *this* class. |
+| `remove(classId, studentId)` | `DELETE /instructor/classes/{classId}/students/{studentId}` | Removes the enrolment, keeps the submissions. |
+
+### `QuizRepository` (instructor) — `quizzes-repository.ts` · `useQuizzes`, `useQuiz`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `list()` | `GET /instructor/quizzes` | Across all of the instructor's classes. |
+| `listByClass(classId)` | `GET /instructor/classes/{classId}/quizzes` | |
+| `get(id)` | `GET /instructor/quizzes/{id}` | Includes correct answers (instructor view). |
+| `create(draft, publish)` | `POST /instructor/quizzes` | `status` = `draft` or `published` from `publish`. Question kinds: `mc` (one `correctIndex`), `identification`, `essay`. Each question carries a Bloom level and a difficulty. Needs `Idempotency-Key`. |
+| `remove(id)` | `DELETE /instructor/quizzes/{id}` | Refuse (409) once attempts exist, or archive instead. |
+
+### `SubmissionRepository` — `submissions-repository.ts` · `useAllSubmissions`, `useSubmission`, `useGradeSubmission`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `list()` | `GET /instructor/submissions` | Everything gradable for this instructor; the client filters and sorts. Paginate this one first — it grows fastest. |
+| `listByQuiz(quizId)` | `GET /instructor/quizzes/{quizId}/submissions` | |
+| `get(id)` | `GET /instructor/submissions/{id}` | |
+| `grade(id, score, feedback)` | `POST /instructor/submissions/{id}/grade` | Validate `0 ≤ score ≤ maxScore` server-side. Returns the submission with `gradedAt`, which also makes the grade visible to the student. Needs `Idempotency-Key`. |
+
+### `AnalyticsRepository` — `analytics-repository.ts` · `useAnalytics`, `useInstructorStats`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `get()` | `GET /instructor/analytics` | Engagement, content-consumption rates and struggling concepts, aggregated server-side (the client only renders). `useInstructorStats` derives the Home counters from the same payload — one endpoint is enough. |
+
+## Shared
+
+### `NotificationRepository` — `features/shared-screens/data/notifications-repository.ts`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `listByRole(role)` | `GET /notifications` | Role comes from the token, not from the query. Each item carries a deep-link target. 30 s TTL. |
+| `markRead(role, id)` | `PATCH /notifications/{id}` | Body `{ read: true }`. |
+| `markAllRead(role)` | `POST /notifications/read-all` | |
+
+### AI
+
+The three AI features (transcription, summary/concept map, quiz synthesis) are mocked inside
+`materials-repository.ts` and `logic/ai-quiz-generator.ts` today; there is no `ai-service`
+interface yet (see "Known gaps"). The endpoints they need:
+
+| Purpose | Endpoint | Notes |
+|---|---|---|
+| Transcribe an uploaded video | (internal, triggered by the material upload) | Async; the material's `state` goes `processing` → `ready`/`failed`. |
+| Summarize a lesson / transcript | `POST /ai/summary` | `{ sourceId, mode: "bullets"\|"tldr"\|"mindmap" }`. Cache by `sourceId` + mode until the source changes; a "Regenerate" action must be able to bypass that cache. |
+| Generate a quiz | `POST /ai/quiz` | `{ sourceId, count, difficulty, bloomLevels }` → Multiple Choice only. |
+| Chat | `POST /ai/chat` | `{ messages }`, streaming preferred. |
+| Study planner | `POST /student/planner/regenerate` | Same endpoint as the planner above. |
+
+### File uploads
+
+Used by material upload and assignment submission. The client validates before sending
+(`shared/utils/file.ts`): extension whitelist `pdf, doc, docx, ppt, pptx, mp4, mov, jpg, jpeg,
+png`, ≤ 500 MB for materials and ≤ 50 MB for submissions, and a sanitized file name.
+
+That validation is a convenience, not a control. The server must independently:
+
+- re-check the extension **and** sniff the actual content type, rather than trusting the
+  `Content-Type` header or the file name;
+- enforce its own size limit, and cap total storage per class;
+- store the file under an id it generates, never under the client's file name, and serve downloads
+  with `Content-Disposition: attachment`;
+- check that the caller owns the class (instructor) or is enrolled in it (student);
+- scan for malware before the file is ever served back to anyone.
+
+## Admin (web)
+
+`studia-admin/src/core/data/api.js` is the only module its UI calls; each function currently
+delegates to `mockBackend.js`. Paths below are proposals — this surface has not been reviewed as
+closely as the mobile one, and the single admin account is still hard-coded in the mock.
+
+| `api.js` function | Endpoint |
+|---|---|
+| `login` | `POST /admin/login` |
+| `sendOtp` / `verifyOtp` / `updatePassword` | `POST /admin/otp/send` · `POST /admin/otp/verify` · `POST /admin/password` |
+| `getDashboard` | `GET /admin/dashboard` |
+| `getUsers` | `GET /admin/users` |
+| `blockUsers` / `unblockUsers` | `POST /admin/users/block` · `POST /admin/users/unblock` (block only affects Active users, unblock only Blocked) |
+| `deleteUsers` | `POST /admin/users/delete` |
+| `approveUser` | `POST /admin/users/{id}/approve` (this is the instructor approval gate) |
+| `getSettings` / `saveSettings` | `GET /admin/settings` · `PUT /admin/settings` |
+| `runBackup` | `POST /admin/backup` |
+
+## Known gaps
+
+Carried forward deliberately; each one is a client change, not a blocker for the backend.
+
+1. **No token persistence.** `core/data/storage/session-store.ts` keeps the user in memory only, so
+   a restart signs the user out. When the real `/auth` endpoints exist, persist `accessToken` with
+   `expo-secure-store` (never AsyncStorage, never the query cache) and hydrate the store at
+   startup. `expo-secure-store` is not installed yet.
+2. **No pagination or cursors** in the repository interfaces, as described under Conventions.
+3. **No idempotency key** in the repository method signatures yet; `shared/utils/id.ts` provides
+   `newIdempotencyKey()` ready for it.
+4. **No `ai-service` interface.** The AI mocks are spread across the instructor repositories and
+   `core/data/mock/mock-data.ts` instead of sitting behind one swappable module.
+5. **`core/data/api-client/api-client.ts`** (timeout, typed errors, bearer token) is written and
+   unused. It is what the repository implementations should call.

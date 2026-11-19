@@ -3,7 +3,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Animated,
   Easing,
@@ -85,7 +85,8 @@ export default function ExploreScreen() {
   const [role, setRole] = useState<Role | null>(null);
 
   // 0 = hidden, 1 = shown. Isang value lang ang nagpapagalaw ng backdrop at sheet.
-  const progress = useRef(new Animated.Value(0)).current;
+  // Created once through lazy state: a ref's .current may not be read during render.
+  const [progress] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -121,7 +122,6 @@ export default function ExploreScreen() {
     if (!role) return;
     // TODO: palitan kapag gawa na ang login/register screen
     router.push({ pathname: "/auth", params: { role } });
-    console.log("Selected role:", role);
   };
 
   const translateY = progress.interpolate({

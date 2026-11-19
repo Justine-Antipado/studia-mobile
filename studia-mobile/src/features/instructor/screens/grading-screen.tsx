@@ -1,23 +1,27 @@
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+// grading-screen.tsx — submissions waiting for review, oldest first, optionally filtered by quiz.
+import { useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { Chip, EmptyState, ListCard, Page, PageTitle } from "@/features/instructor/components/instructor-ui";
-import { useSubmissions } from "@/features/instructor/data/instructor-store";
-import { firstParam, plural, timeAgo } from "@/features/instructor/logic/format";
+import { AppList, Chip, ListRow, ListState, PageTitle } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
+import { SPACE } from "@/shared/constants/tokens";
+import { useRouteId } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { plural, timeAgo } from "@/features/instructor/logic/format";
+import { useAllSubmissions } from "@/features/instructor/hooks/use-submissions";
+import type { Submission } from "@/features/instructor/types/instructor";
 
 export default function GradingScreen() {
   const router = useRouter();
-  const goBack = useSafeBack();
-  const params = useLocalSearchParams<{ quizId?: string | string[] }>();
-  const [filter, setFilter] = useState<string | null>(firstParam(params.quizId) ?? null);
-  const submissions = useSubmissions();
+  const goBack = useSafeBack("/instructor/assessments");
+  const presetQuizId = useRouteId("quizId");
+  const { data, loading, error, refetch } = useAllSubmissions();
+  const [filter, setFilter] = useState<string | null>(presetQuizId);
 
   const pending = useMemo(
-    () => submissions.filter((x) => x.score === null).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)),
-    [submissions],
+    () => (data ?? []).filter((x) => x.score === null).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)),
+    [data],
   );
 
   const quizzes = useMemo(() => {
@@ -28,38 +32,50 @@ export default function GradingScreen() {
 
   // If the filtered quiz has nothing left to grade, fall back to "All".
   const active = quizzes.some((q) => q.id === filter) ? filter : null;
-  const visible = active ? pending.filter((x) => x.quizId === active) : pending;
+  const visible = useMemo(
+    () => (active ? pending.filter((x) => x.quizId === active) : pending),
+    [pending, active],
+  );
+
+  const openSubmission = useCallback(
+    (id: string) => router.push({ pathname: "/instructor/grade-submission", params: { id } }),
+    [router],
+  );
+
+  const renderRow = useCallback(
+    (x: Submission) => (
+      <ListRow
+        icon="document-text-outline"
+        eyebrow={`${x.classCode} · ${x.quizTitle}`}
+        title={x.studentName}
+        subtitle={`Submitted ${timeAgo(x.submittedAt)}`}
+        onPress={() => openSubmission(x.id)}
+      />
+    ),
+    [openSubmission],
+  );
 
   return (
-    <Screen role="instructor">
-      <Page>
-        <PageTitle title="Needs Grading" subtitle={`${plural(pending.length, "submission")} waiting, oldest first`} onBack={goBack} />
+    <Screen role="instructor" scroll={false} scope="instructor/grading">
+      <PageTitle title="Needs Grading" subtitle={`${plural(pending.length, "submission")} waiting, oldest first`} onBack={goBack} />
 
-        {quizzes.length > 1 && (
-          <View style={s.chips}>
-            <Chip label="All" selected={active === null} onPress={() => setFilter(null)} />
-            {quizzes.map((q) => <Chip key={q.id} label={q.label} selected={active === q.id} onPress={() => setFilter(q.id)} />)}
-          </View>
-        )}
+      {quizzes.length > 1 ? (
+        <View style={s.chipRow}>
+          <Chip label="All" selected={active === null} onPress={() => setFilter(null)} />
+          {quizzes.map((q) => <Chip key={q.id} label={q.label} selected={active === q.id} onPress={() => setFilter(q.id)} />)}
+        </View>
+      ) : null}
 
-        {visible.length === 0 ? (
-          <EmptyState icon="checkmark-done-outline" title="All caught up" message="Every submission has been graded." />
-        ) : (
-          visible.map((x) => (
-            <ListCard
-              key={x.id}
-              icon="document-text-outline"
-              tone="orange"
-              eyebrow={`${x.classCode} · ${x.quizTitle}`}
-              title={x.studentName}
-              meta={`Submitted ${timeAgo(x.submittedAt)}`}
-              onPress={() => router.push({ pathname: "/instructor/grade-submission", params: { id: x.id } })}
-            />
-          ))
-        )}
-      </Page>
+      <View style={s.fill}>
+        <ListState loading={loading} error={error} onRetry={refetch} empty={!loading && pending.length === 0} emptyIcon="checkmark-done-outline" emptyTitle="All caught up" emptyMessage="Every submission has been graded.">
+          <AppList data={visible} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
+        </ListState>
+      </View>
     </Screen>
   );
 }
 
-const s = StyleSheet.create({ chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 } });
+const s = StyleSheet.create({
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
+  fill: { flex: 1 },
+});

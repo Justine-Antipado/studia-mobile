@@ -1,8 +1,10 @@
-// app-button.tsx
-
+// app-button.tsx — plain label-only button (welcome / auth / error fallback).
+// ActionButton is the variant with an icon and a built-in double-submit lock; this one stays
+// minimal, but both take their radius, spacing, type and shadow from the same tokens.
 import { Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 
 import { C } from "@/shared/constants/studia-colors";
+import { FONT, MIN_TOUCH, RADIUS, SHADOW, SPACE } from "@/shared/constants/tokens";
 
 type Variant = "primary" | "secondary";
 
@@ -46,34 +48,26 @@ export function AppButton({
 
 const s = StyleSheet.create({
   base: {
-    borderRadius: 14,
-    borderWidth: 1, // pareho sa dalawa para pantay ang taas
+    minHeight: MIN_TOUCH + 8,
+    borderRadius: RADIUS.lg,
+    // Both variants carry a border so their heights match exactly.
+    borderWidth: 1,
     borderColor: "transparent",
-    paddingVertical: 16,
+    paddingVertical: SPACE.lg,
     alignItems: "center",
     justifyContent: "center",
   },
-  primary: {
-    backgroundColor: C.primary,
-    shadowColor: C.primaryDark,
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  secondary: {
-    backgroundColor: C.lavenderSoft,
-    borderColor: C.lavender,
-  },
+  primary: { backgroundColor: C.primary, ...SHADOW.raised },
+  secondary: { backgroundColor: C.lavenderSoft, borderColor: C.lavender },
   pressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
-  // Walang opacity dito: sa Android, may lumalabas na parihabang shadow kapag may opacity + elevation.
+  // No opacity on the disabled state: on Android, opacity + elevation draws a grey rectangle.
   disabled: {
     backgroundColor: C.lavenderSoft,
     borderColor: C.lavender,
     shadowOpacity: 0,
     elevation: 0,
   },
-  label: { fontSize: 16, fontFamily: "Poppins_600SemiBold" },
+  label: { fontSize: 16, fontFamily: FONT.semibold },
   labelPrimary: { color: C.white },
   labelSecondary: { color: C.primaryDark },
   labelDisabled: { color: C.muted },

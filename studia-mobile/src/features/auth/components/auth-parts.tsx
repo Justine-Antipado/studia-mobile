@@ -1,7 +1,6 @@
 // auth-parts.tsx
 
 import { Ionicons } from "@expo/vector-icons";
-// import { forwardRef, useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   forwardRef,
   useEffect,
@@ -51,7 +50,8 @@ export function Banner({
   text: string;
   top: number;
 }) {
-  const anim = useRef(new Animated.Value(0)).current;
+  // Created once through lazy state: a ref's .current may not be read during render.
+  const [anim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     anim.setValue(0);
@@ -545,7 +545,7 @@ const s = StyleSheet.create({
     backgroundColor: C.white,
   },
   inputFocused: { borderColor: C.primary, backgroundColor: C.lavenderSoft },
-  inputError: { borderColor: C.red, backgroundColor: "#FDF1F1" },
+  inputError: { borderColor: C.red, backgroundColor: C.redTint },
   input: {
     flex: 1,
     color: C.text,
@@ -622,7 +622,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   otpBoxActive: { borderColor: C.primary, backgroundColor: C.lavenderSoft },
-  otpBoxError: { borderColor: C.red, backgroundColor: "#FDF1F1" },
+  otpBoxError: { borderColor: C.red, backgroundColor: C.redTint },
   otpDigit: { color: C.text, fontSize: 22, fontFamily: "Poppins_700Bold" },
   otpHidden: {
     position: "absolute",

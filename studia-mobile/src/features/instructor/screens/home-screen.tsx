@@ -1,307 +1,138 @@
-// // home.tsx
-
-// import { useRouter } from "expo-router";
-// import { StyleSheet, Text, View } from "react-native";
-
-// import {
-//   ListCard,
-//   QuickAction,
-//   SectionHeader,
-//   StatCard,
-//   t,
-// } from "@/shared/components/ui/parts";
-// import { Screen } from "@/shared/components/ui/screen";
-// import { C } from "@/shared/constants/studia-colors";
-// // TODO(refactor): route through data/ layer
-// import { INSTRUCTOR_CLASSES } from "@/core/data/mock/mock-data";
-// import { greetName, useRoleUser } from "@/core/data/storage/session-store";
-
-// export default function InstructorHome() {
-//   const user = useRoleUser("instructor");
-//   const router = useRouter();
-
-//   return (
-//     <Screen role="instructor">
-//       <View>
-//         <Text style={t.muted}>Welcome back</Text>
-//         <Text style={t.h1}>
-//           {user ? greetName(user) : "Prof. Maria Santos"}
-//         </Text>
-//       </View>
-
-//       <View style={s.statsRow}>
-//         <StatCard label="Classes" value={4} />
-//         <StatCard label="Students" value={128} />
-//         <StatCard label="To Grade" value={12} tone="orange" />
-//       </View>
-
-//       <View style={s.qaRow}>
-//         <QuickAction
-//           icon="people-outline"
-//           label="My Classes"
-//           onPress={() => router.push("/instructor/classes")}
-//         />
-//         <QuickAction
-//           icon="create-outline"
-//           label="Create Quiz"
-//           onPress={() => router.push("/instructor/assessments")}
-//         />
-//         <QuickAction
-//           icon="bar-chart-outline"
-//           label="Gradebook"
-//           onPress={() => router.push("/instructor/assessments")}
-//         />
-//         <QuickAction
-//           icon="sparkles-outline"
-//           label="AI Quiz"
-//           onPress={() => router.push("/instructor/assessments")}
-//         />
-//       </View>
-
-//       <ListCard
-//         icon="document-text-outline"
-//         title="Needs Grading"
-//         meta="12 submissions · Quiz 2, IT 321 · Due for review today"
-//         iconBg={`${C.orange}26`}
-//         iconColor={C.orange}
-//         style={{ backgroundColor: `${C.orange}14` }}
-//         onPress={() => router.push("/instructor/assessments")}
-//       />
-
-//       <SectionHeader
-//         title="My Classes"
-//         action="View All"
-//         onAction={() => router.push("/instructor/classes")}
-//       />
-//       {INSTRUCTOR_CLASSES.slice(0, 2).map((c) => (
-//         <ListCard
-//           key={c.id}
-//           icon="book-outline"
-//           eyebrow={`${c.code} · ${c.section}`}
-//           title={c.title}
-//           meta={`${c.students} students`}
-//           onPress={() =>
-//             router.push({
-//               pathname: "/instructor/class-detail",
-//               params: { id: c.id },
-//             })
-//           }
-//         />
-//       ))}
-//     </Screen>
-//   );
-// }
-
-// const s = StyleSheet.create({
-//   statsRow: { flexDirection: "row", gap: 10 },
-//   qaRow: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     flexWrap: "wrap",
-//     rowGap: 10,
-//     paddingVertical: 4,
-//   },
-// });
-
-// import { useRouter } from "expo-router";
-// import { StyleSheet, Text, View } from "react-native";
-
-// import {
-//   EmptyState,
-//   ListCard,
-//   Page,
-//   QuickAction,
-//   SectionHeader,
-//   StatCard,
-// } from "@/features/instructor/components/instructor-ui";
-// import { useInstructorClasses, useInstructorStats } from "@/features/instructor/data/instructor-store";
-// import { plural, timeAgo } from "@/features/instructor/logic/format";
-// import { greetName, useRoleUser } from "@/core/data/storage/session-store";
-// import { Screen } from "@/shared/components/ui/screen";
-// import { C } from "@/shared/constants/studia-colors";
-
-// export default function InstructorHomeScreen() {
-//   const user = useRoleUser("instructor");
-//   const router = useRouter();
-//   const classes = useInstructorClasses();
-//   const { classCount, studentCount, pendingCount, nextGrading } = useInstructorStats();
-
-//   const openGrading = () =>
-//     router.push(
-//       nextGrading
-//         ? { pathname: "/instructor/grading", params: { quizId: nextGrading.quizId } }
-//         : "/instructor/grading",
-//     );
-
-//   return (
-//     <Screen role="instructor">
-//       <Page>
-//         {/* 1. Greeting */}
-//         <View>
-//           <Text style={s.muted}>Welcome back</Text>
-//           <Text style={s.h1} numberOfLines={2}>{user ? greetName(user) : "Instructor"}</Text>
-//         </View>
-
-//         {/* 2. Overview numbers (derived from data, tappable) */}
-//         <View style={s.statsRow}>
-//           <StatCard label="Classes" value={classCount} onPress={() => router.push("/instructor/classes")} />
-//           <StatCard label="Students" value={studentCount} onPress={() => router.push("/instructor/classes")} />
-//           <StatCard label="To Grade" value={pendingCount} tone={pendingCount > 0 ? "orange" : "green"} onPress={openGrading} />
-//         </View>
-
-//         {/* 3. What needs action right now */}
-//         {nextGrading ? (
-//           <ListCard
-//             icon="document-text-outline"
-//             tone="orange"
-//             title="Needs Grading"
-//             meta={`${plural(pendingCount, "submission")} · ${nextGrading.quizTitle}, ${nextGrading.classCode} · Oldest ${timeAgo(nextGrading.oldestAt)}`}
-//             onPress={openGrading}
-//           />
-//         ) : (
-//           <ListCard
-//             icon="checkmark-circle-outline"
-//             tone="green"
-//             title="All caught up"
-//             meta="No submissions waiting for review."
-//             onPress={() => router.push("/instructor/gradebook")}
-//           />
-//         )}
-
-//         {/* 4. Shortcuts, color coded by purpose */}
-//         <SectionHeader title="Quick actions" />
-//         <View style={s.qaRow}>
-//           <QuickAction icon="people-outline" label="My Classes" tone="primary" onPress={() => router.push("/instructor/classes")} />
-//           <QuickAction icon="create-outline" label="Create Quiz" tone="blue" onPress={() => router.push("/instructor/create-quiz")} />
-//           <QuickAction icon="bar-chart-outline" label="Gradebook" tone="green" onPress={() => router.push("/instructor/gradebook")} />
-//           <QuickAction icon="sparkles-outline" label="AI Quiz" tone="gold" onPress={() => router.push("/instructor/ai-quiz")} />
-//         </View>
-
-//         {/* 5. Classes */}
-//         <SectionHeader title="My Classes" action="View All" onAction={() => router.push("/instructor/classes")} />
-//         {classes.length === 0 ? (
-//           <EmptyState icon="school-outline" title="No classes yet" message="Classes assigned to you will show up here." />
-//         ) : (
-//           classes.slice(0, 2).map((c) => (
-//             <ListCard
-//               key={c.id}
-//               icon="book-outline"
-//               eyebrow={`${c.code} · ${c.section}`}
-//               title={c.title}
-//               meta={plural(c.students, "student")}
-//               onPress={() => router.push({ pathname: "/instructor/class-detail", params: { id: c.id } })}
-//             />
-//           ))
-//         )}
-//       </Page>
-//     </Screen>
-//   );
-// }
-
-// const s = StyleSheet.create({
-//   h1: { fontSize: 26, fontWeight: "800", color: C.text },
-//   muted: { fontSize: 14, color: C.muted },
-//   statsRow: { flexDirection: "row", gap: 10 },
-//   qaRow: { flexDirection: "row", alignItems: "flex-start" },
-// });
+// home-screen.tsx — Instructor Home: greeting, overview numbers, what needs grading, shortcuts.
 import { useRouter } from "expo-router";
+import { useCallback, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import {
-  EmptyState,
-  ListCard,
-  Page,
-  QuickAction,
-  SectionHeader,
-  StatCard,
-} from "@/features/instructor/components/instructor-ui";
-import { useInstructorClasses, useInstructorStats } from "@/features/instructor/data/instructor-store";
-import { plural, timeAgo } from "@/features/instructor/logic/format";
-import { greetName, useRoleUser } from "@/core/data/storage/session-store";
+import { EmptyState, ListRow, ListState, QuickAction, SectionHeader, StatCard } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
-import { C } from "@/shared/constants/studia-colors";
+import { TONES } from "@/shared/constants/studia-colors";
+import { SPACE, TYPE } from "@/shared/constants/tokens";
+import { greetName, useRoleUser } from "@/core/data/storage/session-store";
+import { plural, timeAgo } from "@/features/instructor/logic/format";
+import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
+import { useInstructorStats } from "@/features/instructor/hooks/use-stats";
+import type { InstructorClass } from "@/features/instructor/types/instructor";
 
 export default function InstructorHomeScreen() {
   const user = useRoleUser("instructor");
   const router = useRouter();
   const classes = useInstructorClasses();
-  const { classCount, studentCount, pendingCount, nextGrading } = useInstructorStats();
+  const stats = useInstructorStats();
 
-  const openGrading = () =>
-    router.push(
-      nextGrading
-        ? { pathname: "/instructor/grading", params: { quizId: nextGrading.quizId } }
-        : "/instructor/grading",
-    );
+  const nextGrading = stats.data?.nextGrading ?? null;
+
+  const openGrading = useCallback(
+    () =>
+      router.push(
+        nextGrading
+          ? { pathname: "/instructor/grading", params: { quizId: nextGrading.quizId } }
+          : "/instructor/grading",
+      ),
+    [router, nextGrading],
+  );
+
+  const openClasses = useCallback(() => router.push("/instructor/classes"), [router]);
+  const openGradebook = useCallback(() => router.push("/instructor/gradebook"), [router]);
+  const openCreateQuiz = useCallback(() => router.push("/instructor/create-quiz"), [router]);
+  const openAnalytics = useCallback(() => router.push("/instructor/analytics"), [router]);
+  const openAiQuiz = useCallback(() => router.push("/instructor/ai-quiz"), [router]);
+  const openClass = useCallback(
+    (id: string) => router.push({ pathname: "/instructor/class-detail", params: { id } }),
+    [router],
+  );
+
+  const topClasses = useMemo<InstructorClass[]>(
+    () => (classes.data ?? []).slice(0, 2),
+    [classes.data],
+  );
 
   return (
-    <Screen role="instructor">
-      <Page>
-        {/* 1. Greeting */}
+    <Screen role="instructor" scope="instructor/home">
+      <View style={s.page}>
         <View>
-          <Text style={s.muted}>Welcome back</Text>
-          <Text style={s.h1} numberOfLines={2}>{user ? greetName(user) : "Instructor"}</Text>
+          <Text style={TYPE.muted}>Welcome back</Text>
+          <Text style={TYPE.h1} numberOfLines={2}>
+            {user ? greetName(user) : "Instructor"}
+          </Text>
         </View>
 
-        {/* 2. Overview numbers (derived from data, tappable) */}
-        <View style={s.statsRow}>
-          <StatCard label="Classes" value={classCount} onPress={() => router.push("/instructor/classes")} />
-          <StatCard label="Students" value={studentCount} onPress={() => router.push("/instructor/classes")} />
-          <StatCard label="To Grade" value={pendingCount} tone={pendingCount > 0 ? "orange" : "green"} onPress={openGrading} />
+        <ListState loading={stats.loading} error={null}>
+          {stats.data ? (
+            <View style={s.block}>
+              <View style={s.statRow}>
+                <StatCard label="Classes" value={stats.data.classCount} onPress={openClasses} />
+                <StatCard label="Students" value={stats.data.studentCount} onPress={openClasses} />
+                <StatCard
+                  label="To Grade"
+                  value={stats.data.pendingCount}
+                  tone={stats.data.pendingCount > 0 ? "orange" : "green"}
+                  onPress={openGrading}
+                />
+              </View>
+
+              {nextGrading ? (
+                <ListRow
+                  icon="document-text-outline"
+                  iconBg={TONES.orange.bg}
+                  iconColor={TONES.orange.fg}
+                  eyebrow="Needs grading"
+                  title={`${plural(stats.data.pendingCount, "submission")} waiting`}
+                  subtitle={`${nextGrading.quizTitle}, ${nextGrading.classCode} · Oldest ${timeAgo(nextGrading.oldestAt)}`}
+                  onPress={openGrading}
+                />
+              ) : (
+                <ListRow
+                  icon="checkmark-circle-outline"
+                  iconBg={TONES.green.bg}
+                  iconColor={TONES.green.fg}
+                  title="All caught up"
+                  subtitle="No submissions waiting for review."
+                  onPress={openGradebook}
+                />
+              )}
+            </View>
+          ) : null}
+        </ListState>
+
+        <View style={s.block}>
+          <SectionHeader title="Quick actions" />
+          <View style={s.actions}>
+            <QuickAction icon="people-outline" label="My Classes" tone="primary" onPress={openClasses} />
+            <QuickAction icon="create-outline" label="Create Quiz" tone="blue" onPress={openCreateQuiz} />
+            <QuickAction icon="bar-chart-outline" label="Analytics" tone="green" onPress={openAnalytics} />
+            <QuickAction icon="sparkles-outline" label="AI Quiz" tone="gold" onPress={openAiQuiz} />
+          </View>
         </View>
 
-        {/* 3. What needs action right now */}
-        {nextGrading ? (
-          <ListCard
-            icon="document-text-outline"
-            tone="orange"
-            title="Needs Grading"
-            meta={`${plural(pendingCount, "submission")} · ${nextGrading.quizTitle}, ${nextGrading.classCode} · Oldest ${timeAgo(nextGrading.oldestAt)}`}
-            onPress={openGrading}
-          />
-        ) : (
-          <ListCard
-            icon="checkmark-circle-outline"
-            tone="green"
-            title="All caught up"
-            meta="No submissions waiting for review."
-            onPress={() => router.push("/instructor/gradebook")}
-          />
-        )}
-
-        {/* 4. Shortcuts, color coded by purpose */}
-        <SectionHeader title="Quick actions" />
-        <View style={s.qaRow}>
-          <QuickAction icon="people-outline" label="My Classes" tone="primary" onPress={() => router.push("/instructor/classes")} />
-          <QuickAction icon="create-outline" label="Create Quiz" tone="blue" onPress={() => router.push("/instructor/create-quiz")} />
-          <QuickAction icon="bar-chart-outline" label="Gradebook" tone="green" onPress={() => router.push("/instructor/gradebook")} />
-          <QuickAction icon="sparkles-outline" label="AI Quiz" tone="gold" onPress={() => router.push("/instructor/ai-quiz")} />
+        <View style={s.block}>
+          <SectionHeader title="My Classes" action="View All" onAction={openClasses} />
+          <ListState loading={classes.loading} error={classes.error} onRetry={classes.refetch}>
+            {topClasses.length === 0 ? (
+              <EmptyState icon="school-outline" title="No classes yet" message="Classes assigned to you will show up here." />
+            ) : (
+              <View style={s.block}>
+                {topClasses.map((c) => (
+                  <ListRow
+                    key={c.id}
+                    icon="book-outline"
+                    eyebrow={`${c.code} · ${c.section}`}
+                    title={c.title}
+                    subtitle={plural(c.studentCount, "student")}
+                    onPress={() => openClass(c.id)}
+                  />
+                ))}
+              </View>
+            )}
+          </ListState>
         </View>
-
-        {/* 5. Classes */}
-        <SectionHeader title="My Classes" action="View All" onAction={() => router.push("/instructor/classes")} />
-        {classes.length === 0 ? (
-          <EmptyState icon="school-outline" title="No classes yet" message="Classes assigned to you will show up here." />
-        ) : (
-          classes.slice(0, 2).map((c) => (
-            <ListCard
-              key={c.id}
-              icon="book-outline"
-              eyebrow={`${c.code} · ${c.section}`}
-              title={c.title}
-              meta={plural(c.students, "student")}
-              onPress={() => router.push({ pathname: "/instructor/class-detail", params: { id: c.id } })}
-            />
-          ))
-        )}
-      </Page>
+      </View>
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  h1: { fontSize: 26, fontWeight: "800", color: C.text },
-  muted: { fontSize: 14, color: C.muted },
-  statsRow: { flexDirection: "row", gap: 10 },
-  qaRow: { flexDirection: "row", alignItems: "flex-start" },
+  page: { gap: SPACE.xl },
+  block: { gap: SPACE.md },
+  statRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.md },
+  actions: { flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", rowGap: SPACE.sm + 2 },
 });

@@ -20,12 +20,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  type ScrollViewInstance,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { setUser } from "@/core/data/storage/session-store";
 import { AppButton } from "@/shared/components/ui/app-button";
 // import {
 //   Banner,
@@ -179,9 +181,11 @@ export default function Auth() {
   const [profileToken, setProfileToken] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
-  const refs = useRef(makeRefs()).current;
+  // The map is created once through lazy state (a ref's .current may not be read during
+  // render); the per-field RefObjects inside it are ordinary input refs.
+  const [refs] = useState(makeRefs);
   const otpRef = useRef<TextInputRef>(null);
-  const scrollRef = useRef<any>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const busyRef = useRef(false);
   const mounted = useRef(true);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -289,8 +293,16 @@ export default function Auth() {
   // };
   const onAuthenticated = (session: Session) => {
     // TODO: persist session.accessToken with expo-secure-store (never AsyncStorage)
-    const sessionRole = (session as { user?: { role?: Role } }).user?.role;
-    router.replace(HOME_ROUTES[sessionRole ?? role]);
+    const { user } = session;
+    setUser({
+      role: user.role,
+      fullName: user.fullName,
+      email: user.email,
+      department: user.department,
+      section: user.section,
+      phone: user.phone,
+    });
+    router.replace(HOME_ROUTES[user.role ?? role]);
   };
 
   const startOtp = (
@@ -577,7 +589,14 @@ export default function Auth() {
     />
   );
 
-  const emailNode = (last: boolean, onDone: () => void) => (
+  /** Which submit the email field triggers when it is the last field of the current mode. */
+  const emailDone = () => {
+    if (mode === "forgot") return submitForgot();
+    if (mode === "signup") return submitSignup();
+    return submitLogin();
+  };
+
+  const emailNode = (last: boolean) => (
     <Field
       {...bind("email")}
       label="Email"
@@ -590,7 +609,7 @@ export default function Auth() {
       maxLength={254}
       returnKeyType={last ? "done" : "next"}
       onSubmitEditing={
-        last ? onDone : next(mode === "login" ? "password" : "phone")
+        last ? emailDone : next(mode === "login" ? "password" : "phone")
       }
     />
   );
@@ -676,7 +695,7 @@ export default function Auth() {
             {/* LOGIN */}
             {mode === "login" ? (
               <>
-                {emailNode(false, submitLogin)}
+                {emailNode(false)}
                 <Field
                   {...bind("password")}
                   label="Password"
@@ -721,7 +740,7 @@ export default function Auth() {
                   onSubmitEditing={next("email")}
                 />
                 {roleNodes}
-                {emailNode(false, submitSignup)}
+                {emailNode(false)}
                 {phoneNode(false)}
                 <Field
                   {...bind("password")}
@@ -835,7 +854,7 @@ export default function Auth() {
             {/* FORGOT */}
             {mode === "forgot" ? (
               <>
-                {emailNode(true, submitForgot)}
+                {emailNode(true)}
                 <AppButton
                   label={busy ? "Please wait…" : "Send code"}
                   onPress={submitForgot}

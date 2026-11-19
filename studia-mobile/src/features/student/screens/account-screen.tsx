@@ -1,5 +1,5 @@
 // app/student/account.tsx
-import { AccountScreen } from "@/features/shared-screens";
+import { AccountScreen } from "@/features/shared-screens/screens/account-screen";
 export default function StudentAccount() {
   return <AccountScreen role="student" />;
 }

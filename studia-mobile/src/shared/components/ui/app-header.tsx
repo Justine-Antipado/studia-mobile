@@ -1,12 +1,13 @@
 // components/ui/app-header.tsx
 // Left: OMSC logo | STUDIA logo.  Right: who is logged in + role + department (or course/section for students).
-import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Avatar } from "@/shared/components/ui/parts";
-import { C } from "@/shared/constants/studia-colors";
+import { AppImage } from "@/shared/components/ui/app-image";
+import { Avatar } from "@/shared/components/ui/avatar";
+import { Icon } from "@/shared/components/ui/icon";
+import { C, OVERLAY } from "@/shared/constants/studia-colors";
+import { FONT, RADIUS, SPACE } from "@/shared/constants/tokens";
 import { displayName, tagLabel, type UserProfile } from "@/core/data/storage/session-store";
 
 const OMSC_LOGO = require("@/assets/images/omsc.logo.png");
@@ -22,9 +23,10 @@ export function AppHeader({ user }: { user: UserProfile }) {
       <View style={s.blob} />
       <View style={s.row}>
         <View style={s.logos}>
-          <Image source={OMSC_LOGO} style={s.logo} contentFit="contain" alt="OMSC logo" />
+          {/* Bundled assets, so they are available offline and never fetched. */}
+          <AppImage source={OMSC_LOGO} style={s.logo} contentFit="contain" accessibilityLabel="OMSC logo" />
           <View style={s.sep} />
-          <Image source={STUDIA_LOGO} style={s.logo} contentFit="contain" alt="Studia logo" />
+          <AppImage source={STUDIA_LOGO} style={s.logo} contentFit="contain" accessibilityLabel="Studia logo" />
         </View>
 
         <View style={s.who} accessible accessibilityLabel={`Logged in as ${name}, ${tag}`}>
@@ -33,7 +35,7 @@ export function AppHeader({ user }: { user: UserProfile }) {
               {name}
             </Text>
             <View style={s.tag}>
-              <Ionicons name={user.role === "instructor" ? "school" : "person"} size={11} color={C.lavender} />
+              <Icon name={user.role === "instructor" ? "school" : "person"} size="xs" color={C.lavender} />
               <Text style={s.tagText} numberOfLines={1}>
                 {tag}
               </Text>
@@ -49,10 +51,11 @@ export function AppHeader({ user }: { user: UserProfile }) {
 const s = StyleSheet.create({
   wrap: {
     backgroundColor: C.primaryDark,
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingHorizontal: SPACE.lg + 2,
+    paddingBottom: SPACE.md + 2,
+    borderBottomLeftRadius: RADIUS.xxl + 6,
+    borderBottomRightRadius: RADIUS.xxl + 6,
+    // Keeps the decorative blob below from affecting layout or drawing outside the header.
     overflow: "hidden",
   },
   blob: {
@@ -65,22 +68,22 @@ const s = StyleSheet.create({
     top: -90,
     right: -60,
   },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  logos: { flexDirection: "row", alignItems: "center", gap: 10 },
+  row: { flexDirection: "row", alignItems: "center", gap: SPACE.md },
+  logos: { flexDirection: "row", alignItems: "center", gap: SPACE.sm + 2 },
   logo: { width: 38, height: 38 },
-  sep: { width: 1, height: 26, backgroundColor: "rgba(255,255,255,0.3)" },
-  who: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 10 },
+  sep: { width: 1, height: 26, backgroundColor: OVERLAY.divider },
+  who: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: SPACE.sm + 2 },
   whoText: { flexShrink: 1, alignItems: "flex-end", gap: 3 },
-  name: { color: C.white, fontSize: 14, lineHeight: 20, fontFamily: "Poppins_700Bold", maxWidth: "100%" },
+  name: { color: C.white, fontSize: 14, lineHeight: 20, fontFamily: FONT.bold, maxWidth: "100%" },
   tag: {
     flexShrink: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    borderRadius: 10,
-    paddingHorizontal: 8,
+    gap: SPACE.xs,
+    backgroundColor: OVERLAY.soft,
+    borderRadius: RADIUS.sm + 2,
+    paddingHorizontal: SPACE.sm,
     paddingVertical: 3,
   },
-  tagText: { flexShrink: 1, color: C.lavender, fontSize: 10.5, fontFamily: "Poppins_600SemiBold" },
+  tagText: { flexShrink: 1, color: C.lavender, fontSize: 10.5, fontFamily: FONT.semibold },
 });

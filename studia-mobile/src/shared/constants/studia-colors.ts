@@ -1,65 +1,6 @@
-// // studia-colors.ts
-
-// export const C = {
-//   primaryDark: '#3B288C',
-//   primary: '#5B46B6',
-//   lavender: '#D6CEFA',
-//   lavenderSoft: '#ECE8FC',
-//   white: '#FFFFFF',
-//   surface: '#F4F5F9',
-//   border: '#E2E4EC',
-//   muted: '#6B7280',
-//   text: '#1F2438',
-//   green: '#38A169',
-//   greenTint: '#DFF2E6',
-//   red: '#E05252',
-//   orange: '#ED8936',
-//   blue: '#3B82F6',
-//   gold: '#F59E0B',
-// };
-
-// /** Splash screen gradient: purple (top) -> white (bottom) */
-// export const SPLASH_GRADIENT = {
-//   colors: [
-//     'rgba(76, 52, 190, 0.88)',
-//     'rgba(98, 75, 215, 0.92)',
-//     'rgba(236, 232, 252, 0.97)',
-//     '#F5F3FF',
-//   ],
-//   locations: [0, 0.5, 0.8, 1],
-// } as const;
-// studia-colors.ts
-
-// export const C = {
-//   primaryDark: '#3B288C',
-//   primary: '#5B46B6',
-//   lavender: '#D6CEFA',
-//   lavenderSoft: '#ECE8FC',
-//   white: '#FFFFFF',
-//   surface: '#F4F5F9',
-//   border: '#E2E4EC',
-//   muted: '#6B7280',
-//   text: '#1F2438',
-//   green: '#38A169',
-//   greenTint: '#DFF2E6',
-//   red: '#E05252',
-//   orange: '#ED8936',
-//   blue: '#3B82F6',
-//   gold: '#F59E0B',
-// };
-
-// /** Splash screen gradient: purple (top) -> white (bottom) */
-// export const SPLASH_GRADIENT = {
-//   colors: [
-//     'rgba(76, 52, 190, 0.88)',
-//     'rgba(98, 75, 215, 0.92)',
-//     'rgba(236, 232, 252, 0.97)',
-//     '#F5F3FF',
-//   ],
-//   locations: [0, 0.5, 0.8, 1],
-// } as const;
-
-// studia-colors.ts
+// studia-colors.ts — the app palette. Spacing, radius, type and shadow live in tokens.ts.
+// Screens import `C` for raw colors and `TONES[tone]` for the fg/strong/bg/border set of a
+// semantic tone; never hard-code a hex value in a screen.
 
 export const C = {
   primaryDark: "#3B288C",
@@ -84,6 +25,29 @@ export const C = {
   redTint: "#FBE5E5",
   blueTint: "#E3EDFE",
   goldTint: "#FEF3D6",
+  /** Pressed state of a destructive button. */
+  redPressed: "#C53030",
+} as const;
+
+/**
+ * Translucent whites for content that sits on the purple header / hero gradient, and the scrim
+ * behind a modal. These were repeated as raw rgba() literals in eight files.
+ */
+export const OVERLAY = {
+  /** Chips and tiles on the header. */
+  soft: "rgba(255,255,255,0.16)",
+  /** Inputs and cards on the hero gradient. */
+  medium: "rgba(255,255,255,0.12)",
+  /** Dividers on the header. */
+  divider: "rgba(255,255,255,0.3)",
+  /** Borders of overlay cards. */
+  border: "rgba(255,255,255,0.25)",
+  borderSoft: "rgba(255,255,255,0.18)",
+  /** Icon tiles on a video / dark cover. */
+  tile: "rgba(255,255,255,0.15)",
+  /** Dim layer behind a dialog or bottom sheet (C.text at low alpha). */
+  scrim: "rgba(31,36,56,0.45)",
+  scrimStrong: "rgba(31,36,56,0.55)",
 } as const;
 
 /**

@@ -1,66 +1,54 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+// course-detail-screen.tsx — tabs: Stream · Lessons · Tasks · Grades · People (docs/ROUTE-MAP.md).
+import { useRouter } from "expo-router";
+import { useCallback } from "react";
 
-import { ActionButton, AiTag, BackTitle, ListCard, TabChips, shadow, t } from "@/shared/components/ui/parts";
+import { ListState, PageTitle, SegmentedTabs } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
-import { C } from "@/shared/constants/studia-colors";
-// TODO(refactor): route through data/ layer
-import { STUDENT_COURSES } from "@/core/data/mock/mock-data";
+import { useRouteEnum, useRouteId } from "@/core/logic/route-params";
+import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { GradesTab } from "@/features/student/components/course-detail/grades-tab";
+import { LessonsTab } from "@/features/student/components/course-detail/lessons-tab";
+import { PeopleTab } from "@/features/student/components/course-detail/people-tab";
+import { StreamTab } from "@/features/student/components/course-detail/stream-tab";
+import { TasksTab } from "@/features/student/components/course-detail/tasks-tab";
+import { useClass } from "@/features/student/hooks/use-classes";
 
-const TABS = ["Lessons", "Materials", "Quizzes", "Notices", "Grades"] as const;
+const TABS = ["Stream", "Lessons", "Tasks", "Grades", "People"] as const;
+type Tab = (typeof TABS)[number];
 
 export default function StudentCourseDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const id = useRouteId();
   const router = useRouter();
-  const course = STUDENT_COURSES.find((c) => c.id === id) ?? STUDENT_COURSES[0]!;
-  const [tab, setTab] = useState<string>("Lessons");
+  const goBack = useSafeBack("/student/courses");
+  const { data: course, loading, error, refetch } = useClass(id);
+  // In the URL, so opening a lesson and coming back returns to the same tab.
+  const [tab, setTab] = useRouteEnum<Tab>("tab", TABS, "Stream");
+  const onLeft = useCallback(() => router.replace("/student/courses"), [router]);
 
   return (
-    <Screen role="student">
-      <BackTitle title={`${course.code} – ${course.title}`} onBack={() => router.back()} />
-      <TabChips items={TABS} value={tab} onChange={setTab} />
+    <Screen role="student" scope="student/course-detail">
+      <PageTitle title={course ? `${course.code} · ${course.title}` : "Course"} onBack={goBack} />
 
-      {/* Video Player Placeholder */}
-      <Pressable onPress={() => Alert.alert("Video Player", "Playing Lesson 3...")} style={s.videoBox}>
-        <View style={s.playCircle}>
-          <Ionicons name="play" size={28} color={C.white} style={{ marginLeft: 3 }} />
-        </View>
-      </Pressable>
-
-      <Text style={t.h2}>Lesson 3: Network Security Basics</Text>
-
-      {/* AI-generated Summary Card */}
-      <View style={s.summaryCard}>
-        <AiTag text="AI-generated summary" />
-        <Text style={s.summaryBody}>
-          Covers firewalls, intrusion detection and the CIA triad. Emphasizes layered defense and access control.
-        </Text>
-        <View style={s.bullets}>
-          <Text style={t.muted}>• Confidentiality, integrity, availability</Text>
-          <Text style={t.muted}>• Firewalls filter traffic by rules</Text>
-          <Text style={t.muted}>• IDS detects suspicious activity</Text>
-        </View>
-      </View>
-
-      {/* Action Buttons */}
-      <View style={s.btnRow}>
-        <ActionButton label="Regenerate" icon="sparkles-outline" variant="secondary" style={{ flex: 1 }} onPress={() => {}} />
-        <ActionButton label="Transcript" style={{ flex: 1 }} onPress={() => {}} />
-      </View>
-
-      {/* Attached PDF */}
-      <ListCard icon="document-outline" title="Lesson3_Slides.pdf" meta="PDF · 2.4 MB · Preview" onPress={() => {}} />
+      <ListState
+        loading={loading}
+        error={error}
+        empty={!loading && !course}
+        onRetry={refetch}
+        emptyIcon="book-outline"
+        emptyTitle="Course not found"
+        emptyMessage="This class may have been removed or you left it."
+      >
+        {course ? (
+          <>
+            <SegmentedTabs items={TABS} value={tab} onChange={setTab} />
+            {tab === "Stream" && <StreamTab classId={course.id} />}
+            {tab === "Lessons" && <LessonsTab classId={course.id} />}
+            {tab === "Tasks" && <TasksTab classId={course.id} />}
+            {tab === "Grades" && <GradesTab classId={course.id} />}
+            {tab === "People" && <PeopleTab classId={course.id} onLeft={onLeft} />}
+          </>
+        ) : null}
+      </ListState>
     </Screen>
   );
 }
-
-const s = StyleSheet.create({
-  videoBox: { height: 185, backgroundColor: C.primaryDark, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  playCircle: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: C.white, alignItems: "center", justifyContent: "center" },
-  summaryCard: { backgroundColor: C.white, borderRadius: 18, padding: 16, gap: 10, ...shadow },
-  summaryBody: { color: C.text, fontSize: 13.5, lineHeight: 20, fontFamily: "Poppins_400Regular" },
-  bullets: { gap: 4 },
-  btnRow: { flexDirection: "row", gap: 10 },
-});

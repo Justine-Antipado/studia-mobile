@@ -1,23 +1,31 @@
+// ai-quiz-screen.tsx — AI Quiz Synthesizer: Multiple Choice only, tagged with Bloom + difficulty.
 import { useEffect, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { Button, Chip, Field, Page, PageTitle, Pill } from "@/features/instructor/components/instructor-ui";
-import { addQuiz, useInstructorClasses } from "@/features/instructor/data/instructor-store";
-import { type Difficulty, generateQuiz } from "@/features/instructor/logic/ai-quiz-generator";
-import { OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
-import type { QuizQuestion } from "@/features/instructor/types/instructor";
+import { ActionButton, Badge, Card, Chip, FormField, PageTitle, useToast } from "@/shared/components/ui";
+import { TONES } from "@/shared/constants/studia-colors";
 import { Screen } from "@/shared/components/ui/screen";
-import { C, TONES } from "@/shared/constants/studia-colors";
+import { FONT, SPACE, TYPE } from "@/shared/constants/tokens";
+import { useRouteId } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
+import { useCreateQuiz } from "@/features/instructor/hooks/use-quizzes";
+import { generateQuiz } from "@/features/instructor/logic/ai-quiz-generator";
+import { OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
+import type { Difficulty, QuizQuestion } from "@/features/instructor/types/instructor";
 
 const COUNTS = [5, 10, 15] as const;
 const LEVELS: Difficulty[] = ["Easy", "Medium", "Hard"];
 
 export default function AiQuizScreen() {
-  const goBack = useSafeBack();
+  const goBack = useSafeBack("/instructor/assessments");
+  const toast = useToast();
+  const presetClassId = useRouteId("classId");
   const classes = useInstructorClasses();
+  const createQuiz = useCreateQuiz();
+
   const [topic, setTopic] = useState("");
-  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const [classId, setClassId] = useState<string | null>(presetClassId);
   const [count, setCount] = useState<number>(5);
   const [level, setLevel] = useState<Difficulty>("Medium");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -41,82 +49,89 @@ export default function AiQuizScreen() {
     }
   };
 
-  const save = (publish: boolean) => {
-    const res = addQuiz({ title: `AI Quiz: ${topic.trim()}`, classId, questions, source: "ai" }, publish);
-    if (!res.ok) return setError(res.error);
-    Alert.alert(publish ? "Quiz published" : "Draft saved", "You can find it with your other quizzes.", [{ text: "OK", onPress: goBack }]);
+  const save = async (publish: boolean) => {
+    const result = await createQuiz.run({
+      draft: { title: `AI Quiz: ${topic.trim()}`, classId, questions, source: "ai" },
+      publish,
+    });
+    if (!result.ok) {
+      setError(result.error.message);
+      return;
+    }
+    toast.show(publish ? "Quiz published" : "Draft saved", { tone: "green" });
+    goBack();
   };
 
   return (
-    <Screen role="instructor">
-      <Page>
-        <PageTitle title="AI Quiz" subtitle="Generate questions, review them, then save." onBack={goBack} />
+    <Screen role="instructor" scope="instructor/ai-quiz">
+      <PageTitle title="AI Quiz" subtitle="Generate questions, review them, then save." onBack={goBack} />
 
-        <Field label="Topic" value={topic} onChangeText={setTopic} placeholder="e.g. Network security basics" maxLength={80} />
+      <FormField label="Topic" value={topic} onChangeText={setTopic} placeholder="e.g. Network security basics" maxLength={80} />
 
-        <View style={s.group}>
-          <Text style={s.label}>Class</Text>
-          <View style={s.chips}>
-            {classes.map((c) => (
-              <Chip key={c.id} label={`${c.code} · ${c.section}`} selected={classId === c.id} onPress={() => setClassId(c.id)} />
-            ))}
-          </View>
+      <View style={{ gap: SPACE.sm }}>
+        <Text style={TYPE.label}>Class</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm }}>
+          {(classes.data ?? []).map((c) => (
+            <Chip key={c.id} label={`${c.code} · ${c.section}`} selected={classId === c.id} onPress={() => setClassId(c.id)} />
+          ))}
         </View>
+      </View>
 
-        <View style={s.group}>
-          <Text style={s.label}>Number of questions</Text>
-          <View style={s.chips}>
-            {COUNTS.map((n) => <Chip key={n} label={String(n)} selected={count === n} onPress={() => setCount(n)} />)}
-          </View>
+      <View style={{ gap: SPACE.sm }}>
+        <Text style={TYPE.label}>Number of questions</Text>
+        <View style={{ flexDirection: "row", gap: SPACE.sm }}>
+          {COUNTS.map((n) => <Chip key={n} label={String(n)} selected={count === n} onPress={() => setCount(n)} />)}
         </View>
+      </View>
 
-        <View style={s.group}>
-          <Text style={s.label}>Difficulty</Text>
-          <View style={s.chips}>
-            {LEVELS.map((l) => <Chip key={l} label={l} selected={level === l} onPress={() => setLevel(l)} />)}
-          </View>
+      <View style={{ gap: SPACE.sm }}>
+        <Text style={TYPE.label}>Difficulty</Text>
+        <View style={{ flexDirection: "row", gap: SPACE.sm }}>
+          {LEVELS.map((l) => <Chip key={l} label={l} selected={level === l} onPress={() => setLevel(l)} />)}
         </View>
+      </View>
 
-        <Button title={questions.length ? "Regenerate" : "Generate quiz"} icon="sparkles-outline" loading={loading} onPress={generate} />
-        {error ? <Text style={s.error}>{error}</Text> : null}
+      <ActionButton label={questions.length ? "Regenerate" : "Generate quiz"} icon="sparkles-outline" loading={loading} onPress={generate} />
+      {error ? <Text style={[TYPE.body, s.error]}>{error}</Text> : null}
 
-        {questions.length > 0 && (
-          <>
-            <Text style={s.h2}>Review ({questions.length})</Text>
-            {questions.map((q, i) => (
-              <View key={q.id} style={s.qBox}>
-                <Text style={s.qText}>{i + 1}. {q.text}</Text>
-                {q.options.map((o, k) => (
-                  <View key={k} style={s.optRow}>
-                    <Text style={[s.opt, k === q.correctIndex && s.optOk]}>{OPTION_LABELS[k]}. {o}</Text>
-                    {k === q.correctIndex ? <Pill label="Correct" tone="green" /> : null}
+      {questions.length > 0 ? (
+        <>
+          <Text style={TYPE.h2}>Review ({questions.length})</Text>
+          {questions.map((q, i) => (
+            <Card key={q.id}>
+              <View style={{ gap: SPACE.sm }}>
+                <Text style={TYPE.bodyStrong}>{i + 1}. {q.text}</Text>
+                <View style={{ flexDirection: "row", gap: SPACE.sm }}>
+                  {q.bloom ? <Badge label={q.bloom} tone="primary" /> : null}
+                  {q.difficulty ? <Badge label={q.difficulty} tone="blue" /> : null}
+                </View>
+                {(q.options ?? []).map((o, k) => (
+                  <View key={k} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: SPACE.sm }}>
+                    <Text style={[TYPE.body, k === q.correctIndex && s.correct]}>
+                      {OPTION_LABELS[k]}. {o}
+                    </Text>
+                    {k === q.correctIndex ? <Badge label="Correct" tone="green" /> : null}
                   </View>
                 ))}
-                <Button title="Remove" icon="trash-outline" variant="danger" onPress={() => setQuestions((qs) => qs.filter((x) => x.id !== q.id))} />
+                <ActionButton label="Remove" icon="trash-outline" variant="danger" onPress={() => setQuestions((qs) => qs.filter((x) => x.id !== q.id))} />
               </View>
-            ))}
-            <View style={s.actions}>
-              <View style={s.flex}><Button title="Save draft" variant="secondary" onPress={() => save(false)} /></View>
-              <View style={s.flex}><Button title="Publish" onPress={() => save(true)} /></View>
+            </Card>
+          ))}
+          <View style={{ flexDirection: "row", gap: SPACE.md }}>
+            <View style={{ flex: 1 }}>
+              <ActionButton label="Save draft" variant="secondary" loading={createQuiz.loading} onPress={() => save(false)} />
             </View>
-          </>
-        )}
-      </Page>
+            <View style={{ flex: 1 }}>
+              <ActionButton label="Publish" loading={createQuiz.loading} onPress={() => save(true)} />
+            </View>
+          </View>
+        </>
+      ) : null}
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  group: { gap: 8 },
-  label: { fontSize: 14, fontWeight: "600", color: C.text },
-  h2: { fontSize: 18, fontWeight: "700", color: C.text },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  error: { fontSize: 14, color: TONES.red.strong, fontWeight: "600" },
-  qBox: { gap: 8, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: C.border, backgroundColor: C.white },
-  qText: { fontSize: 15, fontWeight: "700", color: C.text },
-  optRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  opt: { flex: 1, fontSize: 14, color: C.muted },
-  optOk: { color: TONES.green.strong, fontWeight: "700" },
-  actions: { flexDirection: "row", gap: 10 },
-  flex: { flex: 1 },
+  error: { color: TONES.red.strong },
+  correct: { color: TONES.green.strong, fontFamily: FONT.semibold },
 });

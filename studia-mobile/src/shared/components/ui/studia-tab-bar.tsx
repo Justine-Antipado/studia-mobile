@@ -1,6 +1,6 @@
-// studia-tab-bar.tsx
-
-import { Ionicons } from "@expo/vector-icons";
+// studia-tab-bar.tsx — the bottom bar for both role groups.
+// Sub pages are Stack screens pushed OVER this bar (see app/<role>/_layout.tsx), so a tab is
+// highlighted only when it is the active tab; there is no "also" mapping to maintain.
 import { useEffect, useState } from "react";
 import {
   Keyboard,
@@ -13,30 +13,32 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { IconName } from "@/shared/components/ui/parts";
+import { Icon, type IconName } from "@/shared/components/ui/icon";
 import { C } from "@/shared/constants/studia-colors";
+import { FONT, MIN_TOUCH, RADIUS, SHADOW, SPACE } from "@/shared/constants/tokens";
 
 export type TabItem = {
   label: string;
   icon: IconName;
   /** icon when the tab is active (optional) */
   activeIcon?: IconName;
-  /** detail screens that should keep this tab highlighted */
-  also?: string[];
-  /** small red dot / count */
+  /** unread count shown as a small red badge */
   badge?: number;
 };
+
+/**
+ * Loose shapes on purpose: the navigator passes its own fully typed helpers (expo-router gives
+ * `emitter` + `navigateToTab`, React Navigation gives `navigation`) and we only need these calls.
+ */
+type TabEmitter = { emit: (event: TabPressEvent) => unknown };
+type TabPressEvent = { type: "tabPress"; target?: string; canPreventDefault: true };
 
 export type StudiaTabBarProps = {
   state: { index: number; routes: { key: string; name: string }[] };
   items: Record<string, TabItem>;
-  navigation?: {
-    emit: (event: any) => { defaultPrevented?: boolean };
-    navigate: (name: string) => void;
-  };
-  emitter?: { emit: (event: any) => { defaultPrevented?: boolean } };
+  navigation?: TabEmitter & { navigate: (name: string) => void };
+  emitter?: TabEmitter;
   navigateToTab?: (routeKey: string) => void;
-  [key: string]: any;
 };
 
 export function StudiaTabBar({
@@ -81,8 +83,7 @@ export function StudiaTabBar({
     <View style={[s.bar, { paddingBottom: Math.max(insets.bottom, 6) }]}>
       {visible.map((route) => {
         const item = items[route.name]!;
-        const focused =
-          activeName === route.name || !!item.also?.includes(activeName ?? "");
+        const focused = activeName === route.name;
 
         const onPress = () => {
           const eventEmitter = emitter ?? navigation;
@@ -90,7 +91,7 @@ export function StudiaTabBar({
             type: "tabPress",
             target: route.key,
             canPreventDefault: true,
-          });
+          }) as { defaultPrevented?: boolean } | undefined;
           if (activeName !== route.name && !e?.defaultPrevented) {
             if (navigateToTab) navigateToTab(route.key);
             else navigation?.navigate(route.name);
@@ -107,7 +108,7 @@ export function StudiaTabBar({
             style={s.item}
           >
             <View>
-              <Ionicons
+              <Icon
                 name={focused && item.activeIcon ? item.activeIcon : item.icon}
                 size={iconSize}
                 color={focused ? C.primary : C.muted}
@@ -140,25 +141,24 @@ const s = StyleSheet.create({
   bar: {
     flexDirection: "row",
     backgroundColor: C.white,
-    paddingTop: 8,
+    paddingTop: SPACE.sm,
     paddingHorizontal: 2,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    shadowColor: C.primaryDark,
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -3 },
-    elevation: 12,
+    borderTopLeftRadius: RADIUS.xxl,
+    borderTopRightRadius: RADIUS.xxl,
+    ...SHADOW.bar,
   },
   item: {
     flex: 1,
     minWidth: 0,
+    // 44dp even on the shortest device, so the tab is always an accessible target.
+    minHeight: MIN_TOUCH,
     alignItems: "center",
+    justifyContent: "center",
     gap: 2,
     paddingHorizontal: 2,
   },
-  label: { color: C.muted, fontFamily: "Poppins_400Regular", maxWidth: "100%" },
-  labelOn: { color: C.primary, fontFamily: "Poppins_600SemiBold" },
+  label: { color: C.muted, fontFamily: FONT.regular, maxWidth: "100%" },
+  labelOn: { color: C.primary, fontFamily: FONT.semibold },
   dot: {
     width: 14,
     height: 3,
@@ -182,6 +182,6 @@ const s = StyleSheet.create({
     color: C.white,
     fontSize: 9,
     lineHeight: 12,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: FONT.bold,
   },
 });
