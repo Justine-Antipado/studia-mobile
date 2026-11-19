@@ -2,9 +2,52 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>studia-admin</title>
+
+    <!--
+      Private portal: never index it, and send no referrer to third parties.
+      The CSP allows only our own assets plus the Google Fonts stylesheet.
+      'unsafe-inline' for styles is needed because theme.js writes CSS variables
+      onto :root; inline scripts are NOT allowed.
+      In production prefer sending these as real HTTP headers (Apache/Nginx),
+      because frame-ancestors and some directives are ignored in a meta tag.
+    -->
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               base-uri 'self';
+               object-src 'none';
+               img-src 'self' data:;
+               font-src 'self' https://fonts.gstatic.com;
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+               script-src 'self';
+               connect-src 'self' http://localhost:* https:;
+               form-action 'self';
+               frame-ancestors 'none'"
+    />
+
+    <title>STUDIA Admin</title>
+    <meta name="description" content="Administrator portal for the STUDIA learning platform at OMSU Mamburao Campus." />
+    <meta name="theme-color" content="#3B288C" />
+    <meta name="color-scheme" content="light" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+
+    <!-- Open Graph: only ever seen when someone pastes the login link in a chat. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="STUDIA Admin" />
+    <meta property="og:title" content="STUDIA Admin Portal" />
+    <meta property="og:description" content="Administrator sign-in for the STUDIA learning platform at OMSU Mamburao Campus." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

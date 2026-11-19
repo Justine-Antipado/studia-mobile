@@ -1,36 +1,42 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as api from '../../../core/data/api';
+import { clearSession, getSession, setSession, subscribe } from '../../../core/data/http/tokenStore';
+import { AuthContext } from './auth-context';
 
-const AuthContext = createContext(null);
-const KEY = 'studia_admin_session';
-
-function readSession() {
-  try {
-    return JSON.parse(localStorage.getItem(KEY));
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Holds the admin session. The token itself never comes near this file — it
+ * lives in core/data/http/tokenStore.js, which also keeps other tabs in sync:
+ * logging out in one tab logs out the rest.
+ */
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(readSession);
+  const [session, setLocalSession] = useState(getSession);
+
+  useEffect(() => subscribe(setLocalSession), []);
 
   const login = useCallback(async (identifier, password) => {
     const result = await api.login(identifier, password);
-    localStorage.setItem(KEY, JSON.stringify(result));
-    setSession(result);
+    setSession({ token: result.token, admin: result.admin });
+    return result.admin;
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(KEY);
-    setSession(null);
+    // Fire-and-forget: the session is gone locally even if the call fails.
+    api.logout?.().catch(() => {});
+    clearSession();
   }, []);
 
-  return (
-    <AuthContext.Provider value={{ admin: session?.admin ?? null, isAuthed: !!session, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
+  const value = useMemo(() => {
+    const admin = session?.admin ?? null;
+    return {
+      admin,
+      isAuthed: !!session,
+      // The portal has exactly one role. Kept explicit so ProtectedRoute can
+      // check it the same way it will against a real JWT claim.
+      isAdmin: !!admin && (admin.role ?? 'Admin') === 'Admin',
+      login,
+      logout,
+    };
+  }, [session, login, logout]);
 
-export const useAuth = () => useContext(AuthContext);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

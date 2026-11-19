@@ -1,14 +1,5 @@
-import { useEffect } from 'react';
-
-export const initials = (name = '') =>
-  name
-    .replace(/^Prof\.\s*/i, '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
+import { useEffect, useId, useRef } from 'react';
+import { initials } from '../../core/logic/format';
 
 export function Avatar({ name, size = 36 }) {
   return (
@@ -18,24 +9,43 @@ export function Avatar({ name, size = 36 }) {
   );
 }
 
+/** Status / role words -> badge tone. Unknown words fall back to lavender. */
 const STATUS_CLASS = {
   Active: 'badge-green',
-  Pending: 'badge-orange',
-  Blocked: 'badge-red',
+  Inactive: 'badge-grey',
+  Archived: 'badge-grey',
+  Published: 'badge-green',
+  Scheduled: 'badge-blue',
+  Draft: 'badge-grey',
+  Ready: 'badge-green',
+  Processing: 'badge-blue',
+  Failed: 'badge-red',
+  Online: 'badge-green',
+  Operational: 'badge-green',
+  Degraded: 'badge-orange',
+  Down: 'badge-red',
+  Critical: 'badge-red',
+  High: 'badge-orange',
+  Medium: 'badge-blue',
+  Low: 'badge-grey',
   Student: 'badge-lav',
   Instructor: 'badge-lav',
+  Admin: 'badge-lav',
   'Up to date': 'badge-green',
 };
 
-export function Badge({ children }) {
-  return <span className={`badge ${STATUS_CLASS[children] || 'badge-lav'}`}>{children}</span>;
+export function Badge({ children, tone }) {
+  const cls = tone ? `badge-${tone}` : STATUS_CLASS[children] || 'badge-lav';
+  return <span className={`badge ${cls}`}>{children}</span>;
 }
 
-export function Toggle({ checked, onChange, label }) {
+export function Toggle({ checked, onChange, label, disabled = false, id }) {
   return (
     <button
       type="button"
+      id={id}
       role="switch"
+      disabled={disabled}
       aria-checked={checked}
       aria-label={label}
       className={`toggle ${checked ? 'on' : ''}`}
@@ -46,31 +56,108 @@ export function Toggle({ checked, onChange, label }) {
   );
 }
 
-export function Card({ id, title, action, children, className = '' }) {
+export function Card({ id, title, subtitle, action, children, className = '', as: Tag = 'section', ...rest }) {
+  // Extra props are how a page gives a card its ARIA role (role="tabpanel")
+  // without adding a wrapper element around it.
   return (
-    <section id={id} className={`card ${className}`}>
+    <Tag id={id} className={`card ${className}`} {...rest}>
       {(title || action) && (
         <header className="card-head">
-          {title && <h3>{title}</h3>}
+          {title && (
+            <div className="card-head-text">
+              <h3>{title}</h3>
+              {subtitle && <p className="muted small">{subtitle}</p>}
+            </div>
+          )}
           {action}
         </header>
       )}
       {children}
-    </section>
+    </Tag>
   );
 }
 
-export function Modal({ title, children, onClose, actions }) {
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * The one dialog. On top of role/aria-modal/aria-labelledby it does the three
+ * things keyboard and screen-reader users need and that are easy to forget:
+ * move focus into the dialog when it opens, keep Tab inside it while it is up,
+ * and hand focus back to whatever opened it when it closes.
+ */
+export function Modal({ title, description, children, onClose, actions, labelledBy = 'modal-title', wide = false }) {
+  const dialogRef = useRef(null);
+  const openerRef = useRef(null);
+  const descId = useId();
+
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    openerRef.current = document.activeElement;
+    const dialog = dialogRef.current;
+    // A dialog can nominate its own landing spot with data-autofocus — used
+    // where the safe choice is not the first control in the markup.
+    const first = dialog?.querySelector('[data-autofocus]') ?? dialog?.querySelector(FOCUSABLE);
+    (first ?? dialog)?.focus({ preventScroll: true });
+
+    return () => {
+      const opener = openerRef.current;
+      if (opener instanceof HTMLElement && document.contains(opener)) {
+        opener.focus({ preventScroll: true });
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = [...(dialogRef.current?.querySelectorAll(FOCUSABLE) ?? [])].filter(
+        (el) => el.offsetParent !== null
+      );
+      if (items.length === 0) {
+        e.preventDefault();
+        dialogRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+      const active = document.activeElement;
+      if (!dialogRef.current?.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? lastItem : firstItem).focus();
+      } else if (e.shiftKey && active === firstItem) {
+        e.preventDefault();
+        lastItem.focus();
+      } else if (!e.shiftKey && active === lastItem) {
+        e.preventDefault();
+        firstItem.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
-      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-        <h3>{title}</h3>
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className={`modal ${wide ? 'modal-wide' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={labelledBy}
+        aria-describedby={description ? descId : undefined}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <h3 id={labelledBy}>{title}</h3>
+        {description && (
+          <p id={descId} className="muted small modal-desc">
+            {description}
+          </p>
+        )}
         <div className="modal-body">{children}</div>
         <div className="modal-actions">{actions}</div>
       </div>
@@ -80,29 +167,20 @@ export function Modal({ title, children, onClose, actions }) {
 
 export function Toast({ message, kind = 'ok', onDone }) {
   useEffect(() => {
-    if (!message) return;
+    if (!message) return undefined;
     const t = setTimeout(onDone, 3200);
     return () => clearTimeout(t);
   }, [message, onDone]);
   if (!message) return null;
-  return <div className={`toast toast-${kind}`}>{message}</div>;
+  // A failure must interrupt; a success can wait for the next pause.
+  const assertive = kind === 'err';
+  return (
+    <div
+      className={`toast toast-${kind}`}
+      role={assertive ? 'alert' : 'status'}
+      aria-live={assertive ? 'assertive' : 'polite'}
+    >
+      {message}
+    </div>
+  );
 }
-
-/* ---- Tiny inline icons (no icon library needed) ---- */
-const p = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
-export const Icon = {
-  Home: () => (<svg {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></svg>),
-  Users: () => (<svg {...p}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5" /><path d="M16 4.6a3.5 3.5 0 010 6.8M18 14.8c2 .6 3.2 2.3 3.5 5.2" /></svg>),
-  Settings: () => (<svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>),
-  Logout: () => (<svg {...p}><path d="M9 4H5v16h4" /><path d="M16 8l4 4-4 4M20 12H9" /></svg>),
-  Search: () => (<svg {...p}><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4-4" /></svg>),
-  Lock: () => (<svg {...p}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg>),
-  Unlock: () => (<svg {...p}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 017.7-1.5" /></svg>),
-  Menu: () => (<svg {...p} width="22" height="22"><path d="M4 7h16M4 12h16M4 17h16" /></svg>),
-  Close: () => (<svg {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>),
-  Check: () => (<svg {...p}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>),
-  Eye: () => (<svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>),
-  EyeOff: () => (<svg {...p}><path d="M3 3l18 18M10.6 6.1A9.9 9.9 0 0112 6c6.5 0 10 6 10 6a17 17 0 01-3.2 3.9M6.6 6.6A17 17 0 002 12s3.5 6 10 6c1.7 0 3.2-.4 4.5-1" /></svg>),
-  User: () => (<svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6" /></svg>),
-  Chevron: () => (<svg {...p} width="14" height="14"><path d="M9 6l6 6-6 6" /></svg>),
-};

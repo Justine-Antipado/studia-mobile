@@ -8,7 +8,7 @@ implementations and `studia-admin` on `core/data/mock/mockBackend.js`. This file
 document: implement these endpoints and each mock implementation can be replaced one file at a
 time, without touching a hook or a screen.
 
-Updated at P5 (2026-11-19). Keep it in step with the repository interfaces, the mock auth service
+Updated at admin phase 5 (2026-11-20); mobile sections last reviewed at P5 (2026-11-19). Keep it in step with the repository interfaces, the mock auth service
 and `backend/database/migrations/*.sql` — when a data shape changes, all four change together.
 
 ## Conventions
@@ -270,23 +270,163 @@ That validation is a convenience, not a control. The server must independently:
 
 ## Admin (web)
 
-`studia-admin/src/core/data/api.js` is the only module its UI calls; each function currently
-delegates to `mockBackend.js`. Paths below are proposals — this surface has not been reviewed as
-closely as the mobile one, and the single admin account is still hard-coded in the mock.
+`studia-admin/src/core/data/api.js` is the only module its UI calls. It now picks one of two
+interchangeable backends from `VITE_USE_MOCK`:
 
-| `api.js` function | Endpoint |
-|---|---|
-| `login` | `POST /admin/login` |
-| `sendOtp` / `verifyOtp` / `updatePassword` | `POST /admin/otp/send` · `POST /admin/otp/verify` · `POST /admin/password` |
-| `getDashboard` | `GET /admin/dashboard` |
-| `getUsers` | `GET /admin/users` |
-| `blockUsers` / `unblockUsers` | `POST /admin/users/block` · `POST /admin/users/unblock` (block only affects Active users, unblock only Blocked) |
-| `deleteUsers` | `POST /admin/users/delete` |
-| `approveUser` | `POST /admin/users/{id}/approve` (this is the instructor approval gate) |
-| `getSettings` / `saveSettings` | `GET /admin/settings` · `PUT /admin/settings` |
-| `runBackup` | `POST /admin/backup` |
+- `core/data/mock/mockBackend.js` — in-memory, the default;
+- `core/data/http/httpBackend.js` — real calls through `core/data/http/client.js`.
+
+Both expose the same method names and the same shapes, so no component knows which is active.
+Everything below is under **`/api/admin`** and matches `backend/src/Modules/Admin`
+(`Controllers/ Services/ Repositories/ Validators/`).
+
+This section is **complete**: every screen the admin portal has is listed below, and the UI calls
+no endpoint that is not here. Of the whole surface, exactly one endpoint creates anything
+(`createAnnouncement`) and five delete; everything else reads. Sub-headings group the endpoints by
+area, not by the order they were built.
+
+### Conventions for this surface
+
+- **Case.** The API answers `snake_case` (the MySQL column names); the UI consumes `camelCase`.
+  `core/logic/mappers.js` (`toUi`, `toApi`) is the only place that converts, and it is called by
+  the data layer, never by a component.
+- **Lists.** Every list endpoint accepts `?page=&page_size=&sort=&order=&q=` plus flat filter
+  params (`role=Student&course=BSIT&year=3&section=A&department=IT&status=Active`), and answers:
+
+  ```json
+  { "data": [ /* rows */ ], "meta": { "page": 1, "page_size": 20, "total": 1284 } }
+  ```
+
+  `sort` is a column name in `snake_case`; `order` is `asc` or `desc`. Unknown sort or filter keys
+  must be rejected (400), not ignored, so a typo in the UI cannot silently return everything.
+- **Errors.** `{ "code": "...", "message": "...", "errors": { "<field>": "..." }, "meta": { ... } }`
+  with the right status. `core/data/http/errors.js` normalizes every failure — including the
+  mock's — to `{ status, code, message, fieldErrors, meta }`; `message` is shown to the admin only
+  as a fallback, so keep it human but never leak whether an account exists. `meta` is display-only
+  (e.g. a lockout countdown) — the client never treats it as the source of truth, only the status
+  and code are.
+- **401** clears the token and sends the browser to `/login`. The client retries the request once
+  if a refresh handler is registered (`tokenStore.setRefreshHandler`), then gives up.
+- **Token storage.** The access token is held **in memory only** (`core/data/http/tokenStore.js`);
+  `localStorage` keeps just a session marker (`{ admin, hasToken }`) so a reload knows a session
+  existed and other tabs can log out in sync. A full page reload therefore has no token and must
+  re-authenticate. Preferred fix once the backend allows it: issue an **httpOnly, Secure,
+  SameSite=Strict** refresh cookie and expose `POST /api/admin/auth/refresh`; the client then
+  switches to `credentials: 'include'` and nothing else changes.
+- **The client is not the authority.** Every rule in `core/logic/validation.js` (email shape and
+  the `@omsu.edu.ph` domain, the five password rules, 6-digit OTP, length caps) is a copy of
+  `studia-mobile/src/features/auth/logic/auth-validation.ts` for the sake of fast feedback. The
+  server must re-run all of it, hash passwords with argon2id/bcrypt, store OTPs hashed and
+  single-use, rate-limit by account and IP, and check admin role on every request.
+
+### Endpoints
+
+| `api.js` function | Endpoint | Notes |
+|---|---|---|
+| `login` | `POST /api/admin/auth/login` | Body `{ identifier, password }`. `identifier` is the email **or** the username. One generic 401 for every failure, with `meta: { attempts_left }` so the UI can show a counter. After `LOGIN_MAX_FAILS` (5) consecutive failures, locks the account for `LOGIN_LOCK_MS` (60 s) and returns **429** with `meta: { retry_after_sec }` instead — matching `studia-mobile`'s `auth-service.ts` lock. The mock backend enforces this itself; it is not just a UI gate. Returns `{ token, admin: { id, name, username, email, role } }` on success. |
+| `logout` | `POST /api/admin/auth/logout` | Revokes the token server-side; the client clears its session either way. |
+| *(planned)* | `POST /api/admin/auth/refresh` | Not called yet; `tokenStore` has the hook ready. |
+| `getNavCounts` | `GET /api/admin/nav-counts` | Sidebar badges: `{ "unread_notifications": 3 }`, a `COUNT(*) WHERE read = 0` over the same table `getNotifications` lists — never a separately maintained counter. Cheap, polled on every page load. |
+| `getDashboard` | `GET /api/admin/dashboard` | `{ stats, registrations, role_distribution, course_distribution, ai_usage, system_health, activity }`. `stats` now includes `classes`. `system_health` adds `database` and `queue` alongside `server`/`ai_service`/`storage_used_pct`. `activity` is a generic recent-activity feed (registrations, AI usage, content, security, announcements), not just new registrations. No `pending` counter — the approval flow is gone. |
+| `getUsers` | `GET /api/admin/users` | List conventions above. Status is `Active` or `Inactive` only — there is no `Blocked`, and no block/unblock action; "inactive" is set by whatever makes an account inactive in the mobile app, not an admin toggle. Row shape carries `course`/`year`/`section` for students or `department` for instructors, not one free-text `section` field. |
+| `getUser` | `GET /api/admin/users/{id}` | Profile plus `classes` (enrolled for a student, owned for an instructor), `activity` (a timeline), and `ai_usage` (per-feature counts) for the `/users/:id` page. 404s with `NOT_FOUND` if the id does not exist. |
+| `deleteUsers` | `POST /api/admin/users/delete` | Body `{ ids: [...] }`. Permanent; the UI makes the admin type `DELETE` first (from either the list's bulk/row action or the profile page's danger zone), and the server must write an audit-log entry. |
+| `getSettings` / `saveSettings` | `GET /api/admin/settings` · `PUT /api/admin/settings` | Partial update; the server validates each section. Sections, one per `/settings/*` sub-page: `term`, `email`, `security_policy`, `uploads`, `system`, `backup`, `legal` (`{ terms, privacy }`), `ai` (`{ summarizer, planner, quiz_synthesizer, chat, language, daily_request_limit }` — the same object `getAiHealth`'s `toggles` reads/writes, so `/ai` and `/settings/ai` can never disagree). Every save is written to the audit log (see below). |
+| `runBackup` | `POST /api/admin/settings/backup/run` | Long-running; answer with the new backup record `{ last_backup_at, last_backup_size_label, ok, restore_points: [{ id, at, size_label }] }` (prepends one `restore_points` entry). Audit-logged. |
+| `sendOtp` / `verifyOtp` / `updatePassword` | `POST /api/admin/account/otp/send` · `.../otp/verify` · `POST /api/admin/account/password` | `tables: users`, `otp_codes`. Codes are 6 digits, hashed, single-use, expire after the configured minutes, and are rate-limited by the resend interval. `devCode` in the mock response must never exist in production. `updatePassword` re-checks all five `PASSWORD_RULES` server-side (the UI shows them as a checklist, not a 0–4 score) and is audit-logged. |
+
+Example — a filtered, sorted page of users:
+
+```http
+GET /api/admin/users?page=2&page_size=10&sort=last_active_at&order=desc&q=ana&role=Student&status=Active
+```
+
+```json
+{
+  "data": [
+    {
+      "id": 2,
+      "name": "Ana Villanueva",
+      "email": "ana.v@omsu.edu.ph",
+      "role": "Student",
+      "course": "BSIT",
+      "year": "3",
+      "section": "A",
+      "department": null,
+      "status": "Active",
+      "joined_at": "2026-08-12T09:14:00+08:00",
+      "last_active_at": "2026-11-19T08:02:00+08:00"
+    }
+  ],
+  "meta": { "page": 2, "page_size": 10, "total": 37 }
+}
+```
+
+An instructor row carries `department` and leaves `course`/`year`/`section` null; `composeSection` (shared with mobile) turns a student's three fields back into the `"BSIT 3-A"` display format wherever the UI needs one string.
+
+```json
+{ "code": "VALIDATION_FAILED", "message": "Unknown sort column.", "errors": { "sort": "Not sortable." } }
+```
+
+### Academics
+
+| `api.js` function | Endpoint | Notes |
+|---|---|---|
+| `getClasses` | `GET /api/admin/classes` | List conventions above. Filters: `course`, `archived` (`true`/`false`). Row carries `instructor_id`/`instructor_name`, `course`/`year`/`section`/`section_label`, `student_count`, `join_code`, `archived`, `created_at`. Classes are created in the mobile app — no create or update endpoint. |
+| `getClass` | `GET /api/admin/classes/{id}` | Class profile plus `roster` (`ClassStudent`-shaped: `id, name, email, progress, submitted_count, pending_count`), `materials`, `assignments`, `announcements` (that class's own, instructor-authored notices — distinct from the platform announcements below). 404s with `NOT_FOUND`. |
+| `deleteClasses` | `POST /api/admin/classes/delete` | Body `{ ids: [...] }`. Permanent; cascades to that class's materials, assignments, quizzes and announcements server-side. The UI makes the admin type `DELETE` first, and the server must write an audit-log entry. |
+| `getContent` | `GET /api/admin/content` | List conventions above. Filters: `kind` (`video`/`pdf`/`slide`), `processing` (`Ready`/`Processing`/`Failed`). Row carries `class_id`/`class_name`, `owner_id`/`owner_name`, `size_bytes`, `posted_at`. Materials are uploaded from the instructor's app — no create or update endpoint. |
+| `deleteContent` | `POST /api/admin/content/delete` | Body `{ ids: [...] }`. Permanent; the server must also remove the stored file. Audit-logged like every other delete. |
+| `getAssessments` | `GET /api/admin/assessments` | Not paginated — a campus-wide overview, not a per-row CRUD list. `{ quizzes, assignments, stats: { total_quizzes, ai_generated_pct, total_assignments, avg_submission_rate } }`. `quizzes[].source` is `AI` or `Manual`; `bloom`/`difficulty` mirror the mobile `Quiz`/`QuizQuestion` vocabulary. Read-only — no admin create, edit or delete; quizzes and assignments are managed by instructors. |
+| `getAnnouncements` | `GET /api/admin/announcements` | List conventions above. Filters: `audience` (`all`/`students`/`instructors`/`course`), `status` (`Scheduled`/`Published`). These are platform-wide notices, a separate table from a class's own `announcements` (see `getClass`). |
+| `createAnnouncement` | `POST /api/admin/announcements` | Body `{ title, body, audience, course, scheduled_at }` (`course` only when `audience = "course"`; `scheduled_at` null to publish immediately). **The only create endpoint this admin surface has** — every other Academics screen is read and delete only. Re-validates title/body non-empty and `course` present for a course audience, the same checks the UI runs; `status` becomes `Scheduled` if `scheduled_at` is in the future, else `Published` with `published_at` set server-side. |
+| `deleteAnnouncements` | `POST /api/admin/announcements/delete` | Body `{ ids: [...] }`. Permanent, audit-logged. |
+
+### Intelligence and the admin inbox
+
+| `api.js` function | Endpoint | Notes |
+|---|---|---|
+| `getAiHealth` | `GET /api/admin/ai` | Not paginated — a health/usage overview. `{ requests_trend, usage_by_feature, feature_health, quota, toggles, transcription, quiz_generation }`. `requests_trend`/`usage_by_feature` mirror the dashboard's shapes (same numbers for the latest month, so the two pages agree). `feature_health[]` is `{ feature, label, avg_latency_ms, error_rate_pct }`. `transcription` is `{ queued, avg_processing_sec, failures: [{ id, title, class_name, owner_name, posted_at }] }`, derived from the content library's `Processing`/`Failed` rows. `quiz_generation` is `{ by_bloom, by_difficulty }`, each `[{ label, value }]` counted over AI-sourced quizzes only. `toggles` is `{ summarizer, planner, quiz_synthesizer, chat, language, daily_request_limit }` — the *same* object `getSettings`/`saveSettings` reads under its `ai` key, so `/ai` and `/settings/ai` can never disagree. (Verified against the mock: `scripts/check-api.mjs` flips a switch through `updateAiFeature` and reads it back through `getSettings`.) |
+| `updateAiFeature` | `PUT /api/admin/ai/features/{feature}` | Body `{ enabled }`. One feature at a time, so a flaky toggle can't silently touch the others; the UI applies it optimistically and rolls back on a failed response. 404s with `NOT_FOUND` for an unknown feature key. |
+| `getReports` | `GET /api/admin/reports` | Not paginated — a campus-wide analytics overview, exported and printed entirely on the client (`shared/utils/csv.js`, `window.print()`), so there is nothing server-side to build for either. `{ user_growth, engagement_trend, participation_by_course, content_consumption, struggling_concepts }`. `struggling_concepts[]` (`{ id, concept, course, avg_score_pct, students_affected }`) is a placeholder shape — once quizzes carry a concept/topic tag the real query aggregates low-scoring `QuizQuestion`s by that tag instead. |
+| `getNotifications` | `GET /api/admin/notifications` | List conventions above. Filters: `read` (`true`/`false`). Row: `{ id, type, title, message, read, created_at }`, `type` one of `job` \| `storage` \| `security`. This is the admin's own inbox — failed background jobs, storage warnings and security alerts — not the mobile `Notification` type. |
+| `markNotificationRead` | `PUT /api/admin/notifications/{id}/read` | Body `{ read }` — toggles either direction. |
+| `markAllNotificationsRead` | `POST /api/admin/notifications/read-all` | Marks every row read; affects the signed-in admin's inbox only (there is one admin, so campus-wide and "mine" are the same today). |
+
+`getNavCounts`'s `unread_notifications` must equal `getNotifications`'s unread row count — the mock
+computes both from one table precisely so this can never drift once the real endpoints exist.
+
+### Security center
+
+| `api.js` function | Endpoint | Notes |
+|---|---|---|
+| `getAuditLog` | `GET /api/admin/security/audit-log` | List conventions above. Filters: `action` (`delete`\|`create`\|`update`\|`settings`\|`security`), `from`/`to` (dates, inclusive). Row: `{ id, actor, action, summary, at }`. Written by the server on every write this admin surface performs — every delete (`deleteUsers`, `deleteClasses`, `deleteContent`, `deleteAnnouncements`), every create (`createAnnouncement`), every settings save, every AI toggle, the admin password change, and every session revoke. There is one admin account today, so `actor` is always the same name; the column exists for when that changes. |
+| `getSessions` | `GET /api/admin/security/sessions` | Not paginated — a handful of rows. Row: `{ id, device, browser, ip, location, started_at, last_active_at, current }`. `current` marks the session answering the request; the UI never offers to revoke it. |
+| `revokeSession` | `POST /api/admin/security/sessions/{id}/revoke` | Invalidates that session's token/cookie server-side immediately. 404s with `NOT_FOUND` for an unknown id, 422s if the id is the caller's own current session. Audit-logged. |
+| `getLoginAttempts` | `GET /api/admin/security/login-attempts` | List conventions above. Filters: `result` (`Success`\|`Failed`\|`Locked`). Row: `{ id, identifier, success, locked, ip, at }`. Appended by the server on every `login` call, success or failure — the same event `login`'s 429/401 responses are built from, so this list and the lockout behavior can never disagree. `identifier` is whatever the caller typed, not normalized — useful for spotting typosquatting/enumeration attempts. |
+| `getVulnerabilities` | `GET /api/admin/security/vulnerabilities` | Not paginated. Row: `{ id, title, category, severity, description, recommendation }`, `severity` one of `Critical`\|`High`\|`Medium`\|`Low`. Read-only "scanner-style" findings — mock data today (master prompt, section 5: "Findings come from the API; use mock data now"); a real implementation would run actual checks (dependency audit, policy comparison, TLS/CSP probe, backup age) on a schedule and have this endpoint read the latest run. |
+
+The endpoints for `/help` are omitted on purpose — it is static admin-facing content with no data
+of its own, aside from reading `getSettings` for the app version already shown on `/settings/system`.
+
+Every list in this section reuses the same `page/page_size/sort/order/q` + flat-filter conventions
+as the rest of this document; nothing here is a special case.
+
+### Production checklist for the admin bundle
+
+- Delete `studia-admin/src/core/config/demoCredentials.js`. It is the only file in the app with a
+  credential in it, it is read through `core/config/demo.js` with `import.meta.glob`, and the build
+  succeeds with the file absent (verified).
+- Build with `VITE_USE_MOCK=false`. That is what drops both the mock backend and the demo file from
+  the bundle: `core/data/api.js` and `core/config/demo.js` compare the raw env value so Vite can
+  tree-shake them. With the flag left at its default, the admin password ships in the JavaScript.
+- Send the security headers from the web server as well as the `index.html` meta tags
+  (`Content-Security-Policy`, `Referrer-Policy`, `X-Content-Type-Options`), since `frame-ancestors`
+  is ignored in a meta tag.
 
 ## Known gaps
+
+### Mobile
 
 Carried forward deliberately; each one is a client change, not a blocker for the backend.
 
@@ -301,3 +441,30 @@ Carried forward deliberately; each one is a client change, not a blocker for the
    `core/data/mock/mock-data.ts` instead of sitting behind one swappable module.
 5. **`core/data/api-client/api-client.ts`** (timeout, typed errors, bearer token) is written and
    unused. It is what the repository implementations should call.
+
+### Admin
+
+1. **The email domain is not agreed across the three places that define it.** The admin UI
+   (`studia-admin/src/core/logic/validation.js`, `EMAIL_DOMAIN`) requires `@omsu.edu.ph`, per the
+   product brief. The mobile app's `auth-validation.ts` applies **no** domain rule — any
+   syntactically valid address passes — and its seeded demo accounts are `@omsc.edu.ph` (the
+   campus's former name), which the admin rule would reject. **The server has to pick one and
+   enforce it**; whichever it picks, the two clients must be brought in line with it. Until then,
+   treat the admin's rule as a display-level hint, not a guarantee about what is in the table.
+2. **No token persistence across a reload.** The access token lives in memory only (see
+   *Token storage* above), so a refresh of the browser signs the admin out. The fix is the
+   httpOnly refresh cookie plus `POST /api/admin/auth/refresh`, which `tokenStore` already has a
+   hook for; nothing else in the client changes.
+3. **CSV export and the print view are entirely client-side** (`shared/utils/csv.js`,
+   `window.print()`), so they export exactly the rows currently on screen. If a report ever has to
+   export *all* matching rows rather than the current page, that needs a server endpoint
+   (`GET …?format=csv`) — none is specified today.
+4. **`getVulnerabilities` is mock data by design** (master prompt, section 5). A real
+   implementation runs the checks on a schedule and this endpoint reads the latest run; the row
+   shape is the contract, the findings are not.
+5. **`getAssessments`, `getAiHealth` and `getReports` are unpaginated** overviews. They are fine
+   at campus scale; if any of them starts returning thousands of rows, it needs the same
+   `page/page_size` treatment as the lists.
+6. **One admin account.** `actor` in the audit log and `current` in the session list both assume
+   it. Nothing in the UI breaks with several admins, but role checks would then need more than
+   "is admin".

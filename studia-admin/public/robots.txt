@@ -1,0 +1,3 @@
+# Private administrator portal — never index any of it.
+User-agent: *
+Disallow: /

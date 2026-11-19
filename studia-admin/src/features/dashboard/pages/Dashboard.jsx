@@ -1,116 +1,175 @@
-// TODO(refactor): split UI / logic / data
-import { useEffect, useState } from 'react';
+// Phase 4: rebuilt against the master prompt's section-5 spec — six KPI
+// tiles, a registrations trend, users by role and by course, AI usage by
+// feature, a storage meter, system health, a recent-activity feed and quick
+// links. No search bar here (search lives inside tables, not the topbar).
 import { Link } from 'react-router-dom';
 import * as api from '../../../core/data/api';
-import { Card, Badge } from '../../../shared/components/ui';
+import { ROUTES } from '../../../core/config/routes';
+import { formatRelative } from '../../../core/logic/format';
+import { BarChart, DonutChart, LineChart } from '../../../shared/components/Charts';
+import EmptyState from '../../../shared/components/EmptyState';
+import { Icon } from '../../../shared/components/Icon';
+import PageHeader from '../../../shared/components/PageHeader';
+import { Skeleton, SkeletonCards } from '../../../shared/components/Skeleton';
+import StatCard from '../../../shared/components/StatCard';
+import { Badge, Card } from '../../../shared/components/ui';
+import { useAsync } from '../../../shared/hooks';
 import { C } from '../../../theme';
 
-function BarChart({ data }) {
-  const max = Math.max(...data.map((d) => d.count), 1);
-  return (
-    <div className="bars" role="img" aria-label="User registrations per month">
-      {data.map((d) => (
-        <div className="bar-col" key={d.month} title={`${d.month}: ${d.count}`}>
-          <div className="bar" style={{ height: `${(d.count / max) * 100}%` }} />
-          <span>{d.month}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+const QUICK_LINKS = [
+  { to: ROUTES.users, label: 'Manage users', icon: 'Users' },
+  { to: ROUTES.announcements, label: 'Post an announcement', icon: 'Megaphone' },
+  { to: ROUTES.security, label: 'Security center', icon: 'Shield' },
+  { to: ROUTES.settings, label: 'Settings', icon: 'Settings' },
+];
 
-function Donut({ students, instructors }) {
-  const total = students + instructors || 1;
-  const r = 52;
-  const circ = 2 * Math.PI * r;
-  const instrLen = (instructors / total) * circ;
-  return (
-    <div className="donut-wrap">
-      <svg viewBox="0 0 140 140" width="170" height="170" role="img" aria-label="Role distribution">
-        <circle cx="70" cy="70" r={r} fill="none" stroke={C.primary} strokeWidth="26" />
-        <circle
-          cx="70" cy="70" r={r} fill="none" stroke={C.gold} strokeWidth="26"
-          strokeDasharray={`${instrLen} ${circ - instrLen}`}
-          transform="rotate(-90 70 70)"
-        />
-      </svg>
-      <p className="muted small">
-        Students {Math.round((students / total) * 100)}% · Instructors {Math.round((instructors / total) * 100)}%
-      </p>
-    </div>
-  );
-}
+const ACTIVITY_ICON = {
+  registration: 'Users',
+  ai: 'Sparkle',
+  content: 'Content',
+  security: 'Shield',
+  announcement: 'Megaphone',
+};
 
-export default function Home() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    api.getDashboard().then(setData);
-  }, []);
-
-  if (!data) return <div className="loading">Loading dashboard…</div>;
-  const { stats, registrations, systemHealth, recent } = data;
-
-  const tiles = [
-    ['Total Users', stats.totalUsers],
-    ['Students', stats.students],
-    ['Instructors', stats.instructors],
-    ['Active Today', stats.activeToday],
-    ['Pending', stats.pending],
-    ['AI Requests', stats.aiRequests],
-  ];
+export default function Dashboard() {
+  const { data, error, loading, reload } = useAsync((signal) => api.getDashboard({ signal }), []);
 
   return (
     <>
-      <h1 className="page-title">Home</h1>
+      <PageHeader title="Dashboard" subtitle="Platform activity, users and AI usage at a glance." />
 
-      <div className="stat-grid">
-        {tiles.map(([label, value]) => (
-          <div className="stat" key={label}>
-            <small>{label}</small>
-            <strong>{value.toLocaleString()}</strong>
+      {loading && (
+        <>
+          <SkeletonCards count={6} />
+          <div className="grid-2-1">
+            <Skeleton height={260} radius="var(--radius-lg)" />
+            <Skeleton height={260} radius="var(--radius-lg)" />
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      <div className="grid-2-1">
-        <Card title="User registrations">
-          <BarChart data={registrations} />
-        </Card>
-        <Card title="Role distribution">
-          <Donut students={stats.students} instructors={stats.instructors} />
-        </Card>
-      </div>
+      {!loading && error && (
+        <EmptyState
+          tone="error"
+          title="The dashboard could not load"
+          message={error.message}
+          action={
+            <button type="button" className="btn btn-primary" onClick={reload}>
+              Try again
+            </button>
+          }
+        />
+      )}
 
-      <div className="grid-2-1">
-        <Card title="Recent Registrations" action={<Link to="/users" className="link-danger">Delete Users</Link>}>
-          <div className="table-scroll">
-          <table className="table compact">
-            <tbody>
-              {recent.map((u) => (
-                <tr key={u.id}>
-                  <td><strong>{u.name}</strong></td>
-                  <td>{u.role}</td>
-                  <td>{u.section}</td>
-                  <td><Badge>{u.status}</Badge></td>
-                </tr>
-              ))}
-              {recent.length === 0 && (
-                <tr><td colSpan={4} className="muted">No recent registrations.</td></tr>
-              )}
-            </tbody>
-          </table>
+      {!loading && !error && data && (
+        <>
+          <div className="stat-grid stat-grid-6">
+            {[
+              ['Total users', data.stats.totalUsers],
+              ['Students', data.stats.students],
+              ['Instructors', data.stats.instructors],
+              ['Active today', data.stats.activeToday],
+              ['Classes', data.stats.classes],
+              ['AI requests', data.stats.aiRequests],
+            ].map(([label, value]) => (
+              <StatCard key={label} label={label} value={value} />
+            ))}
           </div>
-        </Card>
 
-        <Card title="System health">
-          <ul className="health">
-            <li>Storage {systemHealth.storageUsedPct}% used</li>
-            <li>Server: <b className="ok">{systemHealth.server}</b></li>
-            <li>AI service: <b className="ok">{systemHealth.aiService}</b></li>
-          </ul>
-        </Card>
-      </div>
+          <div className="two-col">
+            <Card title="Registrations trend">
+              <LineChart data={data.registrations} valueKey="count" labelKey="month" />
+            </Card>
+            <Card title="Users by role">
+              <DonutChart
+                label="Users by role"
+                slices={data.roleDistribution.map((s, i) => ({ ...s, color: i === 0 ? C.primary : C.gold }))}
+              />
+            </Card>
+          </div>
+
+          <div className="two-col">
+            <Card title="Users by course">
+              <BarChart data={data.courseDistribution} valueKey="value" labelKey="label" />
+            </Card>
+            <Card title="AI usage by feature">
+              <BarChart data={data.aiUsage} valueKey="count" labelKey="feature" />
+            </Card>
+          </div>
+
+          <div className="grid-2-1">
+            <Card title="System health">
+              <ul className="health">
+                <li>
+                  Server <Badge>{data.systemHealth.server}</Badge>
+                </li>
+                <li>
+                  AI service <Badge>{data.systemHealth.aiService}</Badge>
+                </li>
+                <li>
+                  Database <Badge>{data.systemHealth.database}</Badge>
+                </li>
+                <li>
+                  Queue <Badge>{data.systemHealth.queue}</Badge>
+                </li>
+              </ul>
+              <div
+                className="meter"
+                role="progressbar"
+                aria-label="Storage used"
+                aria-valuenow={data.systemHealth.storageUsedPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div
+                  style={{
+                    width: `${data.systemHealth.storageUsedPct}%`,
+                    background: data.systemHealth.storageUsedPct > 85 ? 'var(--red-strong)' : 'var(--primary)',
+                  }}
+                />
+              </div>
+              <p className="muted small">{data.systemHealth.storageUsedPct}% of storage used</p>
+            </Card>
+
+            <Card title="Quick links">
+              <div className="quick-links">
+                {QUICK_LINKS.map((link) => {
+                  const LinkIcon = Icon[link.icon];
+                  return (
+                    <Link key={link.to} to={link.to} className="quick-link">
+                      <span className="quick-link-icon">
+                        <LinkIcon />
+                      </span>
+                      {link.label}
+                      <Icon.Chevron />
+                    </Link>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+
+          <Card title="Recent activity">
+            <ul className="feed">
+              {data.activity.map((item) => {
+                const ItemIcon = Icon[ACTIVITY_ICON[item.type]] ?? Icon.Info;
+                return (
+                  <li className="feed-item" key={item.id}>
+                    <span className="feed-icon">
+                      <ItemIcon />
+                    </span>
+                    <span className="feed-text">
+                      {item.message}
+                      <span className="feed-time">{formatRelative(item.at)}</span>
+                    </span>
+                  </li>
+                );
+              })}
+              {data.activity.length === 0 && <li className="muted">No recent activity.</li>}
+            </ul>
+          </Card>
+        </>
+      )}
     </>
   );
 }

@@ -1,205 +1,236 @@
-// TODO(refactor): split UI / logic / data
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
-import * as api from '../../../core/data/api';
-import { Avatar, Badge, Card, Icon, Modal, Toast } from '../../../shared/components/ui';
-import { flashElement } from '../../../shared/utils/flash';
+// Phase 4: rebuilt on DataTable with URL-synced filters, server-shaped paging
+// and sort, and a user detail page. The pending/approve/block/unblock flow is
+// gone — status is Active/Inactive, set in the mobile app; this page is read
+// and delete only (View, Export, Delete per row; bulk delete via selection).
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import UserFilters from '../components/UserFilters';
+import * as usersRepo from '../data/usersRepository';
+import { path, ROUTES } from '../../../core/config/routes';
+import { formatDate, formatRelative } from '../../../core/logic/format';
+import { composeSection } from '../../../core/logic/validation';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import DataTable from '../../../shared/components/DataTable';
+import { Icon } from '../../../shared/components/Icon';
+import Pager from '../../../shared/components/Pager';
+import PageHeader from '../../../shared/components/PageHeader';
+import { SkeletonTable } from '../../../shared/components/Skeleton';
+import Tabs from '../../../shared/components/Tabs';
+import { Avatar, Badge, Card, Toast } from '../../../shared/components/ui';
+import EmptyState from '../../../shared/components/EmptyState';
+import { useAsync, usePagination, useQueryState, useToast } from '../../../shared/hooks';
+import { downloadCsv } from '../../../shared/utils/csv';
 
-const FILTERS = ['All', 'Students', 'Instructors', 'Pending', 'Blocked'];
+const TABS = [
+  { key: 'All', label: 'All' },
+  { key: 'Student', label: 'Students' },
+  { key: 'Instructor', label: 'Instructors' },
+];
+const PAGE_SIZE = 10;
 
-function matchesFilter(u, f) {
-  switch (f) {
-    case 'Students': return u.role === 'Student';
-    case 'Instructors': return u.role === 'Instructor';
-    case 'Pending': return u.status === 'Pending';
-    case 'Blocked': return u.status === 'Blocked';
-    default: return true;
-  }
-}
+const DEFAULTS = {
+  tab: 'All',
+  page: 1,
+  sort: 'name',
+  order: 'asc',
+  q: '',
+  course: 'All',
+  year: 'All',
+  section: 'All',
+  department: 'All',
+  status: 'All',
+};
+const RESET_PAGE_ON = ['tab', 'q', 'course', 'year', 'section', 'department', 'status'];
 
-function exportCsv(rows) {
-  const head = ['Name', 'Email', 'Role', 'Section/Dept', 'Status', 'Joined', 'Last active'];
-  const lines = rows.map((u) =>
-    [u.name, u.email, u.role, u.section, u.status, u.joined, u.lastActive].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')
-  );
-  const blob = new Blob([[head.join(','), ...lines].join('\n')], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'studia-users.csv';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
+const CSV_HEADERS = ['Name', 'Email', 'Role', 'Course', 'Year', 'Section', 'Department', 'Status', 'Joined', 'Last active'];
+const toCsvRow = (u) => [u.name, u.email, u.role, u.course ?? '', u.year ?? '', u.section ?? '', u.department ?? '', u.status, formatDate(u.joinedAt), formatDate(u.lastActiveAt)];
+const exportCsv = (rows, filename = 'studia-users.csv') => downloadCsv(filename, CSV_HEADERS, rows.map(toCsvRow));
 
 export default function Users() {
-  const location = useLocation();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('All');
+  const [query, setQuery] = useQueryState(DEFAULTS, { resetPageOn: RESET_PAGE_ON });
   const [selected, setSelected] = useState(new Set());
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteIds, setDeleteIds] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState('');
-  const clearToast = useCallback(() => setToast(''), []);
+  const { toast, showToast, showError, clearToast } = useToast();
 
-  useEffect(() => {
-    api.getUsers().then((u) => { setUsers(u); setLoading(false); });
-  }, []);
+  const params = useMemo(
+    () => ({
+      page: query.page,
+      pageSize: PAGE_SIZE,
+      sort: query.sort,
+      order: query.order,
+      q: query.q,
+      filters: {
+        role: query.tab === 'All' ? undefined : query.tab,
+        course: query.course,
+        year: query.year,
+        section: query.section,
+        department: query.department,
+        status: query.status,
+      },
+    }),
+    [query]
+  );
 
-  // Arriving from the global search: show all users, then scroll to and flash the chosen row.
-  const highlightId = location.state?.highlight;
-  const handledKey = useRef(null);
-  useEffect(() => {
-    if (loading || highlightId == null || handledKey.current === location.key) return;
-    handledKey.current = location.key;
-    setFilter('All');
-    const t = setTimeout(() => flashElement(document.querySelector(`[data-user-row="${highlightId}"]`)), 60);
-    return () => clearTimeout(t);
-  }, [loading, highlightId, location.key]);
+  const { data, error, loading, reload } = useAsync(
+    (signal) => usersRepo.getUsers(params, { signal }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(params)]
+  );
 
-  const visible = useMemo(() => users.filter((u) => matchesFilter(u, filter)), [users, filter]);
-
-  const selectedUsers = users.filter((u) => selected.has(u.id));
-  const blockIds = selectedUsers.filter((u) => u.status === 'Active').map((u) => u.id);
-  const unblockIds = selectedUsers.filter((u) => u.status === 'Blocked').map((u) => u.id);
-  const count = selectedUsers.length;
-
-  const allChecked = visible.length > 0 && visible.every((u) => selected.has(u.id));
-  const toggleAll = () => setSelected(allChecked ? new Set() : new Set(visible.map((u) => u.id)));
-  const toggleOne = (id) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-
-  /** kind: 'block' | 'unblock'. Bulk actions clear the selection; per-row actions leave it alone. */
-  const changeStatus = async (kind, ids, { bulk = false } = {}) => {
-    if (!ids.length) return;
-    setBusy(true);
-    try {
-      setUsers(kind === 'block' ? await api.blockUsers(ids) : await api.unblockUsers(ids));
-      setToast(`${ids.length} user(s) ${kind === 'block' ? 'blocked' : 'unblocked'}.`);
-      if (bulk) setSelected(new Set());
-    } catch (e) {
-      setToast(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const rows = data?.data ?? [];
+  const pagination = usePagination({ page: query.page, pageSize: PAGE_SIZE, total: data?.meta.total ?? 0 });
+  const selectedRows = rows.filter((u) => selected.has(u.id));
+  const deleteTargets = rows.filter((u) => deleteIds?.includes(u.id));
 
   const runDelete = async () => {
-    const ids = selectedUsers.map((u) => u.id);
+    if (!deleteIds?.length) return;
     setBusy(true);
     try {
-      setUsers(await api.deleteUsers(ids));
-      setToast(`${ids.length} user(s) deleted.`);
-      setSelected(new Set());
+      await usersRepo.deleteUsers(deleteIds);
+      showToast(`${deleteIds.length} user${deleteIds.length === 1 ? '' : 's'} deleted.`);
+      setSelected((prev) => {
+        const next = new Set(prev);
+        deleteIds.forEach((id) => next.delete(id));
+        return next;
+      });
+      setDeleteIds(null);
+      reload();
     } catch (e) {
-      setToast(e.message);
+      showError(e);
     } finally {
       setBusy(false);
-      setConfirmDelete(false);
     }
   };
 
-  const approve = async (id) => {
-    setUsers(await api.approveUser(id));
-    setToast('User approved.');
-  };
+  const columns = [
+    {
+      key: 'name',
+      header: 'Name',
+      sortable: true,
+      primary: true,
+      render: (u) => (
+        <div className="name-cell">
+          <Avatar name={u.name} />
+          <div>
+            <strong>{u.name}</strong>
+            <div className="muted small">{u.email}</div>
+          </div>
+        </div>
+      ),
+    },
+    { key: 'role', header: 'Role', sortable: true, render: (u) => <Badge>{u.role}</Badge> },
+    {
+      key: 'course',
+      header: 'Course / Dept',
+      render: (u) => (u.role === 'Instructor' ? `Dept. ${u.department}` : composeSection(u.course, u.year, u.section)),
+    },
+    { key: 'status', header: 'Status', sortable: true, render: (u) => <Badge>{u.status}</Badge> },
+    { key: 'joinedAt', header: 'Joined', sortable: true, render: (u) => formatDate(u.joinedAt) },
+    { key: 'lastActiveAt', header: 'Last active', sortable: true, render: (u) => formatRelative(u.lastActiveAt) },
+  ];
 
   return (
     <>
-      <div className="page-head">
-        <h1 className="page-title">Users</h1>
-        <div className="head-actions">
-          <button className="btn btn-green" disabled={!unblockIds.length || busy} onClick={() => changeStatus('unblock', unblockIds, { bulk: true })}>
-            <Icon.Unlock /> Unblock ({unblockIds.length})
-          </button>
-          <button className="btn btn-orange" disabled={!blockIds.length || busy} onClick={() => changeStatus('block', blockIds, { bulk: true })}>
-            <Icon.Lock /> Block ({blockIds.length})
-          </button>
-          <button className="btn btn-red" disabled={!count || busy} onClick={() => setConfirmDelete(true)}>
-            <Icon.Close /> Delete ({count})
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Users"
+        subtitle="Students and instructors registered in the mobile app. Accounts are created there, so this page is read and delete only."
+        actions={
+          <>
+            <button type="button" className="btn btn-ghost" disabled={!rows.length} onClick={() => exportCsv(rows)}>
+              <Icon.Download /> Export CSV
+            </button>
+            <button
+              type="button"
+              className="btn btn-red"
+              disabled={!selectedRows.length || busy}
+              onClick={() => setDeleteIds(selectedRows.map((u) => u.id))}
+            >
+              <Icon.Trash /> Delete ({selectedRows.length})
+            </button>
+          </>
+        }
+      />
 
-      <div className="chips">
-        {FILTERS.map((f) => (
-          <button key={f} className={`chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
-        ))}
-      </div>
+      <Tabs
+        aria-label="Filter by role"
+        items={TABS}
+        value={query.tab}
+        onChange={(tab) => setQuery({ tab })}
+        controls="users-results"
+      />
 
-      <Card>
-        {loading ? (
-          <div className="loading">Loading users…</div>
-        ) : (
-          <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th><input type="checkbox" checked={allChecked} onChange={toggleAll} aria-label="Select all" /></th>
-                  <th>Name</th><th>Email</th><th>Role</th><th>Section / Dept</th><th>Status</th><th>Joined</th><th>Last active</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((u) => (
-                  <tr key={u.id} data-user-row={u.id}>
-                    <td><input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleOne(u.id)} aria-label={`Select ${u.name}`} /></td>
-                    <td>
-                      <div className="name-cell"><Avatar name={u.name} /><strong>{u.name}</strong></div>
-                    </td>
-                    <td>{u.email}</td>
-                    <td><Badge>{u.role}</Badge></td>
-                    <td>{u.section}</td>
-                    <td>
-                      <Badge>{u.status}</Badge>
-                      {u.status === 'Pending' && (
-                        <button className="link-btn" onClick={() => approve(u.id)}>Approve</button>
-                      )}
-                      {u.status === 'Active' && (
-                        <button className="link-btn warn" disabled={busy} onClick={() => changeStatus('block', [u.id])}>Block</button>
-                      )}
-                      {u.status === 'Blocked' && (
-                        <button className="link-btn" disabled={busy} onClick={() => changeStatus('unblock', [u.id])}>Unblock</button>
-                      )}
-                    </td>
-                    <td>{u.joined}</td>
-                    <td>{u.lastActive}</td>
-                  </tr>
-                ))}
-                {visible.length === 0 && (
-                  <tr><td colSpan={8} className="muted center">No users found.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      <UserFilters query={query} onChange={setQuery} />
+
+      <Card id="users-results" role="tabpanel" aria-labelledby={`tab-${query.tab}`}>
+        {loading && <SkeletonTable rows={6} cols={6} />}
+
+        {!loading && error && (
+          <EmptyState
+            tone="error"
+            title="Users could not load"
+            message={error.message}
+            action={
+              <button type="button" className="btn btn-primary" onClick={reload}>
+                Try again
+              </button>
+            }
+          />
         )}
-        <p className="table-foot">
-          Showing {visible.length} of {users.length.toLocaleString()} · Rows per page: 10 ·{' '}
-          <button className="link-btn" onClick={() => exportCsv(visible)}>Export CSV</button>
-        </p>
+
+        {!loading && !error && (
+          <>
+            <DataTable
+              columns={columns}
+              rows={rows}
+              sort={{ key: query.sort, order: query.order }}
+              onSortChange={({ key, order }) => setQuery({ sort: key, order })}
+              selectable
+              selectedIds={selected}
+              onSelectedChange={setSelected}
+              rowLabel={(u) => u.name}
+              caption="Users"
+              emptyTitle="No users found"
+              emptyMessage="Try a different filter or search term."
+              renderActions={(u) => (
+                <>
+                  <Link to={path(ROUTES.userDetail, { id: u.id })} className="link-btn">
+                    <Icon.Eye /> View
+                  </Link>
+                  <button type="button" className="link-btn" onClick={() => exportCsv([u], `studia-user-${u.id}.csv`)}>
+                    <Icon.Download /> Export
+                  </button>
+                  <button type="button" className="link-btn warn" onClick={() => setDeleteIds([u.id])}>
+                    <Icon.Trash /> Delete
+                  </button>
+                </>
+              )}
+            />
+            {rows.length > 0 && <Pager pagination={pagination} onPageChange={(page) => setQuery({ page })} />}
+          </>
+        )}
       </Card>
 
-      {confirmDelete && (
-        <Modal
-          title={`Delete ${count} user${count === 1 ? '' : 's'}?`}
-          onClose={() => setConfirmDelete(false)}
-          actions={
-            <>
-              <button className="btn btn-ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
-              <button className="btn btn-red" disabled={busy} onClick={runDelete}>
-                {busy ? 'Deleting…' : 'Delete'}
-              </button>
-            </>
-          }
-        >
-          {count === 1 ? <><b>{selectedUsers[0].name}</b> will be</> : `${count} users will be`} permanently removed. This can’t be undone.
-        </Modal>
-      )}
+      <ConfirmDialog
+        open={!!deleteIds}
+        title={`Delete ${deleteIds?.length ?? 0} user${(deleteIds?.length ?? 0) === 1 ? '' : 's'}?`}
+        confirmWord="DELETE"
+        confirmLabel="Delete permanently"
+        busy={busy}
+        onConfirm={runDelete}
+        onClose={() => setDeleteIds(null)}
+      >
+        {deleteTargets.length === 1 ? (
+          <>
+            <b>{deleteTargets[0].name}</b> will be
+          </>
+        ) : (
+          `${deleteIds?.length ?? 0} users will be`
+        )}{' '}
+        permanently removed, together with their submissions and AI history. This cannot be undone.
+      </ConfirmDialog>
 
-      <Toast message={toast} onDone={clearToast} />
+      <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />
     </>
   );
 }
