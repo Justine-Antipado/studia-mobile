@@ -21,7 +21,7 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 - [ ] Auth: enable Google provider (YOU paste Google client id/secret in dashboard)
 - [ ] Auth: email OTP template and SMTP (YOU paste SMTP credentials in dashboard)
 - [ ] Storage: confirm buckets `materials` and `submissions` exist (created by migration 003)
-- [ ] Storage: free plan caps uploads at 50 MB; the 500 MB video cap needs Pro (decide)
+- [x] Storage: material cap lowered to 40 MB (migration 007) to fit the free plan 50 MB per-file limit. Mobile UI copy and validator still say 500 MB (UI change, needs your OK)
 
 ## 4. Vercel projects
 - [x] `studia-admin` project created (justineantipado10-9065/studia-admin), root dir `studia-admin`
