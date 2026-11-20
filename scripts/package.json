@@ -1,0 +1,26 @@
+{
+  "name": "studia-scripts",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "convert": "node src/sql-to-csv.ts",
+    "import:dev": "node src/import-csv.ts --env dev",
+    "verify:dev": "node src/verify.ts --env dev",
+    "db:seed:dev": "node src/sql-to-csv.ts && node src/import-csv.ts --env dev --reset && node src/verify.ts --env dev",
+    "db:seed:prod": "node src/sql-to-csv.ts && node src/import-csv.ts --env prod --confirm && node src/verify.ts --env prod",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test src/tokenizer.test.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "pg": "^8.13.0",
+    "pg-copy-streams": "^6.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/pg-copy-streams": "^1.2.5",
+    "typescript": "^5.8.0"
+  }
+}

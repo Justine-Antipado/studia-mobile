@@ -6,5 +6,6 @@
 supabase/.temp/
 supabase/.branches/
 # build artifacts
-supabase/seed/csv/*.csv
+supabase/seed/csv/*
+!supabase/seed/csv/.gitkeep
 node_modules/
