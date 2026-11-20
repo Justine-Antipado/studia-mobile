@@ -242,14 +242,15 @@ otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
 otp_expiry = 300
 
-# Resend over SMTP (not Gmail). The sender domain must be verified in Resend: see docs/AUTH-SETUP.md.
+# Gmail SMTP (no domain needed). Use a dedicated Gmail account + an App Password (2-Step Verification on).
+# ~500 mails/day cap. To scale later: swap host/user/pass for Resend (smtp.resend.com, user "resend") once you own a domain.
 [auth.email.smtp]
 enabled = true
-host = "smtp.resend.com"
+host = "smtp.gmail.com"
 port = 465
-user = "resend"
-pass = "env(RESEND_API_KEY)"
-admin_email = "no-reply@omsu.edu.ph"
+user = "env(SMTP_USER)"
+pass = "env(SMTP_PASS)"
+admin_email = "REPLACE_WITH_SENDER@gmail.com"   # must equal SMTP_USER
 sender_name = "Studia"
 
 # Every code email shows {{ .Token }} (6 digits). No magic links: the app only accepts the code.

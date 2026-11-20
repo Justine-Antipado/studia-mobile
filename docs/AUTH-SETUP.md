@@ -11,18 +11,19 @@ supabase link --project-ref chvibqjstucybirsmpwu     # studia-dev
 supabase db push --remote                              # migration 009
 supabase config push                                   # config.toml: OTP 6 digits / 5 min / 30 s, hook, Google, SMTP, templates
 ```
-`config.toml` reads secrets from env: set `RESEND_API_KEY`, `GOOGLE_CLIENT_IDS`, `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`
+`config.toml` reads secrets from env: set `SMTP_USER`, `SMTP_PASS`, `GOOGLE_CLIENT_IDS`, `SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET`
 in your shell before `config push` (never commit them). If you prefer the dashboard, the same settings live under
 Authentication > Providers/Hooks/Emails/SMTP. Then regenerate types: `supabase gen types typescript --linked > shared-types/database.types.ts`
 (this phase's types were patched by hand: `users.profile_completed`, nullable `otp_codes.code_hash`).
 
-## 2. Email sender (Resend, not Gmail SMTP)
-Resend only sends from a domain you own (the test sender reaches only your own address). Use any domain/subdomain you control, e.g. `mail.yourdomain.com`.
-1. resend.com > Domains > Add `mail.yourdomain.com` (region Singapore if offered).
-2. Add the DNS records Resend shows at your DNS host: **SPF** (TXT `send`), **DKIM** (TXT `resend._domainkey`), **MX** (`send`), and a **DMARC** TXT `_dmarc` = `v=DMARC1; p=none; rua=mailto:you@yourdomain.com`.
-3. Wait for "Verified", create an API key (sending access) > that is `RESEND_API_KEY`.
-4. Put the sender in `supabase/config.toml` (`admin_email`, currently `no-reply@omsu.edu.ph`: change it to `no-reply@mail.yourdomain.com`) and in the dashboard SMTP form: host `smtp.resend.com`, port `465`, user `resend`, password = the API key.
-5. Send a test signup; check spam. Supabase's built-in mailer is limited to a few mails/hour and must not be used for real users.
+## 2. Email sender (Gmail SMTP, no domain needed)
+Google sign-in needs no domain, but the 6-digit codes are emails, so Supabase needs an SMTP sender. Without a domain, use a **dedicated** Gmail account (not your personal one):
+1. Create e.g. `studia.noreply@gmail.com`, turn on 2-Step Verification.
+2. myaccount.google.com > Security > App passwords > create one named "Studia" (16 characters, no spaces).
+3. `SMTP_USER` = that Gmail address, `SMTP_PASS` = the app password (shell env for `config push`, or paste in dashboard SMTP form: host `smtp.gmail.com`, port `465`).
+4. In `supabase/config.toml` set `admin_email` to the same Gmail address.
+5. Test a signup and check spam. Limit is about 500 mails/day and Gmail may show "via supabase" headers; fine for a pilot.
+Upgrade path: with a domain you own, Resend (`smtp.resend.com`, user `resend`, key as password, SPF/DKIM/MX/DMARC records) gives better deliverability. Only the SMTP block changes.
 
 ## 3. Google Cloud OAuth clients (one project, consent screen "External", publish to Production later)
 Create **three** OAuth client IDs (APIs & Services > Credentials):
