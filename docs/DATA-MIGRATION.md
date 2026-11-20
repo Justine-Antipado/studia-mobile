@@ -22,7 +22,7 @@ artifacts (gitignored). The scripts live in `scripts/` and read column types fro
 ## Intentionally skipped or changed
 - Tables: `otp_codes`, `auth_tokens`, `sessions` (Auth owns them; seed sessions held placeholder hashes).
 - Columns: `users.password_hash`, `users.email_verified_at` (Auth), `class_enrollments.progress_pct` (derived by view
-  `class_progress`; verify compares it to the dump's cached value), `files.stored_name` -> `object_path` + `bucket`.
+  `class_progress`, which counts only READY materials; verify accepts a difference from the dump only where the class has a processing/failed material), `files.stored_name` -> `object_path` + `bucket`.
 - `quiz_questions` feeds two tables: `quiz_questions` and `quiz_question_keys` (answer key, RLS-protected).
 - Seed file metadata is not backed by real objects in Storage; downloads of seeded files will 404.
 

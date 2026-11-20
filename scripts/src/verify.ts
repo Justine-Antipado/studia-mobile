@@ -84,14 +84,27 @@ try {
       `select e.id, p.progress_pct from public.class_enrollments e join public.class_progress p on p.class_id = e.class_id and p.student_id = e.student_id`,
     );
     const byId = new Map(prog.rows.map((r) => [r.id, r.progress_pct]));
-    let mismatched = 0;
+    // The dump divided by ALL materials of a class. class_progress counts only READY ones, because a
+    // student can not open a processing/failed material (RLS hides it), so it must not block 100%.
+    // A difference is therefore only acceptable when the class really has a not-ready material.
+    const notReady = await client.query<{ id: string }>(
+      `select e.id from public.class_enrollments e where exists
+         (select 1 from public.materials m where m.class_id = e.class_id and m.deleted_at is null and m.processing <> 'ready')`,
+    );
+    const explained = new Set(notReady.rows.map((r) => r.id));
+    let differ = 0;
+    let unexplained = 0;
     for (const [id, pct] of Object.entries(manifest.enrollmentProgress)) {
-      if (byId.get(id) !== pct) {
-        mismatched++;
-        failures.push(`progress ${id}: source ${pct}, class_progress ${byId.get(id)}`);
+      if (byId.get(id) === pct) continue;
+      differ++;
+      if (!explained.has(id)) {
+        unexplained++;
+        failures.push(`progress ${id}: source ${pct}, class_progress ${byId.get(id)} and the class has no not-ready material to explain it`);
       }
     }
-    lines.push(`progress: ${Object.keys(manifest.enrollmentProgress).length} enrolments, ${mismatched} differ from class_progress`);
+    lines.push(
+      `progress: ${Object.keys(manifest.enrollmentProgress).length} enrolments, ${differ} differ from the dump (${differ - unexplained} explained: class has a processing/failed material), ${unexplained} unexplained`,
+    );
   }
 
   // 6. round trip: 3 random rows per table, CSV vs Postgres, column by column

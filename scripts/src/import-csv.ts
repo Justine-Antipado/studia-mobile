@@ -9,7 +9,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import pg from "pg";
 import copyStreams from "pg-copy-streams";
 import { csvLine, parseCsv, writeCsv } from "./lib/csv.ts";
-import { loadConfig, parseArgs, type Config } from "./lib/env.ts";
+import { checkServiceKey, loadConfig, parseArgs, type Config } from "./lib/env.ts";
 import { loadSchema, type Schema } from "./lib/pg-schema.ts";
 import { CSV_DIR, MAPPED_DIR, MIGRATIONS_DIR, PLAN, type Manifest, type TablePlan } from "./lib/plan.ts";
 
@@ -59,6 +59,13 @@ const admin: SupabaseClient = createClient(cfg.supabaseUrl, cfg.serviceRoleKey, 
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+// preflight: fail before creating anything if the key is wrong
+console.log(`service key: ${checkServiceKey(cfg)}`);
+{
+  const { error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1 });
+  if (error) fail(`Supabase rejected SUPABASE_SERVICE_ROLE_KEY for ${cfg.supabaseUrl}: ${error.message}\nCopy the key again from Project Settings > API Keys of the SAME project (${env}).`);
+}
+
 function randomPassword(): string {
   return randomBytes(15).toString("base64url") + "aA1!";
 }
@@ -107,6 +114,7 @@ for (const row of usersCsv.rows) {
   if (error || !data.user) {
     const existing = await findUserIdByEmail(email);
     if (!existing) throw new Error(`createUser ${email}: ${error?.message ?? "no user returned"}`);
+    console.log(`  ${email}: createUser said "${error?.message}", reusing the existing account`);
     idMap.set(oldId, existing);
     issued.push({ email, password: "(account already existed; password unchanged)", note: "reused" });
     continue;

@@ -32,6 +32,25 @@ function parseDotenv(text: string): Record<string, string> {
   return out;
 }
 
+/** Describes the key WITHOUT revealing it, and throws a plain-language error when it cannot be the service-role key. */
+export function checkServiceKey(cfg: Config): string {
+  const key = cfg.serviceRoleKey;
+  if (key !== key.trim() || /\s/.test(key)) throw new Error("SUPABASE_SERVICE_ROLE_KEY contains spaces or a line break. Re-paste it on one line.");
+  if (key.startsWith("sb_publishable_")) throw new Error("SUPABASE_SERVICE_ROLE_KEY is the PUBLISHABLE key. Use the secret key (sb_secret_...) or the legacy service_role key.");
+  if (key.startsWith("sb_secret_")) return "secret key (sb_secret_...)";
+  const parts = key.split(".");
+  if (parts.length !== 3) throw new Error(`SUPABASE_SERVICE_ROLE_KEY is not a key I recognise (${key.length} characters, ${parts.length} part(s)). A JWT has 3 parts separated by dots; it may be truncated.`);
+  let claims: { role?: string; ref?: string };
+  try {
+    claims = JSON.parse(Buffer.from(parts[1] ?? "", "base64url").toString("utf8")) as { role?: string; ref?: string };
+  } catch {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY looks like a JWT but its payload cannot be decoded. It is probably truncated or altered.");
+  }
+  if (claims.role !== "service_role") throw new Error(`SUPABASE_SERVICE_ROLE_KEY is a "${claims.role ?? "unknown"}" key, not "service_role". Copy the service_role key from Project Settings > API Keys.`);
+  if (claims.ref && claims.ref !== PROJECT_REF[cfg.env]) throw new Error(`SUPABASE_SERVICE_ROLE_KEY belongs to project ${claims.ref}, not the ${cfg.env} project.`);
+  return "legacy service_role JWT";
+}
+
 export function parseArgs(argv: readonly string[]): { env: TargetEnv; flags: Set<string> } {
   const flags = new Set(argv.filter((a) => a.startsWith("--") && a !== "--env"));
   const at = argv.indexOf("--env");

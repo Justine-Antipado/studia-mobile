@@ -52,5 +52,6 @@ The service-role key and AI keys must never appear in `studia-mobile`, `studia-a
 - [x] Root `.env.example`, `.gitignore` (secrets, csv artifacts)
 - [x] MariaDB dump at `supabase/seed/source/studia_db.sql` (copied from backend/database/studia.db.sql)
 - [x] Phase 1B scripts in `scripts/` (converter runs, 29 CSVs; tokenizer tests pass). See docs/DATA-MIGRATION.md
-- [ ] **YOU** create `.env.dev` (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL = session pooler string), then `cd scripts && npm run db:seed:dev`
+- [x] `.env.dev` created; `npm run db:seed:dev` ran on studia-dev: 257 rows, 16 auth users, VERIFY OK
+- [ ] **YOU** rotate the dev seed passwords (they were printed in chat). For prod, run `npm run db:seed:prod` only after studia-prod has its schema
 - [ ] EAS: `eas init` / `eas update:configure` in `studia-mobile` (Phase later)
