@@ -76,9 +76,12 @@ export default endpoint(Body, async ({ identifier, password, role }, req) => {
     throw e;
   }
 
-  await attempt(true, profile.id);
-  await db.from("users").update({ last_active_at: new Date().toISOString() }).eq("id", profile.id);
-  if (role === "admin") await auditAdmin(db, profile, "Administrator signed in", ip);
+  // Independent bookkeeping writes: run together (each was a separate round trip to the database).
+  await Promise.all([
+    attempt(true, profile.id),
+    db.from("users").update({ last_active_at: new Date().toISOString() }).eq("id", profile.id),
+    role === "admin" ? auditAdmin(db, profile, "Administrator signed in", ip) : Promise.resolve(),
+  ]);
 
   return { session: toSessionDto(session), profile: toProfileDto(profile, data.user) };
 });
