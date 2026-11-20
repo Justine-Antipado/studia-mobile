@@ -23,10 +23,12 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 - [ ] Storage: free plan caps uploads at 50 MB; the 500 MB video cap needs Pro (decide)
 
 ## 4. Vercel projects
-- [ ] `studia-admin` (root dir `studia-admin`, Vite, `vercel.json` already in repo)
-- [ ] `studia-api` (root dir `studia-api`, serverless functions)
+- [x] `studia-admin` project created (justineantipado10-9065/studia-admin), root dir `studia-admin`
+- [x] `studia-api` project created, https://studia-api-mu.vercel.app
 - [ ] Connect both to the git repo; production = `main`, previews = PRs
-- [ ] Test deploy of empty `studia-api`: `GET /api/health` returns `{"ok":true}`
+- [x] Test deploy: `GET /api/health` returns `{"ok":true}` (behind Vercel deployment protection)
+- [ ] **YOU** add a GitHub Login Connection in Vercel account settings, then Claude runs `vercel git connect` in both projects (repo johnmarknatnat-wq/studia-mobile)
+- [x] Public env vars set for Development + Preview (SUPABASE_URL, SUPABASE_ANON_KEY, VITE_*). Production values wait for studia-prod
 
 ## 5. Environment variables (per environment: Development / Preview / Production)
 
