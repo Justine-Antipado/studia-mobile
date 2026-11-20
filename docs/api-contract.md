@@ -256,7 +256,7 @@ interface yet (see "Known gaps"). The endpoints they need:
 
 Used by material upload and assignment submission. The client validates before sending
 (`shared/utils/file.ts`): extension whitelist `pdf, doc, docx, ppt, pptx, mp4, mov, jpg, jpeg,
-png`, ≤ 500 MB for materials and ≤ 50 MB for submissions, and a sanitized file name.
+png`, ≤ 40 MB for materials and ≤ 50 MB for submissions, and a sanitized file name.
 
 That validation is a convenience, not a control. The server must independently:
 

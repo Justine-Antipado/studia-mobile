@@ -1,0 +1,16 @@
+# secrets - never commit
+.env
+.env.*
+!.env.example
+.vercel/
+supabase/.temp/
+supabase/.branches/
+# build artifacts
+supabase/seed/csv/*
+!supabase/seed/csv/.gitkeep
+node_modules/
+
+/Android native sign-in.json
+/admin web OAuth.json
+/iOS native sign-in.plist
+*client_secret*.json
