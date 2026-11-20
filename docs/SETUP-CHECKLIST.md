@@ -5,20 +5,18 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 ## 1. Tooling
 - [x] node 24, npm, git
 - [x] `vercel` 66.5, `eas-cli` 27.11
-- [ ] **YOU** install `supabase` CLI: `scoop bucket add supabase https://github.com/supabase/scoop-bucket.git` then `scoop install supabase`
+- [x] `supabase` CLI 3.2.0 (Scoop). NOTE: v3 targets the local Docker stack by default, always pass `--remote`
 - [ ] Docker Desktop (optional; only for local `supabase start` / local `db reset`)
 
 ## 2. Logins (YOU, one at a time)
-- [ ] `supabase login` then verify `supabase projects list`
-- [ ] `vercel login` then verify `vercel whoami`
-- [ ] `eas login` then verify `eas whoami`
+- [x] `supabase login`, `vercel login` (justineantipado10-9065), `eas login` (justineantipado)
 
 ## 3. Supabase projects (region: Singapore `ap-southeast-1` unless changed)
-- [ ] Choose organization (YOU tell Claude)
-- [ ] Create `studia-dev` (YOU enter the DB password, never shared in chat)
+- [x] Organization `imsgvpobrjnbcgdlkjyf`, region Singapore
+- [x] `studia-dev` = chvibqjstucybirsmpwu (old Tokyo project deleted)
 - [ ] Create `studia-prod` (YOU enter the DB password)
-- [ ] `supabase init` (config.toml) and `supabase link --project-ref <dev-ref>`
-- [ ] `supabase db push` to dev, then `supabase gen types typescript --linked`
+- [x] `supabase init` + `supabase link` to studia-dev
+- [x] `supabase db push --remote` (6 migrations) and types in `shared-types/database.types.ts`
 - [ ] Auth: enable Google provider (YOU paste Google client id/secret in dashboard)
 - [ ] Auth: email OTP template and SMTP (YOU paste SMTP credentials in dashboard)
 - [ ] Storage: confirm buckets `materials` and `submissions` exist (created by migration 003)
