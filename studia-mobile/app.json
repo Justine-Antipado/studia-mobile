@@ -25,9 +25,14 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.REPLACE_WITH_IOS_CLIENT_ID_SUFFIX"
+          "iosUrlScheme": "com.googleusercontent.apps.591672082298-fn2b59aem60h9i87ekv8729ecaf0pged"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "502e6b1a-147a-46c3-b620-f28aa18e43c2"
+      }
+    }
   }
 }
