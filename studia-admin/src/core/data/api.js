@@ -12,6 +12,7 @@
 import { env } from '../config/env';
 import { httpBackend } from './http/httpBackend';
 import { mockBackend } from './mock/mockBackend';
+import { remoteAuth } from './remote/remoteAuth';
 
 // Compared against the raw env value so Vite inlines it as a literal: in a
 // build with VITE_USE_MOCK=false the mock backend (and the admin password it
@@ -21,9 +22,12 @@ const backend = import.meta.env.VITE_USE_MOCK !== 'false' ? mockBackend : httpBa
 /** Exposed for the "Mock data" badge in the topbar — never for business logic. */
 export const isMockBackend = env.useMock;
 
-/* --- auth --- */
-export const login = (identifier, password) => backend.login(identifier, password);
-export const logout = () => backend.logout();
+/* --- auth ---
+ * VITE_DATA_SOURCE=remote routes ONLY login/logout to Supabase Auth + studia-api (role=admin only,
+ * audit-logged server side). Everything else still follows VITE_USE_MOCK until its phase lands. */
+const authBackend = import.meta.env.VITE_DATA_SOURCE === 'remote' ? remoteAuth : backend;
+export const login = (identifier, password) => authBackend.login(identifier, password);
+export const logout = () => authBackend.logout();
 
 /* --- shell --- */
 export const getNavCounts = (options) => backend.getNavCounts(options);

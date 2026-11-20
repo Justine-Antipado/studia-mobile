@@ -1009,7 +1009,7 @@ export type Database = {
       otp_codes: {
         Row: {
           attempts: number
-          code_hash: string
+          code_hash: string | null
           consumed_at: string | null
           email: string
           expires_at: string
@@ -1020,7 +1020,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
-          code_hash: string
+          code_hash?: string | null
           consumed_at?: string | null
           email: string
           expires_at: string
@@ -1031,7 +1031,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
-          code_hash?: string
+          code_hash?: string | null
           consumed_at?: string | null
           email?: string
           expires_at?: string
@@ -1648,6 +1648,7 @@ export type Database = {
           last_active_at: string | null
           locked_until: string | null
           phone: string | null
+          profile_completed: boolean
           role: Database["public"]["Enums"]["user_role"]
           section: Database["public"]["Enums"]["section_code"] | null
           status: Database["public"]["Enums"]["account_status"]
@@ -1668,6 +1669,7 @@ export type Database = {
           last_active_at?: string | null
           locked_until?: string | null
           phone?: string | null
+          profile_completed?: boolean
           role: Database["public"]["Enums"]["user_role"]
           section?: Database["public"]["Enums"]["section_code"] | null
           status?: Database["public"]["Enums"]["account_status"]
@@ -1688,6 +1690,7 @@ export type Database = {
           last_active_at?: string | null
           locked_until?: string | null
           phone?: string | null
+          profile_completed?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           section?: Database["public"]["Enums"]["section_code"] | null
           status?: Database["public"]["Enums"]["account_status"]

@@ -20,7 +20,14 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
-      "expo-video"
+      "expo-video",
+      "expo-secure-store",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.REPLACE_WITH_IOS_CLIENT_ID_SUFFIX"
+        }
+      ]
     ]
   }
 }

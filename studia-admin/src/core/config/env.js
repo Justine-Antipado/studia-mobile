@@ -29,6 +29,10 @@ export const env = {
    * Keep the three in step; no other truthy spellings are supported.
    */
   useMock: raw.VITE_USE_MOCK !== 'false',
+  /** mock | remote. Remote = Supabase Auth + studia-api (auth only for now). Default mock. */
+  dataSource: raw.VITE_DATA_SOURCE === 'remote' ? 'remote' : 'mock',
+  supabaseUrl: str(raw.VITE_SUPABASE_URL, ''),
+  supabaseAnonKey: str(raw.VITE_SUPABASE_ANON_KEY, ''),
   appName: str(raw.VITE_APP_NAME, 'STUDIA Admin'),
   sessionIdleMinutes: int(raw.VITE_SESSION_IDLE_MINUTES, 20),
   isDev: !!raw.DEV,

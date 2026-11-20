@@ -5,6 +5,7 @@
 // data to the next one on the same device, so every exit path (logout, role switch, a future
 // token expiry) must go through here rather than calling setUser(null) on its own.
 import { queryCache } from "@/core/data/cache/query-cache";
+import { endRemoteSession } from "@/core/data/supabase/end-session";
 import { setUser, type UserProfile } from "@/core/data/storage/session-store";
 import { clearImageCache } from "@/shared/components/ui/app-image";
 
@@ -16,6 +17,7 @@ export async function clearAllCaches(): Promise<void> {
 
 /** Clears the session and every cache. Navigation is the caller's job. */
 export async function signOut(): Promise<void> {
+  await endRemoteSession(); // revoke the server session first; a no-op in mock mode
   setUser(null);
   await clearAllCaches();
 }

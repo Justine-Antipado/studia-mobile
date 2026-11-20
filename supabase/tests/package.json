@@ -2,6 +2,6 @@
   "name": "studia-rls-tests",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node rls/run.mjs" },
+  "scripts": { "test": "node rls/run.mjs && node rls/auth.mjs" },
   "devDependencies": { "@electric-sql/pglite": "0.5.17" }
 }
