@@ -20,9 +20,9 @@ const hook = async (email) =>
   (await db.query(`select private.hook_before_user_created($1::jsonb) as r`, [JSON.stringify({ user: { email } })])).rows[0].r;
 
 // ---- domain hook
-for (const good of ["juan@gmail.com", "juan@omsu.edu.ph", "  Juan.Dela@OMSU.edu.ph ", "a+b@omsu.edu.ph"])
+for (const good of ["juan@gmail.com", "  Juan.Dela@GMAIL.com ", "a+b@gmail.com"])
   check(`hook allows ${good}`, Object.keys(await hook(good)).length === 0);
-for (const bad of ["a@omsc.edu.ph", "a@yahoo.com", "a@gmail.com.evil.com", "a@omsu.edu.ph.evil.com", "a@x.omsu.edu.ph", "", "a b@omsu.edu.ph"]) {
+for (const bad of ["a@omsc.edu.ph", "juan@omsu.edu.ph", "a@yahoo.com", "a@gmail.com.evil.com", "a@omsu.edu.ph.evil.com", "a@x.omsu.edu.ph", "", "a b@omsu.edu.ph"]) {
   const r = await hook(bad);
   check(`hook rejects "${bad}"`, r.error?.http_code === 400, JSON.stringify(r));
 }

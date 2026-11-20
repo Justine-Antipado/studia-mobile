@@ -18,7 +18,7 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 - [ ] **YOU** `supabase link --project-ref xvjahswctcarvblxgjmd` then `supabase db push --remote`, then re-link to dev (chvibqjstucybirsmpwu)
 - [x] `supabase init` + `supabase link` to studia-dev
 - [x] `supabase db push --remote` (6 migrations) and types in `shared-types/database.types.ts`
-- [ ] Auth: enable Google provider: see docs/AUTH-SETUP.md (Phase 3)
+- [ ] Auth: apply migration 010 (Gmail-only) with `supabase db push --remote`, then enable Google provider: see docs/AUTH-SETUP.md (Phase 3)
 - [ ] Auth: email OTP template and SMTP (Resend + DNS): see docs/AUTH-SETUP.md (Phase 3)
 - [ ] Storage: confirm buckets `materials` and `submissions` exist (created by migration 003)
 - [x] Storage: material cap lowered to 40 MB (migration 007) to fit the free plan 50 MB per-file limit. Mobile UI copy and validator still say 500 MB (UI change, needs your OK)

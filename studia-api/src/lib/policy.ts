@@ -2,10 +2,10 @@
 
 export const OTP = { ttlSec: 300, resendSec: 30, maxAttempts: 5, maxPerHour: 10 } as const;
 export const LOGIN = { maxFails: 5, windowMs: 60_000, lockMs: 60_000 } as const;
-/** Allowed sign-up domains: any Google account, plus the campus domain (seeded users). Keep in sync with migration 009. */
-export const ALLOWED_DOMAINS = ["gmail.com", "omsu.edu.ph"] as const;
+/** Allowed sign-up domain: Gmail only (the campus has no mail domain we control). Keep in sync with migration 010. */
+export const ALLOWED_DOMAINS = ["gmail.com"] as const;
 
-export const EMAIL_RE = /^[a-z0-9._+-]{1,64}@(gmail\.com|omsu\.edu\.ph)$/;
+export const EMAIL_RE = /^[a-z0-9._+-]{1,64}@gmail\.com$/;
 export const normalizeEmail = (v: string): string => v.trim().toLowerCase();
 export const isCampusEmail = (v: string): boolean => EMAIL_RE.test(normalizeEmail(v));
 

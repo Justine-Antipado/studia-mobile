@@ -11,7 +11,7 @@ const Body = z
   .object({
     role: z.enum(["student", "instructor"]),
     fullName: z.string().transform((v) => v.trim().replace(/\s+/g, " ")).pipe(z.string().min(2, "Enter your full name.").max(80)),
-    email: z.string().max(254).transform(normalizeEmail).refine(isCampusEmail, "Use a Gmail (@gmail.com) or @omsu.edu.ph email."),
+    email: z.string().max(254).transform(normalizeEmail).refine(isCampusEmail, "Use a Gmail (@gmail.com) email address."),
     password: z.string().max(64).refine(isStrongPassword, "Password does not meet all requirements."),
     course: z.enum(COURSES).optional(),
     year: z.enum(["1", "2", "3", "4"]).optional(),
@@ -65,9 +65,9 @@ export default endpoint(Body, async (b, req) => {
     if (error.code === "over_email_send_rate_limit" || error.status === 429) {
       throw new ApiError("RATE_LIMITED", "Too many attempts. Try again in a moment.", { retryAfterSec: 60 });
     }
-    if (error.status === 400 && /gmail\.com|omsu\.edu\.ph/i.test(error.message)) {
+    if (error.status === 400 && /gmail\.com/i.test(error.message)) {
       throw new ApiError("VALIDATION", "Please fix the highlighted fields.", {
-        fields: { email: "Use a Gmail (@gmail.com) or @omsu.edu.ph email." },
+        fields: { email: "Use a Gmail (@gmail.com) email address." },
       });
     }
     throw error;
