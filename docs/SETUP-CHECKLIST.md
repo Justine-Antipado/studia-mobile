@@ -14,7 +14,8 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 ## 3. Supabase projects (region: Singapore `ap-southeast-1` unless changed)
 - [x] Organization `imsgvpobrjnbcgdlkjyf`, region Singapore
 - [x] `studia-dev` = chvibqjstucybirsmpwu (old Tokyo project deleted)
-- [ ] Create `studia-prod` (YOU enter the DB password)
+- [x] `studia-prod` = xvjahswctcarvblxgjmd (Singapore). Production Vercel env vars point to it
+- [ ] **YOU** `supabase link --project-ref xvjahswctcarvblxgjmd` then `supabase db push --remote`, then re-link to dev (chvibqjstucybirsmpwu)
 - [x] `supabase init` + `supabase link` to studia-dev
 - [x] `supabase db push --remote` (6 migrations) and types in `shared-types/database.types.ts`
 - [ ] Auth: enable Google provider (YOU paste Google client id/secret in dashboard)
@@ -27,7 +28,7 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 - [x] `studia-api` project created, https://studia-api-mu.vercel.app
 - [ ] Connect both to the git repo; production = `main`, previews = PRs
 - [x] Test deploy: `GET /api/health` returns `{"ok":true}` (behind Vercel deployment protection)
-- [ ] **YOU** add a GitHub Login Connection in Vercel account settings, then Claude runs `vercel git connect` in both projects (repo johnmarknatnat-wq/studia-mobile)
+- [x] Repo transferred to Justine-Antipado/studia-mobile (origin updated); Vercel GitHub App installed; both projects connected; root dirs set (studia-api, studia-admin). Production = main, previews = PRs
 - [x] Public env vars set for Development + Preview (SUPABASE_URL, SUPABASE_ANON_KEY, VITE_*). Production values wait for studia-prod
 
 ## 5. Environment variables (per environment: Development / Preview / Production)
