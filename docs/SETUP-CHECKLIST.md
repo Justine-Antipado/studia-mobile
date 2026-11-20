@@ -1,0 +1,53 @@
+# Setup checklist (Supabase + Vercel + EAS)
+
+Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, billing).
+
+## 1. Tooling
+- [x] node 24, npm, git
+- [x] `vercel` 66.5, `eas-cli` 27.11
+- [ ] **YOU** install `supabase` CLI: `scoop bucket add supabase https://github.com/supabase/scoop-bucket.git` then `scoop install supabase`
+- [ ] Docker Desktop (optional; only for local `supabase start` / local `db reset`)
+
+## 2. Logins (YOU, one at a time)
+- [ ] `supabase login` then verify `supabase projects list`
+- [ ] `vercel login` then verify `vercel whoami`
+- [ ] `eas login` then verify `eas whoami`
+
+## 3. Supabase projects (region: Singapore `ap-southeast-1` unless changed)
+- [ ] Choose organization (YOU tell Claude)
+- [ ] Create `studia-dev` (YOU enter the DB password, never shared in chat)
+- [ ] Create `studia-prod` (YOU enter the DB password)
+- [ ] `supabase init` (config.toml) and `supabase link --project-ref <dev-ref>`
+- [ ] `supabase db push` to dev, then `supabase gen types typescript --linked`
+- [ ] Auth: enable Google provider (YOU paste Google client id/secret in dashboard)
+- [ ] Auth: email OTP template and SMTP (YOU paste SMTP credentials in dashboard)
+- [ ] Storage: confirm buckets `materials` and `submissions` exist (created by migration 003)
+- [ ] Storage: free plan caps uploads at 50 MB; the 500 MB video cap needs Pro (decide)
+
+## 4. Vercel projects
+- [ ] `studia-admin` (root dir `studia-admin`, Vite, `vercel.json` already in repo)
+- [ ] `studia-api` (root dir `studia-api`, serverless functions)
+- [ ] Connect both to the git repo; production = `main`, previews = PRs
+- [ ] Test deploy of empty `studia-api`: `GET /api/health` returns `{"ok":true}`
+
+## 5. Environment variables (per environment: Development / Preview / Production)
+
+| Variable | Where it goes | Who sets it |
+|---|---|---|
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_DATA_SOURCE`, `VITE_API_URL` | Vercel `studia-admin` | Claude via CLI (public values) |
+| `SUPABASE_URL` | Vercel `studia-api` | Claude via CLI (public value) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Vercel `studia-api` only | **YOU** |
+| `AI_API_KEY` | Vercel `studia-api` only | **YOU** |
+| `SMTP_HOST/PORT/USER/PASS/FROM` | Vercel `studia-api` + Supabase Auth SMTP | **YOU** |
+| `GOOGLE_CLIENT_ID_WEB/ANDROID/IOS` | Vercel `studia-api`, EAS env, Supabase Auth | **YOU** |
+| `SUPABASE_DB_URL` | local `.env` for `scripts/` only | **YOU** |
+| `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_DATA_SOURCE` | EAS env (`eas env:create`) | Claude via CLI (public values) |
+
+The service-role key and AI keys must never appear in `studia-mobile`, `studia-admin` or git.
+
+## 6. Repo
+- [x] `supabase/migrations/` (6 files), `supabase/seed.sql` (settings defaults only)
+- [x] `supabase/seed/source/`, `supabase/seed/csv/`, `scripts/`, `studia-api/`
+- [x] Root `.env.example`, `.gitignore` (secrets, csv artifacts)
+- [ ] Place the MariaDB dump at `supabase/seed/source/studia_db.sql` (Phase 1B)
+- [ ] EAS: `eas init` / `eas update:configure` in `studia-mobile` (Phase later)

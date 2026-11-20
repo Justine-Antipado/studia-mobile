@@ -1,0 +1,10 @@
+# secrets - never commit
+.env
+.env.*
+!.env.example
+.vercel/
+supabase/.temp/
+supabase/.branches/
+# build artifacts
+supabase/seed/csv/*.csv
+node_modules/
