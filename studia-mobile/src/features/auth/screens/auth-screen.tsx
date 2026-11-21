@@ -167,6 +167,7 @@ export default function Auth() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [active, setActive] = useState<FieldKey | null>(null);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false); // Google flow only: must not make the form buttons look busy
   const [banner, setBanner] = useState<{
     id: number;
     type: BannerType;
@@ -272,17 +273,21 @@ export default function Auth() {
   };
 
   /** Single-flight wrapper: blocks double taps and never updates state after unmount. */
-  const guard = async (fn: () => Promise<void>) => {
+  const guard = async (fn: () => Promise<void>, google = false) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    if (google) setGoogleBusy(true);
     try {
       await fn();
     } catch (e) {
       if (mounted.current) handleError(e);
     } finally {
       busyRef.current = false;
-      if (mounted.current) setBusy(false);
+      if (mounted.current) {
+        setBusy(false);
+        setGoogleBusy(false);
+      }
     }
   };
 
@@ -374,7 +379,7 @@ export default function Auth() {
     guard(async () => {
       const res = await loginWithGoogle(role);
       startOtp(res.email, res.purpose, res);
-    });
+    }, true);
 
   const submitOtp = (code: string) =>
     guard(async () => {
@@ -718,7 +723,7 @@ export default function Auth() {
                   <Text style={s.link}>Forgot password?</Text>
                 </Pressable>
                 <AppButton
-                  label={busy ? "Please wait…" : "Log in"}
+                  label={busy && !googleBusy ? "Please wait…" : "Log in"}
                   onPress={submitLogin}
                   disabled={busy}
                 />
@@ -770,7 +775,7 @@ export default function Auth() {
                   onSubmitEditing={submitSignup}
                 />
                 <AppButton
-                  label={busy ? "Please wait…" : "Create account"}
+                  label={busy && !googleBusy ? "Please wait…" : "Create account"}
                   onPress={submitSignup}
                   disabled={busy}
                 />
@@ -797,7 +802,7 @@ export default function Auth() {
                   ]}
                 >
                   <Ionicons name="logo-google" size={18} color={C.text} />
-                  <Text style={s.googleText}>Continue with Google</Text>
+                  <Text style={s.googleText}>{googleBusy ? "Connecting to Google…" : "Continue with Google"}</Text>
                 </Pressable>
               </>
             ) : null}
@@ -856,7 +861,7 @@ export default function Auth() {
               <>
                 {emailNode(true)}
                 <AppButton
-                  label={busy ? "Please wait…" : "Send code"}
+                  label={busy && !googleBusy ? "Please wait…" : "Send code"}
                   onPress={submitForgot}
                   disabled={busy}
                 />
@@ -894,7 +899,7 @@ export default function Auth() {
                   onSubmitEditing={submitReset}
                 />
                 <AppButton
-                  label={busy ? "Please wait…" : "Update password"}
+                  label={busy && !googleBusy ? "Please wait…" : "Update password"}
                   onPress={submitReset}
                   disabled={busy}
                 />
@@ -923,7 +928,7 @@ export default function Auth() {
                 {roleNodes}
                 {phoneNode(true)}
                 <AppButton
-                  label={busy ? "Please wait…" : "Finish setup"}
+                  label={busy && !googleBusy ? "Please wait…" : "Finish setup"}
                   onPress={submitProfile}
                   disabled={busy}
                 />
@@ -942,9 +947,10 @@ export default function Auth() {
               Occidental Mindoro State University – Mamburao Campus
             </Text>
           </View>
-          <DropdownHost />
         </ScrollView>
       </KeyboardAvoidingView>
+      {/* Outside the ScrollView: touches on menu rows must not reach its onTouchStart (which closes the menu). */}
+      <DropdownHost />
     </View>
   );
 }

@@ -16,8 +16,8 @@ export default endpoint(Body, async ({ idToken, role }, req) => {
   const db = adminClient();
   const { data, error } = await anonClient().auth.signInWithIdToken({ provider: "google", token: idToken });
   if (error || !data.session || !data.user?.email) {
-    if (error?.status === 400 && /gmail\.com|omsu\.edu\.ph/i.test(error.message)) {
-      throw new ApiError("VALIDATION", "Use a Gmail (@gmail.com) or @omsu.edu.ph Google account.");
+    if (error?.status === 400 && /gmail\.com/i.test(error.message)) {
+      throw new ApiError("VALIDATION", "Use a Gmail (@gmail.com) Google account.");
     }
     if (error && (error.status ?? 0) >= 500) throw error;
     throw new ApiError("INVALID_CREDENTIALS", "Google sign-in failed. Please try again.");
@@ -25,7 +25,7 @@ export default endpoint(Body, async ({ idToken, role }, req) => {
   await revokeSession(db, data.session.access_token); // the client never sees this session
 
   const email = data.user.email.trim().toLowerCase();
-  if (!isCampusEmail(email)) throw new ApiError("VALIDATION", "Use a Gmail (@gmail.com) or @omsu.edu.ph Google account.");
+  if (!isCampusEmail(email)) throw new ApiError("VALIDATION", "Use a Gmail (@gmail.com) Google account.");
 
   const profile = await getProfile(db, data.user.id);
   if (!profile) throw new ApiError("UNKNOWN", "Something went wrong. Please try again.");

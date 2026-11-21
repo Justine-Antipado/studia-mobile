@@ -13,11 +13,12 @@ import {
 
 const fail = (at: number): Attempt => ({ success: false, locked: false, at });
 
-test("allowed email domains: gmail + omsu, no spoofing", () => {
-  assert.ok(isCampusEmail(" Juan.Dela@OMSU.edu.ph "));
+test("allowed email domain: gmail only, no spoofing", () => {
+  assert.ok(isCampusEmail(" Juan.Dela@GMAIL.com "));
   assert.ok(isCampusEmail("juan.dela+1@gmail.com"));
   for (const bad of [
     "a@omsc.edu.ph",
+    "juan@omsu.edu.ph",
     "a@gmail.com.evil.com",
     "a@googlemail.com",
     "a@omsu.edu.ph.evil.com",

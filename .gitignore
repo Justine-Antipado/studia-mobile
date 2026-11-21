@@ -14,3 +14,4 @@ node_modules/
 /admin web OAuth.json
 /iOS native sign-in.plist
 *client_secret*.json
+*.zip
