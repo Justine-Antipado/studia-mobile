@@ -1,7 +1,7 @@
 # Phase 3 auth: what YOU must set up
 
-Allowed sign-up emails: `@gmail.com` and `@omsu.edu.ph` (campus owns no mail domain we can send from, so any Google
-account works). Enforced in the database (Auth hook + table constraint), not just in the app. To change it, edit
+Allowed sign-up emails: `@gmail.com` only (campus owns no mail domain we can send from, so any Google
+account works; migration 010). Enforced in the database (Auth hook), not just in the app. To change it, edit
 `ALLOWED_DOMAINS`/`EMAIL_RE` in `studia-api/src/lib/policy.ts` **and** `private.hook_before_user_created` + the
 `users_email_domain` constraint (migration 009).
 
