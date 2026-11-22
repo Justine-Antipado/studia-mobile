@@ -1,6 +1,5 @@
-// lesson-viewer-screen.tsx — video LINK (YouTube thumbnail + Watch on YouTube) / PDF / slide viewer, transcript (search + timestamps),
+// lesson-viewer-screen.tsx — video LINK (YouTube thumbnail + Watch on YouTube) / PDF / slide viewer, transcript (timestamps),
 // and an inline AI summary (TL;DR + bullets) with a cache-bypassing Regenerate action.
-import { useMemo, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -11,7 +10,6 @@ import {
   IconTile,
   ListState,
   PageTitle,
-  SearchField,
   VideoLinkCard,
   useToast,
 } from "@/shared/components/ui";
@@ -35,13 +33,6 @@ export default function StudentLessonViewer() {
   const toast = useToast();
   const { data: lesson, loading, error, refetch } = useLesson(classId, id);
   const regenerateSummary = useRegenerateSummary(classId ?? "", id ?? "");
-  const [search, setSearch] = useState("");
-
-  const transcript = useMemo(
-    () => (lesson?.transcript ?? []).filter((t) => t.text.toLowerCase().includes(search.toLowerCase())),
-    [lesson, search],
-  );
-
   const regenerate = async () => {
     const result = await regenerateSummary.run(undefined);
     if (!result.ok) toast.show(result.error.message, { tone: "red" });
@@ -120,8 +111,7 @@ export default function StudentLessonViewer() {
             {lesson.transcript.length > 0 ? (
               <View style={{ gap: SPACE.md }}>
                 <Text style={TYPE.h2}>Transcript</Text>
-                <SearchField value={search} onChangeText={setSearch} placeholder="Search transcript" />
-                {transcript.map((line) => (
+                {lesson.transcript.map((line) => (
                   <Pressable
                     key={line.id}
                     style={s.transcriptLine}
