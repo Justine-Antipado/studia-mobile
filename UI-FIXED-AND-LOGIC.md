@@ -357,3 +357,164 @@ Ito ay pinagsama mo sa tatlong mensahe; narito ang kumpletong audit.
 `features/auth/screens/auth-screen.tsx` · `features/auth/logic/auth-validation.ts` · `shared/components/ui/{screen,bottom-sheet,segmented-tabs,page-title}.tsx` · `shared/components/ui/` (bago: `select-field`, `comment-composer`, `date-field`) · `features/shared-screens/{screens,components,data,types,hooks}/*` · `app/{student,instructor}/_layout.tsx` + bagong route files (one-line re-exports) · `features/student/screens/{home,todo,planner,lesson-viewer}-screen.tsx` · `features/student/data/{planner,tasks,assignments,quizzes,lessons}-repository.ts` · `features/student/components/video-player.tsx` · `features/instructor/screens/{home,create-assignment,assignment-detail,create-quiz,quiz-detail,ai-quiz,gradebook,upload-material,announcement-detail}-screen.tsx` · `features/instructor/data/*` + `hooks/*` + `types/instructor.ts` · `features/instructor/logic/validators.ts` · `supabase/migrations/` (bagong: `…011` material 50 MB, `…012` assignments.closes_at, `…013` quizzes schedule/late) · `docs/api-contract.md` · `docs/ROUTE-MAP.md` · `studia-mobile/app.json` (keyboard/edge-to-edge).
 
 > Paalala sa workflow: ayon sa `CLAUDE.md`, bago i-declare ang anumang mobile task na tapos, patakbuhin ang `npx expo lint` at `npx tsc --noEmit` sa `studia-mobile/`; gumamit ng `npx expo install` para sa mga bagong dependency; at huwag galawin ang `ios/` o `android/`.
+
+---
+
+# ADDENDUM (2026-11-22) — Pagsasama ng mock data + karagdagang audit
+
+> Audit pa rin ito; **walang app code na binago**. Naiintindihan na sinadya pa ang mock data hangga't hindi pa konektado ang DB. Ang tanong: **pwede bang pagsamahin ang student at instructor mock data para ma-test ang buong flow?** → **Oo, pwede, at hindi ito rewrite ng UI.** Ang kailangan lang ay palitan ang loob ng mga `*-repository.ts` (na siya namang layunin ng architecture: "swapping = one file per feature"). Walang screen/hook na magbabago.
+
+## A. Disenyo ng iisang mock database
+
+### A.1 Ano ang gagawin
+Gumawa ng **isang module**: `core/data/mock/mock-db.ts` na may iisang in-memory store (typed tables) at maliliit na function para mag-read/mag-write. Ang student at instructor repositories ay magiging **manipis na "view"** nito (nagko-convert lang sa `StudentX` / `InstructorX` type). Ito rin ang magsisilbing 1:1 na hulma ng mga Supabase table, kaya madali ang paglipat sa remote pagkatapos.
+
+| Table (mock-db) | Pinagmulan ngayon (dalawang kopya) | Pinag-iisa |
+|---|---|---|
+| `users` | `DEMO` sa `session-store.ts` + pangalan sa roster/submissions | 1 instructor (Maria Santos), ~10 student (kasama si Juan Dela Cruz) |
+| `classes` (+ `ownerId`, `section`, `joinCode`) | `student/class-directory.ts` + `instructor/class-directory.ts` | 1 listahan; **teacher = pangalan ng owner** (hindi hardcoded) |
+| `enrollments` (`classId`, `studentId`) | `joined` Set (student) + `ROSTERS` Map (instructor) | 1 table; ang student `list()` = mga class ng kasalukuyang student; instructor roster = enrollments ng class |
+| `announcements` + `comments` (`authorId`, `authorRole`) | dalawang `ANNOUNCEMENTS` array | 1; ang `authorIsMe` ay *kinokompyut* mula sa session user (`comment.authorId === me.id`) |
+| `materials` | `LESSONS` (student) + `MATERIALS` (instructor) | 1; ang student view ay nagdadagdag ng `aiSummary` |
+| `assignments` | `ASSIGNMENTS` ×2 | 1 (`dueAt`, `closesAt`, `allowLate`, `points`, `attachments`) |
+| `assignmentSubmissions` (`assignmentId`, `studentId`, `status`, `submittedAt`, `text`, `file`, `score`, `feedback`) | nasa student `Assignment` lang; wala sa instructor | **Bago** — ito ang nagbubukas ng #12 (submissions view) at #14 (gradebook) |
+| `quizzes` + `questions` | `QUIZZES` ×2 (iba ang shape) | 1 (kasama ang `dueAt`, `closesAt`, `allowLate`, `timeLimitMin`) |
+| `quizAttempts` | `attempt` sa student quiz + `SUBMISSIONS` (instructor) | 1; ang "Needs grading" ay *kinokompyut* (essay na walang score) |
+| `notifications` (`userId`, `kind`, `refType`, `refId`, `body`, `readAt`) | `FEEDS` | 1; **ginagawa ng events** (tingnan A.3) |
+| `plannerBlocks`, `exams` (`studentId`) | module variables sa planner repo | 1 (per student) |
+
+### A.2 Identity: sino ang "ako"
+- Ang mock-db ay may `me(role)` na kumukuha ng `UserProfile` mula sa session store (`useRoleUser`/`setUser`) → nagma-map sa isang row ng `users` (by email o fixed demo id). Para sa demo: student = **Juan Dela Cruz**, instructor = **Maria Santos** (pareho na sa `DEMO`).
+- Kung naka-login ka bilang totoong remote user (hal. Justine Antipado) habang mock data ang mga screen, **huwag** gamitin ang remote id sa mock-db. Dalawang opsyon: (1) mock mode = laging DEMO identities; (2) i-seed ang mock user mula sa session (pangalan lang) at i-map sa fixed id. Iminumungkahi ko (2) para lumabas ang pangalan mo sa comments, pero (1) ang pinakasimple. Kailangan ng desisyon mo.
+- Ang "Switch to Student/Instructor View" (Account) ay nagpapalit lang ng aktibong identity — ang **data ay hindi nire-reset**. Ito ang paraan ng pag-test: mag-post bilang instructor → *Switch* → makita bilang student. (Ang `switchUser` ay naglilinis na ng query cache, kaya fresh ang fetch sa pag-switch; walang cross-role stale cache.)
+- **Mahalagang pagbabago:** huwag i-reset ang mock-db sa `signOut`/`switchUser` (kasalukuyang kaugalian ng mock arrays — nananatili sa module hanggang i-reload ang app). Magdagdag ng `resetMockDb()` na tinatawag lang ng DEV tools (A.4).
+
+### A.3 Mga event na nagbibigay-buhay sa flow (ito ang nagpapa-test ng "end-to-end")
+Bawat write sa mock-db ay may kasamang side-effect, gaya ng gagawin ng server/trigger sa remote:
+
+| Aksyon | Epekto sa kabilang panig |
+|---|---|
+| Instructor: post announcement | Lalabas sa student Stream; notification (`notice`) sa lahat ng enrolled |
+| Instructor/Student: mag-comment | Nakikita ng dalawa; notification sa kabilang panig/author ng post |
+| Instructor: gumawa/mag-edit ng assignment | Lalabas sa student To-do/Tasks (kasama ang bagong due); notification (`reminder`) kung binago ang due |
+| Student: Turn in (submitted/late/draft) | Lalabas sa instructor "Submissions" ng assignment; notification (`grade`/`class`) sa instructor |
+| Instructor: mag-grade | Lalabas ang score/feedback sa student; notification (`grade`) |
+| Instructor: mag-publish ng quiz | Lalabas sa student; may due/late rule |
+| Student: mag-submit ng quiz | Auto-score MCQ/ID; essay → instructor "Needs grading" |
+| Student: join class (code) | Dumadagdag sa instructor roster at `studentCount` (kinokompyut, hindi hardcoded) |
+| Instructor: remove student | Nawawala ang class sa student list |
+| Student: leave class | Nawawala sa roster |
+
+> Ang lahat ng bilang (`studentCount`, `submittedCount`, `pendingCount`, `progress`) ay dapat **derived** mula sa mga table — ngayon ay static seed numbers (`students-repository.ts` `seedFor`, `PROGRESS` map sa student classes) kaya kahit mag-submit ay hindi nagbabago.
+
+### A.4 DEV tools (maliit pero malaki ang tulong sa testing)
+Sa Account (nakatago sa `__DEV__ && !isRemote`):
+- **Switch role** (nandiyan na, ilipat dito).
+- **Reset mock data** (`resetMockDb()` → i-restore ang seed).
+- **Simulate time** (`+1 day`, `+1 week`): isang `mockNow()` na ginagamit ng `isOverdue`, `dueLabel`, planner, at late rule — para ma-test ang "late", "closed", "overdue" nang hindi naghihintay. (Ngayon ay `Date.now()` ang direktang tinatawag sa maraming lugar.)
+- **Failure rate** at **latency** slider: ang `MOCK_FAILURE_RATE` ay `const = 0` sa source (kailangang i-edit ang file). Gawing runtime setting/env (`EXPO_PUBLIC_MOCK_FAILURE`) para ma-test ang error/retry UI.
+
+### A.5 Seed na sumasakop sa lahat ng estado (para may mapagsubukan agad)
+- 1 instructor (Maria), 3 class na pagmamay-ari niya: `IT 321 BSIT 3-A`, `IT 314 BSIT 3-A`, `IT 318 BSIT 3-A` (+ `IT 322 BSIT 4-A` na wala si Juan). **Ayusin ang mismatch ngayon:** instructor `it314 = 3-B`/`it318 = 3-C` pero student `3-A` lahat.
+- ~10 student; si Juan ay enrolled sa 3 class; iba-iba ang estado ng kanilang submissions: `missing`, `draft` (not-allowed-late at overdue), `submitted`, `late`, `graded`.
+- Assignments: isang bukas (due bukas), isang overdue na `allowLate=false`, isang overdue na `allowLate=true`, isang graded, isang may `closesAt` na lumipas na.
+- Quizzes: hindi pa kinuha / tapos na / may essay na naghihintay ng grading / draft (hindi dapat makita ng student) / lampas due.
+- Announcements: may comment mula sa student **at** instructor, may pinned.
+- Materials: isang YouTube link na `ready`, isang `processing`, isang `failed`, isang PDF.
+- Notifications: *derived* mula sa events, hindi hand-typed.
+
+### A.6 Mga hakbang ng pagsasagawa (ligtas na pagkakasunod, hindi sabay-sabay)
+1. Gumawa ng `mock-db.ts` + `mock-seed.ts` at `mock-selectors.ts` (derived counts). Walang binabago pa sa repos.
+2. Ilipat ang **classes + enrollments** (student `classes-repository`, instructor `classes-repository`, `students-repository`) → test: join class bilang student, lalabas sa roster.
+3. **Announcements + comments** (sabay ang #4 instructor comment).
+4. **Assignments + assignmentSubmissions** (sabay ang #5, #12).
+5. **Quizzes + attempts** (#11/#15, gradebook #14).
+6. **Materials/lessons** (#13).
+7. **Notifications** na derived (#2) at **planner** (#10).
+8. Burahin ang dalawang `class-directory.ts` at ang mga lumang module-level array; `npx expo lint` + `npx tsc --noEmit` pagkatapos ng bawat hakbang.
+- Ang mga hooks, screens, cache keys, at `useMutation`/`useQuery` ay **hindi nagbabago** — kaya low-risk.
+- **Cache keys:** magkaiba ang key ng student at instructor (`["instructor","classes",id,"announcements"]` vs student). Dahil `switchUser` ay nagpapurge ng query cache, ayos para sa role switch. Pero kung mag-test ka na mabilis (walang switch) sa dalawang device/screen, magdagdag ng `mockDb.subscribe()` na nag-iinvalidate ng lahat ng key na apektado ng table. (Hindi kailangan kung switch-test lang.)
+- **Remote transition:** pag naka-Supabase na, ang bawat `*-repository.ts` ay papalitan ng remote implementation (`DATA_SOURCE`); ang mock-db ay mananatili para sa offline demo/test. Isang switch lang sa `core/config/data-source.ts` (nasa codebase na) — ilapat ito sa mga domain repos para hindi mag-mix ng mock at remote (ngayon, auth lang ang gumagalang sa switch; ang ibang repos ay laging mock, kaya ang header mo ay "Justine Antipado" (remote) pero ang classes ay mock Maria — kaya magulo ang test).
+
+### A.7 Panganib / dapat tandaan
+- **Laki:** mga ~400–600 linya ang mock-db + seed; hatiin (`mock-db/{users,classes,content,assessments,notifications}.ts`) para sa 250-line rule ng UI-BRIEF.
+- **Mutation ordering/identity:** gumamit ng iisang `newId` at timestamp na galing sa `mockNow()` para pare-pareho.
+- **Huwag i-persist** sa AsyncStorage (hindi hiniling at may panganib na maiwan ang lumang shape); optional na lang kung gusto mong mabuhay ang data sa reload.
+- **Huwag ihalo** sa totoong auth session — ang mock identities ay para sa `DATA_SOURCE=mock` lang.
+
+---
+
+## B. Karagdagang rekomendasyon (bagong audit, bukod sa seksyon 1–3)
+
+### B.1 Pagiging tama ng data / derived values
+| Isyu | Saan | Ayos |
+|---|---|---|
+| `studentCount`, `progress`, `submittedCount`, `pendingCount` ay static | `instructor/data/{class-directory,students-repository}.ts`, `student/data/classes-repository.ts` (`PROGRESS`) | Kompyutin mula sa tables (A.1) |
+| Student `leave()` / instructor `remove()` / `joinByCode()` ay hindi magkaugnay | dalawang repo | iisang `enrollments` |
+| `Home → Continue Learning` ay base sa fake `progress` | `student/home-screen.tsx` | derived progress = natapos na lessons/tasks ÷ kabuuan |
+| Instructor `Submission` ay walang `studentId`/`classId` (pangalan lang) | `types/instructor.ts` | Dagdagan ng ids; huwag mag-join sa pangalan |
+| Hindi pwede ang dalawang class na parehong `code` sa gradebook (1.14) | gradebook | gamitin `classId` |
+| `joinCode` ay nakikita ng student (field `joinCode` sa `StudentClass`) | `student/data/classes-repository.ts` | Hindi dapat ibigay ang join code sa student (security); alisin sa student type |
+
+### B.2 Mga lugar na tahimik na pumapalpak (error handling)
+- Maraming `void mutation.run(...)` na walang toast sa failure: planner (regenerate, mark-done, move), student `deleteComment`, notifications mark-read (optimistic rollback pero walang mensahe), todo `toggle`. Gumawa ng iisang helper `useRunWithToast(mutation, {success, fail})` at gamitin kahit saan — mawawala ang pagkakaiba ng instructor (may toast) at student (wala).
+- `submitExam` (planner): walang `else` kapag `!result.ok`.
+- `useMutation` ay walang double-tap guard (3.6) — pinaka-importante para sa "Turn in", "Post", "Publish" (puwedeng magkaroon ng dobleng quiz).
+- Ang `ErrorBoundary` ay nasa bawat Screen (maganda) pero ang `reportError` ay console lang; ayos na sa ngayon.
+
+### B.3 Forms at UX
+- **Draft autosave** ay may hook (`use-draft-autosave.ts`) pero walang gumagamit: ikabit sa create assignment/quiz/announcement (mahaba ang tina-type ng instructor; mawawala kapag natawagan o natakpan ng keyboard/crash).
+- **Unsaved-changes guard**: meron sa create assignment, assignment-detail (student), quiz-take; **wala** sa create-quiz, ai-quiz, post-announcement (may), upload-material, create-class. Pantayin sa isang `useUnsavedGuard(dirty)`.
+- **`create-quiz` ay may "Save draft"/"Publish" na parehong may `loading` = dalawang button na sabay umiikot** (iisang `createQuiz.loading`). Ihiwalay kung alin ang nag-trigger.
+- **Class chips** (create-quiz, ai-quiz) ay tahimik na tumatanggap ng `classId = null` hanggang Publish (mensahe lang sa dulo). Piliin ang unang class by default o ipakita ang required marker.
+- **Numeric fields** (`Points`, score) ay tumatanggap ng `decimal-pad` na may koma/dot lang sa ilan (`parseScore` ay nagko-convert ng koma, pero ang `validatePoints` ay hindi) — pantayin.
+- **Empty states** sa Home (student) ay wala kapag walang tasks at walang classes (blangkong pahina). Magdagdag ng "Join a class" CTA.
+- **Pull-to-refresh** ay nasa ilang screen lang (home, notifications, lists); wala sa course/class detail tabs.
+- **Search** (`student/search`, `instructor/search`): hindi ko ni-verify ang debounce; tiyaking may debounce at hindi nagfi-filter sa bawat keystroke kapag remote na.
+
+### B.4 Navigation / routing
+- Ang `docs/ROUTE-MAP.md` ay hindi pa kasama ang mga bagong route (account subpages, notification detail, assignment edit, submissions, quiz edit). I-update kasabay ng bawat route.
+- Pagkatapos mag-create (assignment/quiz/material/announcement), `router.replace` papuntang class detail — pero ang **tab** (`Assessments`/`Materials`) ay hindi nakatakda, kaya babalik sa **Stream**. Ipasa ang `tab` param (mayroon nang `useRouteEnum("tab")`) para mapunta sa tamang tab.
+- Student "course-detail" `onLeft` ay `router.replace("/student/courses")` — tama; ang instructor ay walang katumbas na archive/delete class UI (dead hooks, 3.5).
+- Back behavior: `backBehavior="history"` sa tabs + `useSafeBack` fallback — mukhang maayos; subukan ang deep link (`studiamobile://student/assignment-detail?...`) dahil ang route params ay validated pero walang "not found" screen para sa mismatched `classId/id` pair (ListState empty lang).
+
+### B.5 Performance
+- Maraming detail screens ay `ScrollView` + `.map()` (comments, questions, submissions). Sa remote na may daan-daang student/submission, gamitin ang `AppList` (virtualized) — lalo na ang **Submissions list (#12)** at **Gradebook**; planuhin na ngayon para hindi ma-rewrite.
+- `useAllSubmissions()` (instructor) ay kumukuha ng **lahat** ng submissions ng lahat ng class para sa Home stats, Grading, Gradebook, at GradesTab → palitan ng `listByClass`/`listPending` na may pagination sa remote.
+- `tasks-repository.list()` ay N+1 (bawat class: assignments + quizzes) at tinatawag din sa `toggleDone` at sa planner generate. Ang remote ay dapat isang endpoint (`GET /student/tasks`); sa mock, ayusin na kasama ng mock-db (isang pass).
+- `Screen` ay nagre-render ng `AppHeader` na may dalawang `require` image; ok. Ang `AppImage` cache ay mayroon. Walang napansing problema.
+
+### B.6 Accessibility at i18n
+- Mga `Pressable` na walang `accessibilityRole`/label: suggestion chips (AI), transcript lines, ilang icon button. Dynamic type: tiyaking `numberOfLines` truncation ay hindi nagtatago ng kritikal na impormasyon (due date) — ang `ListRow` ay 2 linya max.
+- Kulay lamang ang nagpapahiwatig ng estado (overdue = pula, badge tones) — may text naman ("Overdue · was due") kaya okay; i-check contrast ng `C.muted` sa `C.lavenderSoft`.
+- Lahat ng teksto ay English (hardcoded). Kung hindi plano ang Filipino, okay; kung oo, mag-set na ng `strings.ts` bago lumaki pa.
+
+### B.7 Testing at tooling
+- **Walang test runner** (nakasaad sa CLAUDE.md). Dahil malaking bahagi ng bug ay *purong logic* (petsa, late rule, score parsing, filter, derived counts), magdagdag ng **`jest-expo`** (`npx expo install jest-expo jest @types/jest`) at magsimula sa: `shared/utils/format` (timezone), planner `generateBlocks`/week window, assignment late rule (`attach`/`turnIn`), `parseScore`, task `matches`, gradebook filter, auth validation. Kapag may `mockNow()` at mock-db, madaling i-test ang late/closed/overdue.
+- Gumawa ng **CI script** (`npm run check` = `expo lint && tsc --noEmit && jest`) — sa ngayon manu-mano lang ang lint/tsc (CLAUDE.md).
+- `expo-doctor` ay hindi pa napatakbo sa audit na ito; patakbuhin bago magdagdag ng mga native dependency (datetimepicker, keyboard-controller, image-picker) para makita ang compatibility sa SDK 58.
+- **Dev build:** lahat ng bagong native dependency ay nangangailangan ng bagong dev client build (`eas build --profile development`) — isahang build sa halip na paulit-ulit; planuhin ang listahan ng native deps bago mag-build.
+
+### B.8 Seguridad (para sa mock → remote)
+- Ang `joinCode` sa student type (B.1) at ang `devCode` sa OTP (nandiyan ang `__DEV__` gate; i-verify na hindi napupunta sa production bundle).
+- Rate limiting sa `joinByCode` (brute force 6-char code) — server-side; ilagay sa `api-contract.md`.
+- Ang mock "AI" ay hindi dapat mag-ship nang hindi minarkahang *Preview*; ang AI endpoint ay dapat may per-user quota (gastos) at huwag magpadala ng PII sa AI provider.
+- Link ng video / profile photo: tingnan 1.13 at 3.8.
+
+### B.9 Mga bagong dokumentasyon na dapat sabay-update
+`docs/api-contract.md` (instructor comment, assignment `closes_at`, submissions endpoints, quiz schedule/late, profile OTP purpose, video link, 50 MB, gmail-only), `docs/database.md` + bagong migrations, `docs/ROUTE-MAP.md`, README ng bawat folder na ginalaw (UI-BRIEF rule).
+
+---
+
+## C. Na-update na rekomendasyon sa pagkakasunod
+
+Idagdag ang **Hakbang 0** bago ang Batch C ng seksyon 4:
+
+0. **Mock-db unification** (A.6 hakbang 1–2: classes + enrollments, mock identity, `mockNow`) — ito ang nagpapahintulot ng makabuluhang testing ng #4, #5, #11, #12, #14.
+   Pagkatapos ay gawin ang bawat feature **kasabay** ng paglipat ng domain nito sa mock-db (hindi hiwalay na malaking refactor).
+
+**Dagdag na desisyon na kailangan ko:**
+11. Mock identity: laging DEMO (Juan/Maria) o gamitin ang pangalan ng naka-login na user?
+12. Gusto mo bang **DEV tools panel** (reset data, simulate time, failure rate) sa Account?
+13. Papasok ba ang `jest-expo` + `npm run check` bilang bahagi ng gawain, o saka na?
+14. Payag ka bang gawing **derived** ang lahat ng bilang (studentCount/progress/pending) kahit mag-iba ang lumalabas na numbers sa demo?
