@@ -31,6 +31,12 @@ export function useCreateAnnouncement(classId: string) {
   );
 }
 
+export function useAddComment(classId: string, id: string) {
+  return useMutation((text: string) => instructorAnnouncementRepository.addComment(classId, id, text), {
+    invalidate: () => [itemKey(classId, id), listKey(classId)],
+  });
+}
+
 export function useDeleteComment(classId: string, id: string) {
   return useMutation((commentId: string) => instructorAnnouncementRepository.deleteComment(classId, id, commentId), {
     invalidate: () => itemKey(classId, id),

@@ -15,3 +15,9 @@ node_modules/
 /iOS native sign-in.plist
 *client_secret*.json
 *.zip
+
+# Android signing (never commit)
+*.jks
+*.keystore
+credentials.json
+credentials/

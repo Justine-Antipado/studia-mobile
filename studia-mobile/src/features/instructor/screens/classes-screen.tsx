@@ -1,5 +1,5 @@
 // classes-screen.tsx — Classes tab: list + create class.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -11,7 +11,7 @@ import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
 import type { InstructorClass } from "@/features/instructor/types/instructor";
 
 export default function InstructorClassesScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useInstructorClasses();
   const classes = useMemo(() => data ?? [], [data]);
 

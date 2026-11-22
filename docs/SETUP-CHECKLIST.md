@@ -21,7 +21,8 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 - [ ] Auth: apply migration 010 (Gmail-only) with `supabase db push --remote`, then enable Google provider: see docs/AUTH-SETUP.md (Phase 3)
 - [ ] Auth: email OTP template and SMTP (Resend + DNS): see docs/AUTH-SETUP.md (Phase 3)
 - [ ] Storage: confirm buckets `materials` and `submissions` exist (created by migration 003)
-- [x] Storage: material cap lowered to 40 MB (migration 007) to fit the free plan 50 MB per-file limit. Mobile UI copy and validator still say 500 MB (UI change, needs your OK)
+- [x] Storage: material cap is 50 MB (migration 012; 007 had set 40 MB). Mobile validator and UI copy now say 50 MB.
+- [ ] Push migrations 011 (assessment schedule + rules), 012 (50 MB cap), 013 (`profile_update` OTP purpose): `supabase db push --remote`, then re-run the RLS tests in `supabase/tests`
 
 ## 4. Vercel projects
 - [x] `studia-admin` project created (justineantipado10-9065/studia-admin), root dir `studia-admin`

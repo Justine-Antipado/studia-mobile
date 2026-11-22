@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -11,31 +11,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.18"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -347,6 +322,7 @@ export type Database = {
         Row: {
           allow_late: boolean
           class_id: string
+          closes_at: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -360,6 +336,7 @@ export type Database = {
         Insert: {
           allow_late?: boolean
           class_id: string
+          closes_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -373,6 +350,7 @@ export type Database = {
         Update: {
           allow_late?: boolean
           class_id?: string
+          closes_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -785,6 +763,7 @@ export type Database = {
           material_id: string
           mindmap: Json | null
           mode: Database["public"]["Enums"]["summary_mode"]
+          regen_count: number
           source_version: number
           tldr: string | null
         }
@@ -795,6 +774,7 @@ export type Database = {
           material_id: string
           mindmap?: Json | null
           mode: Database["public"]["Enums"]["summary_mode"]
+          regen_count?: number
           source_version?: number
           tldr?: string | null
         }
@@ -805,6 +785,7 @@ export type Database = {
           material_id?: string
           mindmap?: Json | null
           mode?: Database["public"]["Enums"]["summary_mode"]
+          regen_count?: number
           source_version?: number
           tldr?: string | null
         }
@@ -909,6 +890,9 @@ export type Database = {
           processing: Database["public"]["Enums"]["processing_state"]
           processing_error: string | null
           title: string
+          video_id: string | null
+          video_provider: string | null
+          video_url: string | null
         }
         Insert: {
           attempt_count?: number
@@ -923,6 +907,9 @@ export type Database = {
           processing?: Database["public"]["Enums"]["processing_state"]
           processing_error?: string | null
           title: string
+          video_id?: string | null
+          video_provider?: string | null
+          video_url?: string | null
         }
         Update: {
           attempt_count?: number
@@ -937,6 +924,9 @@ export type Database = {
           processing?: Database["public"]["Enums"]["processing_state"]
           processing_error?: string | null
           title?: string
+          video_id?: string | null
+          video_provider?: string | null
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -1250,6 +1240,7 @@ export type Database = {
           graded_by: string | null
           id: string
           idempotency_key: string | null
+          late: boolean
           max_score: number
           quiz_id: string
           score: number | null
@@ -1264,6 +1255,7 @@ export type Database = {
           graded_by?: string | null
           id?: string
           idempotency_key?: string | null
+          late?: boolean
           max_score?: number
           quiz_id: string
           score?: number | null
@@ -1278,6 +1270,7 @@ export type Database = {
           graded_by?: string | null
           id?: string
           idempotency_key?: string | null
+          late?: boolean
           max_score?: number
           quiz_id?: string
           score?: number | null
@@ -1413,7 +1406,9 @@ export type Database = {
       }
       quizzes: {
         Row: {
+          allow_late: boolean
           class_id: string
+          closes_at: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -1428,7 +1423,9 @@ export type Database = {
           title: string
         }
         Insert: {
+          allow_late?: boolean
           class_id: string
+          closes_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -1443,7 +1440,9 @@ export type Database = {
           title: string
         }
         Update: {
+          allow_late?: boolean
           class_id?: string
+          closes_at?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -1637,6 +1636,7 @@ export type Database = {
       users: {
         Row: {
           auth_provider: Database["public"]["Enums"]["auth_provider"]
+          avatar_path: string | null
           course: Database["public"]["Enums"]["course_code"] | null
           created_at: string
           deleted_at: string | null
@@ -1658,6 +1658,7 @@ export type Database = {
         }
         Insert: {
           auth_provider?: Database["public"]["Enums"]["auth_provider"]
+          avatar_path?: string | null
           course?: Database["public"]["Enums"]["course_code"] | null
           created_at?: string
           deleted_at?: string | null
@@ -1679,6 +1680,7 @@ export type Database = {
         }
         Update: {
           auth_provider?: Database["public"]["Enums"]["auth_provider"]
+          avatar_path?: string | null
           course?: Database["public"]["Enums"]["course_code"] | null
           created_at?: string
           deleted_at?: string | null
@@ -1741,8 +1743,51 @@ export type Database = {
       }
     }
     Functions: {
+      class_classmates: {
+        Args: { p_class_id: string }
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
+      delete_class: { Args: { p_class_id: string }; Returns: undefined }
+      grade_assignment: {
+        Args: {
+          p_assignment_id: string
+          p_feedback: string
+          p_score: number
+          p_student_id: string
+        }
+        Returns: undefined
+      }
+      grade_quiz_attempt: {
+        Args: { p_attempt_id: string; p_feedback: string; p_score: number }
+        Returns: undefined
+      }
+      instructor_analytics: { Args: never; Returns: Json }
       join_class: { Args: { p_code: string }; Returns: string }
       leave_class: { Args: { p_class_id: string }; Returns: undefined }
+      save_quiz: {
+        Args: { p_quiz: Json; p_replace_questions?: boolean }
+        Returns: string
+      }
+      set_material_transcript: {
+        Args: { p_material_id: string; p_text: string }
+        Returns: undefined
+      }
+      submit_assignment: {
+        Args: {
+          p_assignment_id: string
+          p_file_id: string
+          p_text: string
+          p_turn_in?: boolean
+        }
+        Returns: Database["public"]["Enums"]["submission_status"]
+      }
+      submit_quiz: {
+        Args: { p_answers: Json; p_quiz_id: string; p_started_at?: string }
+        Returns: string
+      }
     }
     Enums: {
       account_status: "active" | "inactive" | "pending_approval"
@@ -1789,6 +1834,7 @@ export type Database = {
         | "google_signup"
         | "reset"
         | "password_change"
+        | "profile_update"
       processing_state: "processing" | "ready" | "failed"
       question_type: "multiple_choice" | "identification" | "essay"
       quiz_source: "manual" | "ai"
@@ -1936,9 +1982,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       account_status: ["active", "inactive", "pending_approval"],
@@ -1988,6 +2031,7 @@ export const Constants = {
         "google_signup",
         "reset",
         "password_change",
+        "profile_update",
       ],
       processing_state: ["processing", "ready", "failed"],
       question_type: ["multiple_choice", "identification", "essay"],

@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Badge, Card, FormField, Icon } from "@/shared/components/ui";
 import { C, type Tone } from "@/shared/constants/studia-colors";
 import { RADIUS, SPACE, TYPE } from "@/shared/constants/tokens";
-import type { QuizAnswer, QuizQuestion } from "@/features/student/types/student";
+import type { QuizQuestion } from "@/features/student/types/student";
 
 type Props = {
   index: number;
@@ -101,8 +101,6 @@ export const QuizQuestionCard = memo(function QuizQuestionCard({ index, question
     </Card>
   );
 });
-
-export const emptyAnswer = (question: QuizQuestion): QuizAnswer => ({ questionId: question.id, response: null });
 
 const s = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

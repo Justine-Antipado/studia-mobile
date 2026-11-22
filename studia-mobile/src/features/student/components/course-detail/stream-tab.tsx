@@ -1,5 +1,5 @@
 // stream-tab.tsx — Course detail "Stream" tab: pinned + recent announcements for the class.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { Text, View } from "react-native";
 
 import { Badge, Card, ListState, SectionHeader } from "@/shared/components/ui";
@@ -8,7 +8,7 @@ import { timeAgo } from "@/features/student/logic/format";
 import { useAnnouncements } from "@/features/student/hooks/use-announcements";
 
 export function StreamTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useAnnouncements(classId);
   const announcements = data ?? [];
 

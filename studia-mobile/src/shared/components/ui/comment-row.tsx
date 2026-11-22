@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Comment } from "@/core/types/content";
+import { Badge } from "@/shared/components/ui/badge";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { Icon } from "@/shared/components/ui/icon";
 import { C } from "@/shared/constants/studia-colors";
@@ -27,10 +28,11 @@ export const CommentRow = memo(function CommentRow({
       <Avatar name={comment.author} size={32} />
       <View style={s.body}>
         <View style={s.head}>
-          <Text style={TYPE.bodyStrong} numberOfLines={1}>
+          <Text style={[TYPE.bodyStrong, s.name]} numberOfLines={1}>
             {comment.author}
           </Text>
-          <Text style={TYPE.caption}>{timeAgo(comment.postedAt)}</Text>
+          {comment.authorIsInstructor ? <Badge label="Instructor" tone="primary" /> : null}
+          <Text style={[TYPE.caption, s.time]}>{timeAgo(comment.postedAt)}</Text>
         </View>
         {/* Plain Text: comment bodies are never rendered as markup. */}
         <Text style={TYPE.body}>{comment.text}</Text>
@@ -52,10 +54,11 @@ export const CommentRow = memo(function CommentRow({
 const s = StyleSheet.create({
   row: { flexDirection: "row", gap: SPACE.sm + 2, alignItems: "flex-start" },
   body: { flex: 1, gap: 2 },
+  name: { flexShrink: 1 },
+  time: { marginLeft: "auto" },
   head: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: SPACE.sm,
   },
 });

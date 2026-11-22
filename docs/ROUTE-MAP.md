@@ -42,8 +42,8 @@ Consequences worth knowing:
 - Every back button and the Android hardware back go through `useSafeBack(fallback)`, where the
   fallback is the logical parent in the tree below — never just home. On a deep link or cold start
   with no history it replaces with that parent, so a sub page can never dead-end.
-- All `?params` are validated before use (`core/logic/route-params.ts`: `parseId`, `parseInteger`,
-  `parseEnum`, `parseText`, `useRouteId`, `useRouteIds`, `useRouteEnum`). Route params are never
+- All `?params` are validated before use (`core/logic/route-params.ts`: `parseId`,
+  `parseEnum`, `useRouteId`, `useRouteIds`, `useRouteEnum`). Route params are never
   trusted.
 - Role guards: `/student/*` requires a student session and `/instructor/*` an instructor session
   (`RoleGate` + `useRoleGuard`); no session redirects to `/auth`, except the `__DEV__` demo-user
@@ -73,9 +73,13 @@ Tabs: **home · courses · ai · notifications · account**
   account                                     tab
 
 Stack sub pages                                     back fallback
+  account-personal                                  → /student/account   (edit profile, email OTP before saving)
+  account-password                                  → /student/account   (email OTP, then new password)
+  account-privacy                                   → /student/account
+  account-about                                     → /student/account
+  account-photo                                     → /student/account   (camera / gallery / remove; cropped + resized on device)
   todo                                              → /student/home
   planner                                           → /student/home
-  search                              (modal)       → /student/home
   join-class                          (modal)       → /student/courses
   course-detail?id&tab                              → /student/courses
       tabs: Stream · Lessons · Tasks · Grades · People  (tab kept in the URL)
@@ -88,6 +92,9 @@ Stack sub pages                                     back fallback
 
 Notes
 
+- **No duplicate pushes:** every `Stack.Screen` has `getId` (`core/logic/screen-id.ts`), the route
+  params, so a rapid double/triple tap opens one copy of a sub page and one Back returns. Opening a
+  *different* item (other `id`) still stacks.
 - To-do and Study Planner are reached from the Home tab (quick actions), so the tab bar stays at
   five items.
 - Leave class is a confirm dialog inside `course-detail` (People tab), not a route.
@@ -110,24 +117,28 @@ Tabs: **home · classes · assessments · ai · notifications · account**
   account                                     tab
 
 Stack sub pages                                     back fallback
+  account-personal / account-password / account-privacy / account-about
+                                                    → /instructor/account (same screens as the student group)
   analytics                                         → /instructor/home
-  search                              (modal)       → /instructor/home
   create-class                        (modal)       → /instructor/classes
   class-detail?id&tab                               → /instructor/classes
       tabs: Stream · Materials · Assessments · People · Grades  (tab kept in the URL)
   post-announcement?classId           (modal)       → /instructor/class-detail  (confirm-discard)
   announcement-detail?classId&id                    → /instructor/class-detail  (moderate comments)
-  upload-material?classId             (modal)       → /instructor/class-detail  (.mp4 .mov .pdf .ppt(x) .doc(x), progress)
-  material-detail?classId&id                        → /instructor/class-detail  (transcript, objectives, delete)
-  create-assignment?classId           (modal)       → /instructor/class-detail  (due date, points, allow-late, attachments)
-  assignment-detail?classId&id                      → /instructor/class-detail
+  upload-material?classId             (modal)       → /instructor/class-detail  (video link OR .pdf .ppt(x) .doc(x) up to 50 MB)
+  material-detail?classId&id                        → /instructor/class-detail  (video link card, transcript + paste-transcript fallback, objectives, delete)
+  create-assignment?classId           (modal)       → /instructor/class-detail  (date/time picker, points, late dropdown, attachments)
+  edit-assignment?classId&id          (modal)       → /instructor/assignment-detail  (same form, preloaded incl. attachments)
+  assignment-detail?classId&id                      → /instructor/class-detail  (+ Submissions: Submitted/Late/Missing/Graded)
+  grade-assignment?classId&assignmentId&studentId   → /instructor/assignment-detail
   student-detail?classId&studentId                  → /instructor/class-detail  (progress, remove student)
-  create-quiz                         (modal)       → /instructor/assessments   (MC · Identification · Essay, confirm-discard)
+  create-quiz                         (modal)       → /instructor/assessments   (MC · Identification · Essay, schedule & rules, confirm-discard)
+  edit-quiz?id                        (modal)       → /instructor/quiz-detail   (same form; questions locked once students have submitted)
   ai-quiz                             (modal)       → /instructor/assessments   (MC only; count, difficulty, Bloom)
   quiz-detail?id                                    → /instructor/assessments   (Draft / Published)
   grading?quizId                                    → /instructor/assessments
   grade-submission?id                               → /instructor/grading
-  gradebook?classId                                 → /instructor/assessments
+  gradebook?classId                                 → /instructor/assessments   (assignments + quizzes; class chips hidden when classId is set; "Show" filter)
 ```
 
 Archive / delete class and delete material are confirm dialogs, not routes.
@@ -143,8 +154,9 @@ same screen, because the two groups are separate navigators.
 Planned in the P0 map, still missing. Routes do not exist, and the Account list shows placeholder
 rows for the settings ones:
 
-- Account sub-pages: `edit-profile`, `change-password`, `notification-settings`, `appearance`,
-  `language`, `privacy-security` (sessions, sign out all, Clear cache), `help`, `about`.
+- Account sub-pages: `notification-settings`, `appearance`, `language`, `privacy-security`
+  (sessions, sign out all, Clear cache) and `help`. `account-personal`, `account-password`,
+  `account-privacy`, `account-about` and `account-photo` exist (see above).
 - Student AI sub-pages: `ai-summary?sourceId`, `ai-mind-map?sourceId`, `ai-flashcards?sourceId`.
 
 When they are added: put the file in `app/<role>/`, add its name to `SUBPAGE_ROUTES` (or

@@ -1,14 +1,15 @@
 // quiz-detail-screen.tsx — quiz preview (Draft / Published), questions, grading shortcut.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { ActionButton, Badge, Card, ConfirmDialog, ListState, PageTitle } from "@/shared/components/ui";
+import { ActionButton, Badge, Card, ConfirmDialog, ListState, PageTitle, formatDateTime } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { TONES, type Tone } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteId } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { dueLabel } from "@/features/instructor/logic/format";
 import { OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
 import { useDeleteQuiz, useQuiz } from "@/features/instructor/hooks/use-quizzes";
 import type { QuizStatus } from "@/features/instructor/types/instructor";
@@ -18,7 +19,7 @@ const STATUS_LABEL: Record<QuizStatus, string> = { draft: "Draft", published: "P
 
 export default function QuizDetailScreen() {
   const id = useRouteId();
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack("/instructor/assessments");
   const { data: quiz, loading, error, refetch } = useQuiz(id);
   const deleteQuiz = useDeleteQuiz(quiz?.classId ?? "");
@@ -52,6 +53,12 @@ export default function QuizDetailScreen() {
               <Text style={[TYPE.muted, { marginTop: 4 }]}>
                 {quiz.questions.length} question{quiz.questions.length === 1 ? "" : "s"} · {quiz.source === "ai" ? "AI-generated" : "Manual"}
               </Text>
+              {quiz.dueAt ? <Text style={TYPE.muted}>{dueLabel(quiz.dueAt)}</Text> : null}
+              <Text style={TYPE.muted}>
+                {quiz.allowLate && quiz.closesAt ? `Late attempts allowed until ${formatDateTime(new Date(quiz.closesAt))}` : "No late attempts"}
+                {quiz.timeLimitMin ? ` · ${quiz.timeLimitMin} min limit` : ""}
+              </Text>
+              <Text style={TYPE.muted}>{`${quiz.attemptCount} submission${quiz.attemptCount === 1 ? "" : "s"}`}</Text>
             </Card>
 
             {quiz.questions.map((q, i) => (
@@ -69,6 +76,12 @@ export default function QuizDetailScreen() {
               </Card>
             ))}
 
+            <ActionButton
+              label="Edit quiz"
+              icon="create-outline"
+              variant="secondary"
+              onPress={() => router.push({ pathname: "/instructor/edit-quiz", params: { id: quiz.id } })}
+            />
             <ActionButton
               label="Open grading"
               icon="document-text-outline"

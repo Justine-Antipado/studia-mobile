@@ -1,11 +1,11 @@
 // ai-assistant-screen.tsx — chat with STUDIA AI. One implementation, role-aware via `role`
-// (seed messages, suggestions and subtitle come from CHAT_CONFIG[role]).
-// TODO(refactor): route chat through an ai-service/data layer instead of mock-data directly.
-import { useEffect, useRef, useState, type ComponentRef } from "react";
+// (suggestions and subtitle come from CHAT_CONFIG[role]).
+// Replies come from studia-api (ai-chat-repository); the AI key never ships in the app.
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from "react";
 import { Keyboard, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { CHAT_CONFIG, mockReply } from "@/core/data/mock/mock-data";
 import type { Role } from "@/core/types/role";
+import { aiChatRepository } from "@/features/shared-screens/data/ai-chat-repository";
 import { AiChatComposer } from "@/features/shared-screens/components/ai-chat-composer";
 import { AiChatThread, type ChatMessage } from "@/features/shared-screens/components/ai-chat-thread";
 import { Icon } from "@/shared/components/ui/icon";
@@ -13,45 +13,37 @@ import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 
+const CHAT_CONFIG: Record<Role, { subtitle: string; suggestions: string[] }> = {
+  instructor: {
+    subtitle: "Ask anything about your classes",
+    suggestions: ["Lesson plan draft", "Quiz generation", "Class summary"],
+  },
+  student: {
+    subtitle: "Ask anything about your lessons",
+    suggestions: ["Quiz me on…", "Plan my week", "Show my weak topics"],
+  },
+};
+
 export function AiAssistantScreen({ role }: { role: Role }) {
   const cfg = CHAT_CONFIG[role];
-  const [messages, setMessages] = useState<ChatMessage[]>(cfg.seed);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const threadId = useRef<string | null>(null);
+  const sendingRef = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
   const listRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  const wrapRef = useRef<ComponentRef<typeof View>>(null);
-  const [kbPad, setKbPad] = useState(0);
-  const kbTop = useRef<number | null>(null); // screenY of the keyboard's top edge, null when closed
 
-  // How much of the wrapper the open keyboard actually covers.
-  const recalc = () => {
-    const top = kbTop.current;
-    if (top == null) {
-      setKbPad(0);
-      return;
-    }
-    wrapRef.current?.measureInWindow((_x, y, _w, h) => {
-      setKbPad(Math.max(0, Math.round(y + h - top)));
-    });
-  };
-
+  // Keyboard avoidance now comes from Screen (KeyboardAvoidingView, "padding" on both platforms):
+  // the old manual measureInWindow/screenY padding double-counted or read 0 under Android
+  // edge-to-edge. Here we only keep the newest message in view when the keyboard opens.
   useEffect(() => {
-    const ios = Platform.OS === "ios";
-    const showEvt = ios ? "keyboardWillChangeFrame" : "keyboardDidShow";
-    const hideEvt = ios ? "keyboardWillHide" : "keyboardDidHide";
-
-    const show = Keyboard.addListener(showEvt, (e) => {
-      kbTop.current = e.endCoordinates.screenY;
-      recalc();
+    const evt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const show = Keyboard.addListener(evt, () => {
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     });
-    const hide = Keyboard.addListener(hideEvt, () => {
-      kbTop.current = null;
-      setKbPad(0);
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
+    return () => show.remove();
   }, []);
 
   useEffect(() => {
@@ -59,18 +51,37 @@ export function AiAssistantScreen({ role }: { role: Role }) {
     return () => clearTimeout(id);
   }, [messages.length]);
 
-  const send = (textToSend?: string) => {
-    const q = (textToSend ?? input).trim();
-    if (!q) return;
-    const userMsg: ChatMessage = { id: String(Date.now()), from: "user", text: q };
-    const aiMsg: ChatMessage = { id: String(Date.now() + 1), from: "ai", text: mockReply(role, q) };
-    setMessages((prev) => [...prev, userMsg, aiMsg]);
-    if (!textToSend) setInput("");
-  };
+  const send = useCallback(
+    async (textToSend?: string) => {
+      const q = (textToSend ?? input).trim();
+      if (!q || sendingRef.current) return;
+      sendingRef.current = true;
+      setSending(true);
+      const stamp = Date.now();
+      const pendingId = `${stamp}-ai`;
+      const history = messages.filter((m) => m.id.indexOf("err") < 0).map((m) => ({ from: m.from, text: m.text }));
+      setMessages((prev) => [
+        ...prev,
+        { id: String(stamp), from: "user", text: q },
+        { id: pendingId, from: "ai", text: "Thinking…" },
+      ]);
+      if (!textToSend) setInput("");
+
+      const res = await aiChatRepository.send({ threadId: threadId.current, message: q, history });
+      sendingRef.current = false;
+      if (!alive.current) return;
+      setSending(false);
+      if (res.ok) threadId.current = res.value.threadId;
+      const text = res.ok ? res.value.reply : res.error.message;
+      const id = res.ok ? pendingId : `${stamp}-err`;
+      setMessages((prev) => prev.map((m) => (m.id === pendingId ? { id, from: "ai", text } : m)));
+    },
+    [input, messages],
+  );
 
   return (
     <Screen role={role} scroll={false} contentStyle={s.fixed} scope={`${role}/ai`}>
-      <View ref={wrapRef} collapsable={false} onLayout={recalc} style={[s.flex, { paddingBottom: kbPad }]}>
+      <View style={s.flex}>
         <View style={s.header}>
           <View style={s.avatar}>
             <Icon name="sparkles" size="md" color={C.white} />
@@ -84,7 +95,7 @@ export function AiAssistantScreen({ role }: { role: Role }) {
         </View>
 
         <AiChatThread messages={messages} listRef={listRef} />
-        <AiChatComposer suggestions={cfg.suggestions} input={input} onChangeInput={setInput} onSend={send} />
+        <AiChatComposer suggestions={cfg.suggestions} input={input} onChangeInput={setInput} onSend={send} disabled={sending} />
       </View>
     </Screen>
   );

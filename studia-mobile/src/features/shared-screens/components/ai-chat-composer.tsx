@@ -1,4 +1,5 @@
 // ai-chat-composer.tsx — suggestion chips + the message input row for the AI assistant screen.
+import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Icon } from "@/shared/components/ui/icon";
@@ -10,14 +11,22 @@ export function AiChatComposer({
   input,
   onChangeInput,
   onSend,
+  disabled = false,
 }: {
   suggestions: readonly string[];
   input: string;
   onChangeInput: (text: string) => void;
   onSend: (textToSend?: string) => void;
+  /** True while a reply is on its way: blocks a second send. */
+  disabled?: boolean;
 }) {
+  // Chips would eat the little room the keyboard leaves, so they hide while typing.
+  const [focused, setFocused] = useState(false);
+  const showChips = !focused && !input;
+
   return (
     <View style={s.area}>
+      {showChips ? (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -26,13 +35,20 @@ export function AiChatComposer({
         style={s.sugScroll}
       >
         {suggestions.map((sug) => (
-          <Pressable key={sug} onPress={() => onSend(sug)} style={s.sugChip}>
+          <Pressable
+            key={sug}
+            onPress={() => !disabled && onSend(sug)}
+            style={s.sugChip}
+            accessibilityRole="button"
+            accessibilityLabel={sug}
+          >
             <Text style={s.sugText} numberOfLines={1}>
               {sug}
             </Text>
           </Pressable>
         ))}
       </ScrollView>
+      ) : null}
 
       <View style={s.inputRow}>
         <View style={s.inputBox}>
@@ -44,15 +60,15 @@ export function AiChatComposer({
             style={s.input}
             multiline
             textAlignVertical="center"
-            blurOnSubmit={false}
-            returnKeyType="send"
-            onSubmitEditing={() => onSend()}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             accessibilityLabel="Message STUDIA AI"
           />
         </View>
         <Pressable
-          onPress={() => onSend()}
-          style={[s.sendBtn, !input.trim() && { backgroundColor: C.lavender }]}
+          onPress={() => !disabled && onSend()}
+          disabled={disabled}
+          style={[s.sendBtn, (!input.trim() || disabled) && { backgroundColor: C.lavender }]}
           accessibilityRole="button"
           accessibilityLabel="Send"
         >
@@ -66,7 +82,7 @@ export function AiChatComposer({
 const s = StyleSheet.create({
   area: { gap: SPACE.sm, paddingTop: SPACE.xs + 2 },
   sugScroll: { flexGrow: 0 },
-  sugRow: { gap: SPACE.sm, paddingRight: SPACE.sm },
+  sugRow: { gap: SPACE.sm, paddingHorizontal: SPACE.xs, paddingRight: SPACE.lg },
   sugChip: {
     backgroundColor: C.lavenderSoft,
     paddingHorizontal: SPACE.md,

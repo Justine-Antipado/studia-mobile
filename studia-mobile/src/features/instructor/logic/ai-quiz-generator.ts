@@ -1,32 +1,37 @@
+// ai-quiz-generator.ts — Bloom's-taxonomy quiz synthesizer. The questions are written by studia-api
+// (api/ai/quiz), which holds the AI key; the app only reviews and saves them. Multiple Choice only,
+// each item tagged with a Bloom level and difficulty (docs/UI-BRIEF).
+import { z } from "zod";
+
+import { callAi } from "@/core/data/supabase/ai-api";
 import type { BloomLevel, Difficulty, QuizQuestion } from "@/features/instructor/types/instructor";
-import { newId } from "./format";
+import { newId } from "@/shared/utils/id";
 
 export type GenerateParams = { topic: string; count: number; difficulty: Difficulty };
 
-const BLOOM_LEVELS: BloomLevel[] = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"];
+const Reply = z.object({
+  questions: z.array(
+    z.object({
+      text: z.string(),
+      options: z.array(z.string()).length(4),
+      correctIndex: z.number().int().min(0).max(3),
+      bloom: z.enum(["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"]),
+    }),
+  ),
+});
 
-/**
- * MOCK generator so the flow works end to end. Multiple Choice only, each item tagged with a
- * Bloom level and difficulty (docs/UI-BRIEF Bloom's Taxonomy Quiz Synthesizer).
- * TODO: replace the body with a call to your PHP backend (e.g. POST /instructor/ai-quiz),
- * which calls the AI provider server-side. Never ship an API key inside the app.
- * Keep the signature: the screens don't need to change.
- */
+/** Rejects with an Error whose message is safe to show to the instructor. */
 export async function generateQuiz({ topic, count, difficulty }: GenerateParams): Promise<QuizQuestion[]> {
-  await new Promise((r) => setTimeout(r, 900));
-  return Array.from({ length: count }, (_, i) => ({
+  const res = await callAi("quiz", { topic, count, difficulty }, Reply);
+  if (!res.ok) throw new Error(res.error.message);
+  return res.value.questions.map((q) => ({
     id: newId("q"),
     type: "multiple_choice" as const,
-    text: `Question ${i + 1}: Which statement about ${topic} is correct?`,
-    options: [
-      `Sample answer A about ${topic}`,
-      `Sample answer B about ${topic}`,
-      `Sample answer C about ${topic}`,
-      `Sample answer D about ${topic}`,
-    ],
-    correctIndex: i % 4,
+    text: q.text,
+    options: q.options,
+    correctIndex: q.correctIndex,
     correctAnswer: null,
-    bloom: BLOOM_LEVELS[i % BLOOM_LEVELS.length]!,
+    bloom: q.bloom as BloomLevel,
     difficulty,
     points: 1,
   }));

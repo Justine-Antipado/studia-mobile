@@ -1,7 +1,7 @@
 // validators.ts — input validation/sanitization for every instructor form. Repositories never
 // receive raw, untrimmed or oversized input. Route params are validated separately in
 // core/logic/route-params.ts.
-import { ATTACHMENT_MIME_TYPES, type FilePolicy } from "@/shared/utils/file";
+import { MATERIAL_MIME_TYPES, type FilePolicy } from "@/shared/utils/file";
 
 export { formatFileSize, sanitizeFileName } from "@/shared/utils/file";
 
@@ -16,6 +16,7 @@ export function validateClassSection(raw: string): string | null {
   const text = raw.trim();
   if (!text) return "Enter a section.";
   if (text.length > 30) return "Keep the section under 30 characters.";
+  if (!/^(BSIT|BEED|BSBA-FM|BSBA-OM)\s+[1-4]\s*-\s*[A-E]$/i.test(text)) return "Use the format BSIT 3-A (course, year 1-4, section A-E).";
   return null;
 }
 
@@ -71,12 +72,12 @@ export function validateMaterialTitle(raw: string): string | null {
 }
 
 /**
- * What an instructor may upload as lesson material: documents, slides or a lecture video,
- * up to 500 MB. The whitelist itself lives in shared/utils/file.ts.
+ * What an instructor may upload as lesson material: documents and slides, up to 50 MB.
+ * Lecture VIDEOS are links, not uploads. The whitelist itself lives in shared/utils/file.ts.
  */
 export const MATERIAL_FILE_POLICY: FilePolicy = {
-  kinds: ["pdf", "doc", "slide", "video"],
-  maxBytes: 500 * 1024 * 1024,
-  rejectMessage: "Allowed files: PDF, Word, PowerPoint, MP4 or MOV.",
-  mimeTypes: ATTACHMENT_MIME_TYPES,
+  kinds: ["pdf", "doc", "slide"],
+  maxBytes: 50 * 1024 * 1024,
+  rejectMessage: "Allowed files: PDF, Word or PowerPoint. For a video, paste its link instead.",
+  mimeTypes: MATERIAL_MIME_TYPES,
 };

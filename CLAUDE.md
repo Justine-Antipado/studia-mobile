@@ -42,30 +42,27 @@ npm run lint     # oxlint
 - Admin: `VITE_API_URL` (`studia-admin/.env.example`)
 - Backend: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` (`backend/.env.example`)
 
-## Key point: everything runs on in-memory mocks
+## Key point: mobile talks to the real Supabase backend (no mock layer)
 
-No client talks to a real server yet. Both apps are structured so the mock layer can be swapped for
-HTTP calls without touching UI code:
+The mobile mock layer (`core/data/mock`, `mock-auth-service`, `EXPO_PUBLIC_DATA_SOURCE`) was removed.
+Every repository in `features/<feature>/data/*-repository.ts` is an interface plus its `*-remote.ts`
+Supabase implementation. `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY` and
+`EXPO_PUBLIC_API_URL` must be set (`.env.local` for dev, `eas.json` for builds).
 
-- **Mobile auth**: `studia-mobile/src/features/auth/data/auth-service.ts` is a full mock auth server
-  (login, register, OTP verify/resend, Google sign-in, password reset, rate limiting, lockouts,
-  typed `AuthError` codes). Seed logins: `student@omsc.edu.ph` / `Student@123`,
-  `instructor@omsc.edu.ph` / `Instructor@123`. In `__DEV__`, OTP responses include `devCode`.
-- **Mobile feature data**: one repository per domain in `features/<feature>/data/*-repository.ts`,
-  each an interface plus a mock implementation, consumed only through that feature's hooks. Swapping
-  in the real API means replacing one implementation file per feature.
+- **Mobile auth**: `features/auth/data/auth-service.ts` delegates to `remote-auth-service.ts`
+  (Supabase Auth + `studia-api`). Accounts live in the database; there are no seed logins.
 - **Mobile session**: `src/core/data/storage/session-store.ts` is a tiny `useSyncExternalStore`
-  store (`setUser`, `useUser`). `useRoleUser(role)` falls back to a demo user in `__DEV__` so role
-  screens can be opened directly after a hot reload without logging in. Ending a session goes
-  through `core/logic/sign-out.ts`, which also purges the caches.
-- **Admin**: `studia-admin/src/core/data/api.js` is the *only* module UI code may call; each
-  function currently delegates to `core/data/mock/mockBackend.js`. The admin account is hard-coded
+  store (`setUser`, `useUser`). Ending a session goes through `core/logic/sign-out.ts`, which also
+  purges the caches.
+- **AI features** (assistant chat, AI quiz generator) have no backend yet. They report that they are
+  unavailable instead of faking answers. See `docs/dipanakaconnect-sa-db-audit.md`.
+- **Admin** (`studia-admin`) still runs on a mock: `src/core/data/api.js` is the only module UI code
+  may call, and it delegates to `core/data/mock/mockBackend.js`. The admin account is hard-coded
   there (`admin` / `Studia@2026`); there is intentionally no register route.
 
 `docs/api-contract.md` maps every repository method to the endpoint the backend has to build, and
 lists what the server must enforce itself (it must never trust client-side validation). When
-changing auth behavior or data shapes, keep the mock, `docs/api-contract.md` and the migrations
-consistent.
+changing auth behavior or data shapes, keep `docs/api-contract.md` and the migrations consistent.
 
 ## Mobile architecture (`studia-mobile/src`)
 

@@ -1,9 +1,9 @@
 // student.ts — shared domain types for every student feature. Repositories return these;
 // screens never invent their own shape for the same data.
-import type { Attachment, Comment } from "@/core/types/content";
+import type { Attachment, Comment, VideoLink } from "@/core/types/content";
 
 // Attachment and Comment are identical on both sides of the app: declared in core/types.
-export type { Attachment, AttachmentKind, Comment } from "@/core/types/content";
+export type { Attachment, AttachmentKind, Comment, VideoLink } from "@/core/types/content";
 
 export type Person = { id: string; name: string; role: "student" | "instructor" };
 
@@ -14,7 +14,6 @@ export type StudentClass = {
   section: string;
   teacher: string;
   progress: number; // 0..1
-  joinCode: string;
 };
 
 export type Announcement = {
@@ -35,11 +34,15 @@ export type Lesson = {
   classId: string;
   title: string;
   kind: "video" | "pdf" | "slide";
+  /** Set for a video lesson (a link, not an upload); `attachment` is then null. */
+  link: VideoLink | null;
   durationLabel: string | null;
-  attachment: Attachment;
+  attachment: Attachment | null;
   processing: ProcessingState;
   transcript: TranscriptLine[];
   aiSummary: { tldr: string; bullets: string[] } | null;
+  /** Regenerations left for this summary (each AI call costs money). */
+  regensLeft: number;
   postedAt: string;
 };
 
@@ -98,8 +101,11 @@ export type Quiz = {
   title: string;
   timeLimitMin: number | null;
   dueAt: string | null;
-  questions: QuizQuestion[];
+  /** Server verdict for right now: after the deadline (and any late window) nothing can be submitted. */
+  closed: boolean;
+  allowLate: boolean;
   attempt: QuizAttempt | null;
+  questions: QuizQuestion[];
 };
 
 export type TaskKind = "assignment" | "quiz";

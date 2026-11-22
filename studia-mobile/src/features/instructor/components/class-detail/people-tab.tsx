@@ -1,6 +1,6 @@
 // people-tab.tsx — Class detail "People" tab: roster + progress. Remove student happens on
 // the student-detail screen (docs/ROUTE-MAP.md).
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { View } from "react-native";
 
 import { Badge, ListRow, ListState } from "@/shared/components/ui";
@@ -9,7 +9,7 @@ import { scoreTone } from "@/features/instructor/logic/format";
 import { useClassStudents } from "@/features/instructor/hooks/use-students";
 
 export function PeopleTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useClassStudents(classId);
   const students = data ?? [];
 

@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ActionButton, Chip, FormField, Icon } from "@/shared/components/ui";
 import { C } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
-import { OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
+import { ESSAY_DEFAULT_POINTS, OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
 import type { BloomLevel, Difficulty, QuizQuestion, QuizQuestionType } from "@/features/instructor/types/instructor";
 
 const TYPE_LABELS: Record<QuizQuestionType, string> = {
@@ -36,6 +36,8 @@ function QuestionEditorBase({ index, question, canRemove, onChange, onRemove }: 
       options: type === "multiple_choice" ? question.options ?? ["", "", "", ""] : null,
       correctIndex: type === "multiple_choice" ? question.correctIndex ?? 0 : null,
       correctAnswer: type === "identification" ? question.correctAnswer ?? "" : null,
+      // An essay is worth more than one point by default; the instructor can set any value.
+      points: type === "essay" && question.points === 1 ? ESSAY_DEFAULT_POINTS : type !== "essay" && question.points === ESSAY_DEFAULT_POINTS ? 1 : question.points,
     });
 
   return (
@@ -91,7 +93,16 @@ function QuestionEditorBase({ index, question, canRemove, onChange, onRemove }: 
         />
       ) : null}
 
-      {question.type === "essay" ? <Text style={TYPE.caption}>Essay answers are graded manually.</Text> : null}
+      {question.type === "essay" ? <Text style={TYPE.caption}>Essay answers are graded manually: you give the score when you check the answers.</Text> : null}
+
+      <FormField
+        label={question.type === "essay" ? "Total points for this essay" : "Points"}
+        value={question.points > 0 ? String(question.points) : ""}
+        onChangeText={(v) => onChange(question.id, { points: Number(v.replace(/\D/g, "").slice(0, 3)) })}
+        keyboardType="number-pad"
+        placeholder="1"
+        maxLength={3}
+      />
 
       <View style={{ gap: SPACE.sm }}>
         <Text style={TYPE.label}>Bloom level (optional)</Text>

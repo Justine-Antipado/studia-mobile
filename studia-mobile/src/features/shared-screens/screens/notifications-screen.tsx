@@ -9,6 +9,7 @@ import {
   useMarkNotificationRead,
   useNotifications,
 } from "@/features/shared-screens/hooks/use-notifications";
+import { BottomSheet } from "@/shared/components/ui/bottom-sheet";
 import { AppList } from "@/shared/components/ui/app-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { ListRow } from "@/shared/components/ui/list-row";
@@ -18,7 +19,7 @@ import { Screen } from "@/shared/components/ui/screen";
 import { SegmentedTabs } from "@/shared/components/ui/segmented-tabs";
 import type { NotificationItem } from "@/features/shared-screens/types/shared-screens";
 import { C } from "@/shared/constants/studia-colors";
-import { FONT, HIT_SLOP, SPACE } from "@/shared/constants/tokens";
+import { FONT, HIT_SLOP, SPACE, TYPE } from "@/shared/constants/tokens";
 
 const FILTERS = ["All", "Unread"] as const;
 
@@ -35,7 +36,16 @@ export function NotificationsScreen({ role }: { role: Role }) {
   const markRead = useMarkNotificationRead(role);
   const markAllRead = useMarkAllNotificationsRead(role);
 
-  const onRowPress = useCallback((id: string) => void markRead.run(id), [markRead]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const opened = useMemo(() => items.find((n) => n.id === openId) ?? null, [items, openId]);
+  // Opening the detail is what marks it read (not the list tap itself).
+  const onRowPress = useCallback(
+    (n: NotificationItem) => {
+      setOpenId(n.id);
+      if (n.unread) void markRead.run(n.id);
+    },
+    [markRead],
+  );
   const onMarkAll = useCallback(() => void markAllRead.run(undefined), [markAllRead]);
 
   const renderRow = useCallback(
@@ -45,14 +55,8 @@ export function NotificationsScreen({ role }: { role: Role }) {
         eyebrow={n.tag}
         title={n.title}
         subtitle={`${n.meta} · ${n.time}`}
-        trailing={
-          n.unread ? (
-            <View style={s.unreadDot} accessibilityLabel="Unread" />
-          ) : (
-            <Badge label={n.tag} tone={n.tone} />
-          )
-        }
-        onPress={() => onRowPress(n.id)}
+        trailing={n.unread ? <View style={s.unreadDot} accessibilityLabel="Unread" /> : undefined}
+        onPress={() => onRowPress(n)}
       />
     ),
     [onRowPress],
@@ -61,7 +65,7 @@ export function NotificationsScreen({ role }: { role: Role }) {
   return (
     <Screen role={role} scroll={false} scope={`${role}/notifications`}>
       <PageTitle
-        title="Notifications"
+        title="Alerts"
         trailing={
           unreadCount > 0 ? (
             <Pressable
@@ -91,6 +95,17 @@ export function NotificationsScreen({ role }: { role: Role }) {
           <AppList data={shown} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
         </ListState>
       </View>
+
+      <BottomSheet visible={!!opened} title={opened?.tag ?? "Notification"} onClose={() => setOpenId(null)}>
+        {opened ? (
+          <View style={s.detail}>
+            <Badge label={opened.tag} tone={opened.tone} />
+            <Text style={TYPE.h2}>{opened.title}</Text>
+            <Text style={TYPE.caption}>{`${opened.meta} · ${opened.time} ago`}</Text>
+            <Text style={TYPE.body}>{opened.body ?? opened.meta}</Text>
+          </View>
+        ) : null}
+      </BottomSheet>
     </Screen>
   );
 }
@@ -99,4 +114,5 @@ const s = StyleSheet.create({
   markAll: { color: C.primary, fontSize: 12.5, fontFamily: FONT.semibold },
   unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.primary },
   fill: { flex: 1, gap: SPACE.lg },
+  detail: { gap: SPACE.sm, alignItems: "flex-start" },
 });

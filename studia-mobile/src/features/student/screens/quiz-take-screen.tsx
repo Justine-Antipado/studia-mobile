@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
-import { ActionButton, ConfirmDialog, ListState, PageTitle, ProgressBar, useToast } from "@/shared/components/ui";
+import { ActionButton, ConfirmDialog, EmptyState, ListState, PageTitle, ProgressBar, useToast } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
@@ -11,6 +11,16 @@ import { useForceBack, useSafeBack } from "@/shared/hooks/use-safe-back";
 import { QuizQuestionCard } from "@/features/student/components/quiz-question-card";
 import { useQuiz, useSubmitQuizAttempt } from "@/features/student/hooks/use-quizzes";
 import type { QuizAnswer } from "@/features/student/types/student";
+
+// When each quiz's countdown began. Module-level so leaving the screen and coming back resumes the
+// SAME clock instead of handing out a fresh full timer.
+const startedAt = new Map<string, number>();
+
+function remainingSeconds(quizId: string, limitMin: number): number {
+  const began = startedAt.get(quizId) ?? Date.now();
+  startedAt.set(quizId, began);
+  return Math.max(0, Math.ceil(limitMin * 60 - (Date.now() - began) / 1000));
+}
 
 export default function StudentQuizTake() {
   const { classId, quizId } = useRouteIds("classId", "quizId");
@@ -28,7 +38,7 @@ export default function StudentQuizTake() {
   const [timerStartedFor, setTimerStartedFor] = useState<string | null>(null);
   if (quiz && quiz.id !== timerStartedFor) {
     setTimerStartedFor(quiz.id);
-    setSecondsLeft(quiz.timeLimitMin ? quiz.timeLimitMin * 60 : null);
+    setSecondsLeft(quiz.timeLimitMin && !quiz.closed ? remainingSeconds(quiz.id, quiz.timeLimitMin) : null);
   }
 
   const answeredCount = Object.values(answers).filter((v) => v !== null && v !== "").length;
@@ -39,6 +49,7 @@ export default function StudentQuizTake() {
       const list: QuizAnswer[] = quiz.questions.map((q) => ({ questionId: q.id, response: answers[q.id] ?? null }));
       const result = await submitAttempt.run(list);
       if (result.ok) {
+        if (quizId) startedAt.delete(quizId);
         router.replace({ pathname: "/student/quiz-result", params: { classId, quizId, attemptId: result.value.id } });
       } else {
         toast.show(result.error.message, { tone: "red" });
@@ -76,7 +87,13 @@ export default function StudentQuizTake() {
         onBack={goBack}
       />
       <ListState loading={loading} error={error} empty={!loading && !quiz} onRetry={refetch} emptyIcon="help-circle-outline" emptyTitle="Quiz not found">
-        {quiz ? (
+        {quiz && quiz.closed && !quiz.attempt ? (
+          <EmptyState
+            icon="lock-closed-outline"
+            title="This quiz is closed"
+            message="The deadline has passed and it no longer accepts submissions. Ask your instructor if you need more time."
+          />
+        ) : quiz ? (
           <View style={{ gap: SPACE.lg }}>
             <ProgressBar value={answeredCount / Math.max(quiz.questions.length, 1)} label={`${answeredCount}/${quiz.questions.length} answered`} />
             {quiz.questions.map((q, i) => (

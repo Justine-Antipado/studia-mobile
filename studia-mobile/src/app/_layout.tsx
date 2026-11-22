@@ -2,7 +2,7 @@
 // one ErrorBoundary around the whole app, Toast host, and the root Stack transitions.
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
@@ -14,6 +14,9 @@ import {
 
 import { queryCache } from "@/core/data/cache/query-cache";
 import { STACK_ROOT, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
+import { sessionReady } from "@/features/auth/data/auth-service";
+import { useLiveUpdates } from "@/core/logic/live-updates";
+import { usePushNotifications } from "@/core/logic/push-notifications";
 import { reportError } from "@/core/logic/report-error";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { ToastProvider } from "@/shared/components/ui/toast";
@@ -30,7 +33,15 @@ export default function RootLayout() {
     Poppins_700Bold,
   });
 
-  const ready = fontsLoaded || !!fontError;
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+  useEffect(() => {
+    void sessionReady.then(() => setSessionLoaded(true));
+  }, []);
+
+  useLiveUpdates();
+  usePushNotifications();
+
+  const ready = (fontsLoaded || !!fontError) && sessionLoaded;
 
   useEffect(() => {
     if (fontError) reportError(fontError, { scope: "root-layout.useFonts" });

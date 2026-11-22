@@ -14,4 +14,6 @@ export type NotificationItem = {
   unread: boolean;
   tone: Tone;
   tag: NotificationTag;
+  /** Full message shown in the detail sheet; falls back to `meta` when absent. */
+  body?: string;
 };

@@ -1,83 +1,30 @@
-// create-quiz-screen.tsx — manual quiz: Multiple Choice, Identification or Essay per question.
-import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+// create-quiz-screen.tsx — manual quiz: the shared QuizForm in "create" mode.
+import { useRouter } from "expo-router";
 
-import { ActionButton, Chip, FormField, PageTitle, useToast } from "@/shared/components/ui";
-import { TONES } from "@/shared/constants/studia-colors";
-import { Screen } from "@/shared/components/ui/screen";
-import { SPACE, TYPE } from "@/shared/constants/tokens";
+import { useToast } from "@/shared/components/ui";
 import { useRouteId } from "@/core/logic/route-params";
-import { useSafeBack } from "@/shared/hooks/use-safe-back";
-import { QuestionEditor } from "@/features/instructor/components/question-editor";
-import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
+import { QuizForm } from "@/features/instructor/components/quiz-form";
 import { useCreateQuiz } from "@/features/instructor/hooks/use-quizzes";
-import { blankQuestion } from "@/features/instructor/logic/quiz-validation";
-import type { QuizQuestion } from "@/features/instructor/types/instructor";
 
 export default function CreateQuizScreen() {
-  const goBack = useSafeBack("/instructor/assessments");
-  const toast = useToast();
   const presetClassId = useRouteId("classId");
-  const classes = useInstructorClasses();
+  const router = useRouter();
+  const toast = useToast();
   const createQuiz = useCreateQuiz();
 
-  const [title, setTitle] = useState("");
-  const [classId, setClassId] = useState<string | null>(presetClassId);
-  const [questions, setQuestions] = useState<QuizQuestion[]>(() => [blankQuestion()]);
-  const [error, setError] = useState<string | null>(null);
-
-  const change = useCallback(
-    (id: string, patch: Partial<QuizQuestion>) => setQuestions((qs) => qs.map((q) => (q.id === id ? { ...q, ...patch } : q))),
-    [],
-  );
-  const remove = useCallback((id: string) => setQuestions((qs) => qs.filter((q) => q.id !== id)), []);
-
-  const submit = async (publish: boolean) => {
-    const result = await createQuiz.run({ draft: { title, classId, questions, source: "manual" }, publish });
-    if (!result.ok) {
-      setError(result.error.message);
-      return;
-    }
-    setError(null);
-    toast.show(publish ? `"${result.value.title}" published` : "Draft saved", { tone: "green" });
-    goBack();
-  };
-
   return (
-    <Screen role="instructor" scope="instructor/create-quiz">
-      <PageTitle title="Create Quiz" subtitle="Multiple choice, identification or essay." onBack={goBack} />
-
-      <FormField label="Quiz title" value={title} onChangeText={setTitle} placeholder="e.g. Quiz 3: Risk Management" maxLength={80} />
-
-      <View style={{ gap: SPACE.sm }}>
-        <Text style={TYPE.label}>Class</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm }}>
-          {(classes.data ?? []).map((c) => (
-            <Chip key={c.id} label={`${c.code} · ${c.section}`} selected={classId === c.id} onPress={() => setClassId(c.id)} />
-          ))}
-        </View>
-      </View>
-
-      {questions.map((q, i) => (
-        <QuestionEditor key={q.id} index={i} question={q} canRemove={questions.length > 1} onChange={change} onRemove={remove} />
-      ))}
-
-      <ActionButton label="Add question" icon="add" variant="secondary" onPress={() => setQuestions((qs) => [...qs, blankQuestion()])} />
-
-      {error ? <Text style={[TYPE.body, s.error]}>{error}</Text> : null}
-
-      <View style={{ flexDirection: "row", gap: SPACE.md }}>
-        <View style={{ flex: 1 }}>
-          <ActionButton label="Save draft" variant="secondary" loading={createQuiz.loading} onPress={() => submit(false)} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <ActionButton label="Publish" loading={createQuiz.loading} onPress={() => submit(true)} />
-        </View>
-      </View>
-    </Screen>
+    <QuizForm
+      mode="create"
+      presetClassId={presetClassId}
+      fallback="/instructor/assessments"
+      loading={createQuiz.loading}
+      onSubmit={async (draft, publish) => {
+        const result = await createQuiz.run({ draft, publish });
+        if (!result.ok) return { ok: false, message: result.error.message };
+        toast.show(publish ? `"${result.value.title}" published` : "Draft saved", { tone: "green" });
+        router.replace({ pathname: "/instructor/quiz-detail", params: { id: result.value.id } });
+        return { ok: true };
+      }}
+    />
   );
 }
-
-const s = StyleSheet.create({
-  error: { color: TONES.red.strong },
-});

@@ -1,6 +1,6 @@
 // assignment-detail-screen.tsx — instructor view: instructions, due date, points, late rule,
-// attachments, delete (confirm).
-import { useRouter } from "expo-router";
+// attachments, who turned it in / is missing (tap to grade), delete (confirm).
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -10,12 +10,13 @@ import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
+import { AssignmentSubmissions } from "@/features/instructor/components/assignment-submissions";
 import { dueLabel } from "@/features/instructor/logic/format";
 import { useDeleteAssignment, useInstructorAssignment } from "@/features/instructor/hooks/use-assignments";
 
 export default function InstructorAssignmentDetailScreen() {
   const { classId, id } = useRouteIds("classId", "id");
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack(classId ? { pathname: "/instructor/class-detail", params: { id: classId } } : "/instructor/classes");
   const { data: assignment, loading, error, refetch } = useInstructorAssignment(classId, id);
   const deleteAssignment = useDeleteAssignment(classId ?? "");
@@ -56,6 +57,15 @@ export default function InstructorAssignmentDetailScreen() {
                 {assignment.attachments.map((a) => <AttachmentRow key={a.id} attachment={a} />)}
               </View>
             ) : null}
+
+            <ActionButton
+              label="Edit assignment"
+              icon="create-outline"
+              variant="secondary"
+              onPress={() => router.push({ pathname: "/instructor/edit-assignment", params: { classId: classId ?? "", id: id ?? "" } })}
+            />
+
+            {classId && id ? <AssignmentSubmissions classId={classId} assignmentId={id} points={assignment.points} /> : null}
 
             <ActionButton label="Delete assignment" icon="trash-outline" variant="danger" onPress={() => setConfirmDelete(true)} />
           </View>

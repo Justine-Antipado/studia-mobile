@@ -4,6 +4,7 @@ export {
   PASSING_PERCENT,
   dueLabel,
   isOverdue,
+  materialDetail,
   plural,
   scoreTone,
   timeAgo,

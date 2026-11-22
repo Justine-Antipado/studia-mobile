@@ -1,8 +1,7 @@
 // announcement-detail-screen.tsx — announcement body + comments (add/delete own comment).
-import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { ActionButton, Badge, Card, FormField, ListState, PageTitle, SectionHeader, useToast } from "@/shared/components/ui";
+import { Badge, Card, CommentComposer, ListState, PageTitle, SectionHeader, useToast } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
@@ -19,17 +18,6 @@ export default function StudentAnnouncementDetail() {
   const { data: announcement, loading, error, refetch } = useAnnouncement(classId, id);
   const addComment = useAddComment(classId ?? "", id ?? "");
   const deleteComment = useDeleteComment(classId ?? "", id ?? "");
-  const [text, setText] = useState("");
-  const [fieldError, setFieldError] = useState<string | null>(null);
-
-  const post = async () => {
-    const validation = validateCommentText(text);
-    setFieldError(validation);
-    if (validation) return;
-    const result = await addComment.run(text.trim());
-    if (result.ok) setText("");
-    else toast.show(result.error.message, { tone: "red" });
-  };
 
   return (
     <Screen role="student" scope="student/announcement-detail">
@@ -61,24 +49,19 @@ export default function StudentAnnouncementDetail() {
                 <CommentRow
                   key={c.id}
                   comment={c}
-                  onDelete={c.authorIsMe ? () => void deleteComment.run(c.id) : undefined}
+                  onDelete={
+                    c.authorIsMe
+                      ? () =>
+                          void deleteComment.run(c.id).then((r) => {
+                            if (!r.ok) toast.show(r.error.message, { tone: "red" });
+                          })
+                      : undefined
+                  }
                 />
               ))}
             </View>
 
-            <FormField
-              label="Add a comment"
-              value={text}
-              onChangeText={(t) => {
-                setText(t);
-                setFieldError(null);
-              }}
-              placeholder="Write something..."
-              multiline
-              maxLength={500}
-              error={fieldError}
-            />
-            <ActionButton label="Post comment" icon="send-outline" loading={addComment.loading} onPress={post} />
+            <CommentComposer validate={validateCommentText} onSubmit={addComment.run} loading={addComment.loading} />
           </View>
         ) : null}
       </ListState>

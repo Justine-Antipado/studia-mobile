@@ -4,13 +4,12 @@ import { useState } from "react";
 
 import { ActionButton, FormField, PageTitle, useToast } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
-import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { useUnsavedGuard } from "@/shared/hooks/use-unsaved-guard";
 import { useCreateClass } from "@/features/instructor/hooks/use-classes";
 import { validateClassCode, validateClassSection, validateClassTitle } from "@/features/instructor/logic/validators";
 
 export default function CreateClassScreen() {
   const router = useRouter();
-  const goBack = useSafeBack("/instructor/classes");
   const toast = useToast();
   const create = useCreateClass();
 
@@ -18,6 +17,13 @@ export default function CreateClassScreen() {
   const [section, setSection] = useState("");
   const [code, setCode] = useState("");
   const [errors, setErrors] = useState<{ title?: string | null; section?: string | null; code?: string | null }>({});
+
+  const { goBack, discardDialog } = useUnsavedGuard(
+    "/instructor/classes",
+    title.trim().length > 0 || section.trim().length > 0 || code.trim().length > 0,
+    "Discard this class?",
+    "It has not been created yet.",
+  );
 
   const submit = async () => {
     const titleError = validateClassTitle(title);
@@ -66,6 +72,7 @@ export default function CreateClassScreen() {
       />
 
       <ActionButton label="Create class" icon="checkmark" loading={create.loading} onPress={submit} />
+      {discardDialog}
     </Screen>
   );
 }

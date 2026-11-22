@@ -4,11 +4,11 @@ import { View } from "react-native";
 
 import { ActionButton, ConfirmDialog, ListRow, SectionHeader } from "@/shared/components/ui";
 import { SPACE } from "@/shared/constants/tokens";
-import { CLASSMATES, classFacts } from "@/features/student/data/class-directory";
-import { useLeaveClass } from "@/features/student/hooks/use-classes";
+import { useClass, useClassmates, useLeaveClass } from "@/features/student/hooks/use-classes";
 
 export function PeopleTab({ classId, onLeft }: { classId: string; onLeft: () => void }) {
-  const facts = classFacts(classId);
+  const cls = useClass(classId).data;
+  const classmates = useClassmates(classId).data ?? [];
   const [confirmLeave, setConfirmLeave] = useState(false);
   const leaveClass = useLeaveClass();
 
@@ -22,14 +22,14 @@ export function PeopleTab({ classId, onLeft }: { classId: string; onLeft: () => 
     <View style={{ gap: SPACE.lg }}>
       <View>
         <SectionHeader title="Instructor" />
-        {facts ? (
-          <ListRow icon="school-outline" title={facts.teacher} subtitle="Instructor" flat />
+        {cls ? (
+          <ListRow icon="school-outline" title={cls.teacher} subtitle="Instructor" flat />
         ) : null}
       </View>
 
       <View style={{ gap: SPACE.md }}>
         <SectionHeader title="Classmates" />
-        {CLASSMATES.map((person) => (
+        {classmates.map((person) => (
           <ListRow key={person.id} icon="person-outline" title={person.name} subtitle="Student" flat />
         ))}
       </View>

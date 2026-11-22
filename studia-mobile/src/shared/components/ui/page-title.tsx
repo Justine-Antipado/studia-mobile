@@ -46,11 +46,6 @@ export function PageTitle({
   );
 }
 
-/** @deprecated use PageTitle */
-export function BackTitle({ title, onBack }: { title: string; onBack: () => void }) {
-  return <PageTitle title={title} onBack={onBack} />;
-}
-
 const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: SPACE.sm + 2 },
   text: { flex: 1, gap: 2 },

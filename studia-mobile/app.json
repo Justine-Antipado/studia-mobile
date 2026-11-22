@@ -10,7 +10,7 @@
     ],
     "icon": "./assets/images/studia-mobile-logo.png",
     "scheme": "studiamobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/images/studia-mobile-logo.png",
       "bundleIdentifier": "com.group4.studiamobile"
@@ -20,12 +20,25 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
-      "expo-video",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/studia-mobile-logo.png",
+          "color": "#ffffff"
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {
           "iosUrlScheme": "com.googleusercontent.apps.591672082298-fn2b59aem60h9i87ekv8729ecaf0pged"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Studia uses your photos so you can choose a profile picture.",
+          "cameraPermission": "Studia uses the camera so you can take a profile picture."
         }
       ]
     ],

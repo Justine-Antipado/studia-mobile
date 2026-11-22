@@ -30,6 +30,19 @@ export function useUploadMaterial(classId: string) {
   );
 }
 
+export function useAddVideoLink(classId: string) {
+  return useMutation(
+    (input: { title: string; url: string }) => materialRepository.addVideoLink(classId, input),
+    { invalidate: () => listKey(classId) },
+  );
+}
+
+export function useProvideTranscript(classId: string, id: string) {
+  return useMutation((text: string) => materialRepository.provideTranscript(classId, id, text), {
+    invalidate: () => [listKey(classId), itemKey(classId, id)],
+  });
+}
+
 export function useDeleteMaterial(classId: string) {
   return useMutation((id: string) => materialRepository.remove(classId, id), {
     invalidate: (id) => [listKey(classId), itemKey(classId, id)],

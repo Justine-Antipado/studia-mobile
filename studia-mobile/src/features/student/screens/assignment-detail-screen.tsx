@@ -20,7 +20,7 @@ import type { Tone } from "@/shared/constants/studia-colors";
 import { useRouteIds } from "@/core/logic/route-params";
 import { useForceBack, useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
-import { dueLabel, scoreTone, toPercent } from "@/features/student/logic/format";
+import { dueLabel, isOverdue, scoreTone, toPercent } from "@/features/student/logic/format";
 import { validateSubmissionText } from "@/features/student/logic/validators";
 import { useAssignment, useAttachAssignment, useTurnInAssignment } from "@/features/student/hooks/use-assignments";
 import { useFilePicker } from "@/features/student/hooks/use-file-picker";
@@ -44,6 +44,7 @@ export default function StudentAssignmentDetail() {
   const [text, setText] = useState("");
   const [file, setFile] = useState<Attachment | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   // Reset the form when a different (or freshly loaded) assignment arrives — adjusted during
   // render, per https://react.dev/learn/you-might-not-need-an-effect, not in a useEffect.
@@ -54,8 +55,15 @@ export default function StudentAssignmentDetail() {
     setFile(assignment.submissionFile ?? null);
   }
 
-  const editable = assignment?.status === "assigned";
-  const dirty = editable && (text.trim().length > 0 || !!file);
+  const isFresh = assignment?.status === "assigned";
+  const editable = isFresh || editing;
+  // A turned-in (not yet graded) submission can be edited until the deadline closes.
+  const canEdit =
+    (assignment?.status === "submitted" || assignment?.status === "late") &&
+    !(isOverdue(assignment.dueAt) && !assignment.allowLate);
+  const dirty = isFresh
+    ? text.trim().length > 0 || !!file
+    : editing && (text !== (assignment?.submissionText ?? "") || file?.id !== assignment?.submissionFile?.id);
   const fallback = classId ? { pathname: "/student/course-detail" as const, params: { id: classId } } : "/student/courses";
   const goBack = useSafeBack(fallback, { blocked: dirty, onBlocked: () => setConfirmDiscard(true) });
   const forceBack = useForceBack(fallback);
@@ -77,8 +85,16 @@ export default function StudentAssignmentDetail() {
       toast.show(result.error.message, { tone: "red" });
       return;
     }
-    toast.show(result.value.status === "draft" ? "Saved as draft" : "Turned in", { tone: "green" });
+    setEditing(false);
+    toast.show(result.value.status === "draft" ? "Saved as draft" : editing ? "Submission updated" : "Turned in", { tone: "green" });
   };
+
+  const startEdit = () => {
+    setText(assignment?.submissionText ?? "");
+    setFile(assignment?.submissionFile ?? null);
+    setEditing(true);
+  };
+  const cancelEdit = () => setEditing(false);
 
   const turnInDraft = async () => {
     const result = await turnIn.run(undefined);
@@ -128,20 +144,30 @@ export default function StudentAssignmentDetail() {
               </Card>
             ) : null}
 
-            {assignment.status === "submitted" || assignment.status === "late" ? (
+            {(assignment.status === "submitted" || assignment.status === "late") && !editing ? (
               <View style={{ gap: SPACE.sm }}>
                 <Text style={TYPE.label}>Your submission</Text>
                 {assignment.submissionText ? <Text style={TYPE.body}>{assignment.submissionText}</Text> : null}
                 {assignment.submissionFile ? <AttachmentRow attachment={assignment.submissionFile} /> : null}
+                {canEdit ? <ActionButton label="Edit submission" icon="create-outline" variant="secondary" onPress={startEdit} /> : null}
               </View>
             ) : null}
 
             {assignment.status === "draft" ? (
               <View style={{ gap: SPACE.md }}>
-                <Badge label="Not allowed late — saved as a draft until you turn it in" tone="orange" />
+                <Badge
+                  label={
+                    isOverdue(assignment.dueAt) && !assignment.allowLate
+                      ? "Deadline passed — late work isn't allowed. Ask your instructor to reopen it."
+                      : "Saved as a draft until you turn it in"
+                  }
+                  tone="orange"
+                />
                 {assignment.submissionText ? <Text style={TYPE.body}>{assignment.submissionText}</Text> : null}
                 {assignment.submissionFile ? <AttachmentRow attachment={assignment.submissionFile} /> : null}
-                <ActionButton label="Turn in" icon="checkmark-circle-outline" loading={turnIn.loading} onPress={turnInDraft} />
+                {isOverdue(assignment.dueAt) && !assignment.allowLate ? null : (
+                  <ActionButton label="Turn in" icon="checkmark-circle-outline" loading={turnIn.loading} onPress={turnInDraft} />
+                )}
               </View>
             ) : null}
 
@@ -156,7 +182,8 @@ export default function StudentAssignmentDetail() {
                 />
                 {file ? <AttachmentRow attachment={file} onPress={() => setFile(null)} /> : null}
                 <ActionButton label={file ? "Replace file" : "Attach file"} icon="attach-outline" variant="secondary" onPress={pickFile} />
-                <ActionButton label="Turn in" icon="send-outline" loading={attach.loading} onPress={submit} />
+                <ActionButton label={editing ? "Save changes" : "Turn in"} icon="send-outline" loading={attach.loading} onPress={submit} />
+                {editing ? <ActionButton label="Cancel" variant="secondary" onPress={cancelEdit} /> : null}
               </View>
             ) : null}
           </View>

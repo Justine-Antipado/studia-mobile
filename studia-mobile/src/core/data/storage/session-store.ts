@@ -1,6 +1,7 @@
 // lib/session-store.ts
 // Tiny in-memory store for the logged-in user (no extra library needed).
-// TODO: when your backend is ready, hydrate this from expo-secure-store / your /me endpoint.
+// The Supabase session itself is persisted by core/data/supabase/secure-storage.ts (SecureStore);
+// this store only holds the profile for the current run.
 import { useSyncExternalStore } from "react";
 
 import type { Role } from "@/core/types/role";
@@ -14,6 +15,8 @@ export type UserProfile = {
   year?: string; // student
   section?: string; // student
   phone?: string;
+  /** Local file URI of the profile photo (read from this device). */
+  avatarUri?: string;
 };
 
 let current: UserProfile | null = null;
@@ -32,32 +35,16 @@ const subscribe = (cb: () => void) => {
 };
 const snapshot = () => current;
 
+/** Non-reactive read for data-layer code. UI uses useUser(). */
+export const getUser = () => current;
+
 export function useUser(): UserProfile | null {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
-/** DEV only: lets you open /student/home or /instructor/home directly (e.g. after a hot reload) without logging in again. */
-const DEMO: Record<Role, UserProfile> = {
-  student: {
-    role: "student",
-    fullName: "Juan Dela Cruz",
-    email: "juan.delacruz@omsu.edu.ph",
-    course: "BSIT",
-    year: "3",
-    section: "A",
-  },
-  instructor: {
-    role: "instructor",
-    fullName: "Maria Santos",
-    email: "maria.santos@omsu.edu.ph",
-    department: "IT Department",
-  },
-};
-
-export function useRoleUser(role: Role): UserProfile | null {
-  const u = useUser();
-  if (u) return u;
-  return __DEV__ ? DEMO[role] : null;
+/** The signed-in user for a role screen, or null when signed out (the role guard then redirects). */
+export function useRoleUser(_role: Role): UserProfile | null {
+  return useUser();
 }
 
 /* ---------- display helpers ---------- */
@@ -73,13 +60,6 @@ export function initials(name: string, max = 2): string {
 
 export const displayName = (u: UserProfile) =>
   u.fullName.trim() || u.email.split("@")[0] || "User";
-
-/** "Prof. Maria Santos" for instructors, plain name for students. */
-export function greetName(u: UserProfile): string {
-  const n = displayName(u);
-  if (u.role !== "instructor" || /^(prof|dr|engr|mr|ms|mrs)\.?\s/i.test(n)) return n;
-  return `Prof. ${n}`;
-}
 
 export const roleLabel = (u: UserProfile) => (u.role === "instructor" ? "Instructor" : "Student");
 

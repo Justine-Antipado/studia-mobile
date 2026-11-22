@@ -1,21 +1,19 @@
 // home-screen.tsx — Instructor Home: greeting, overview numbers, what needs grading, shortcuts.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { EmptyState, ListRow, ListState, QuickAction, SectionHeader, StatCard } from "@/shared/components/ui";
+import { EmptyState, ListRow, ListState, PageTitle, QuickAction, SectionHeader, StatCard } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { TONES } from "@/shared/constants/studia-colors";
-import { SPACE, TYPE } from "@/shared/constants/tokens";
-import { greetName, useRoleUser } from "@/core/data/storage/session-store";
+import { SPACE } from "@/shared/constants/tokens";
 import { plural, timeAgo } from "@/features/instructor/logic/format";
 import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
 import { useInstructorStats } from "@/features/instructor/hooks/use-stats";
 import type { InstructorClass } from "@/features/instructor/types/instructor";
 
 export default function InstructorHomeScreen() {
-  const user = useRoleUser("instructor");
-  const router = useRouter();
+  const router = useSafeRouter();
   const classes = useInstructorClasses();
   const stats = useInstructorStats();
 
@@ -49,19 +47,14 @@ export default function InstructorHomeScreen() {
   return (
     <Screen role="instructor" scope="instructor/home">
       <View style={s.page}>
-        <View>
-          <Text style={TYPE.muted}>Welcome back</Text>
-          <Text style={TYPE.h1} numberOfLines={2}>
-            {user ? greetName(user) : "Instructor"}
-          </Text>
-        </View>
+        <PageTitle title="Home" />
 
         <ListState loading={stats.loading} error={null}>
           {stats.data ? (
             <View style={s.block}>
               <View style={s.statRow}>
-                <StatCard label="Classes" value={stats.data.classCount} onPress={openClasses} />
-                <StatCard label="Students" value={stats.data.studentCount} onPress={openClasses} />
+                <StatCard label="Classes" value={stats.data.classCount} />
+                <StatCard label="Students" value={stats.data.studentCount} />
                 <StatCard
                   label="To Grade"
                   value={stats.data.pendingCount}

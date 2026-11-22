@@ -28,7 +28,7 @@ export function useGradeSubmission(id: string) {
   return useMutation(
     ({ score, feedback }: { score: string; feedback: string }) => submissionRepository.grade(id, score, feedback),
     {
-      invalidate: (_args, submission) => [allKey, itemKey(id), quizKey(submission.quizId)],
+      invalidate: (_args, submission) => [allKey, itemKey(id), quizKey(submission.quizId), cacheKey("instructor", "gradebook")],
     },
   );
 }

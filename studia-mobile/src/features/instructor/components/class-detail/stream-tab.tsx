@@ -1,5 +1,5 @@
 // stream-tab.tsx — Class detail "Stream" tab: pinned + recent announcements, post new ones.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { Text, View } from "react-native";
 
 import { ActionButton, Badge, Card, ListState, SectionHeader } from "@/shared/components/ui";
@@ -8,7 +8,7 @@ import { timeAgo } from "@/features/instructor/logic/format";
 import { useClassAnnouncements } from "@/features/instructor/hooks/use-announcements";
 
 export function StreamTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useClassAnnouncements(classId);
   const announcements = data ?? [];
 

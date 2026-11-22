@@ -1,5 +1,5 @@
 // assessments-tab.tsx — Class detail "Assessments" tab: this class's assignments + quizzes.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { Text, View } from "react-native";
 
 import { ActionButton, Badge, ListRow, ListState, SectionHeader } from "@/shared/components/ui";
@@ -14,7 +14,7 @@ const QUIZ_STATUS_TONE: Record<QuizStatus, Tone> = { draft: "primary", published
 const QUIZ_STATUS_LABEL: Record<QuizStatus, string> = { draft: "Draft", published: "Published" };
 
 export function AssessmentsTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const assignments = useClassAssignments(classId);
   const quizzes = useClassQuizzes(classId);
   const loading = assignments.loading || quizzes.loading;

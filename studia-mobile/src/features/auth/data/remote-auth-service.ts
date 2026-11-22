@@ -7,7 +7,8 @@
 import { REMOTE_ENV } from "@/core/config/data-source";
 import { createEphemeralClient, getSupabase, supabaseConfigured } from "@/core/data/supabase/client";
 import { isEndingSession } from "@/core/data/supabase/end-session";
-import { setUser, type UserProfile } from "@/core/data/storage/session-store";
+import { setUser } from "@/core/data/storage/session-store";
+import { toProfile } from "@/features/auth/logic/user-profile";
 import { post, schemas, type ProfileDto, type SessionDto } from "@/features/auth/data/auth-api";
 import {
   composeSection,
@@ -83,7 +84,7 @@ function take(token: string): SessionDto {
   return entry.session;
 }
 
-/* ---------- input validation (same rules as the mock; the server re-checks everything) ---------- */
+/* ---------- input validation (the server re-checks everything) ---------- */
 
 function assertValid(keys: readonly FieldKey[], values: Partial<Record<FieldKey, string>>, role: Role, strict: boolean) {
   const fields = validateAll(keys, values, { role, strict });
@@ -233,15 +234,6 @@ export const remoteAuthService: AuthService = {
 
 /* ---------- session restore + server-side sign-out ---------- */
 
-const toProfile = (u: User): UserProfile => ({
-  role: u.role,
-  fullName: u.fullName,
-  email: u.email,
-  department: u.department,
-  section: u.section,
-  phone: u.phone,
-});
-
 let started = false;
 
 /** Reloads the stored session into the in-memory user store. Safe to call more than once. */
@@ -286,4 +278,5 @@ export async function restoreRemoteSession(): Promise<void> {
       }),
     ),
   );
+  void import("@/features/shared-screens/data/profile-repository").then((m) => m.profileRepository.loadAvatar());
 }

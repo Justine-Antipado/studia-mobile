@@ -4,7 +4,7 @@
 //
 // Writes are also refused up front while the device is offline: one clear message here beats
 // every form discovering it on its own after a timeout, and keeps the user's draft intact.
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { appError, toAppError, type AppError, type Result } from "@/core/data/errors/app-error";
 import { queryCache } from "@/core/data/cache/query-cache";
@@ -34,8 +34,12 @@ export function useMutation<TArgs, TResult>(
 ): MutationState<TArgs, TResult> {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
+  // Single-flight per argument set: a rapid double tap on "Post" / "Turn in" / "Delete" returns the
+  // request already in progress instead of sending a second one (state updates are async, so the
+  // `loading` flag alone cannot stop it). Different arguments (two different rows) still run.
+  const inFlight = useRef(new Map<string, Promise<Result<TResult>>>());
 
-  const run = useCallback(
+  const execute = useCallback(
     async (args: TArgs): Promise<Result<TResult>> => {
       // Checked before the optimistic edit, so an offline attempt changes nothing at all.
       if (!options.allowOffline && !isOnline()) {
@@ -78,6 +82,23 @@ export function useMutation<TArgs, TResult>(
     // options is expected to hold stable closures from the calling hook
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mutate],
+  );
+
+  const run = useCallback(
+    (args: TArgs): Promise<Result<TResult>> => {
+      let key: string;
+      try {
+        key = JSON.stringify(args) ?? "";
+      } catch {
+        key = "";
+      }
+      const pending = inFlight.current.get(key);
+      if (pending) return pending;
+      const promise = execute(args).finally(() => inFlight.current.delete(key));
+      inFlight.current.set(key, promise);
+      return promise;
+    },
+    [execute],
   );
 
   return { run, loading, error };

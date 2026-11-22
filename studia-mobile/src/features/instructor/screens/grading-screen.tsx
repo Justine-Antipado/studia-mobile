@@ -1,5 +1,5 @@
 // grading-screen.tsx — submissions waiting for review, oldest first, optionally filtered by quiz.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -13,7 +13,7 @@ import { useAllSubmissions } from "@/features/instructor/hooks/use-submissions";
 import type { Submission } from "@/features/instructor/types/instructor";
 
 export default function GradingScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack("/instructor/assessments");
   const presetQuizId = useRouteId("quizId");
   const { data, loading, error, refetch } = useAllSubmissions();

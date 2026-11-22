@@ -7,9 +7,11 @@ import type { Tone } from "@/shared/constants/studia-colors";
 export const PASSING_PERCENT = 75;
 
 /** PH locale everywhere: the app is for one campus and dates must not shift per device. */
-const LOCALE = "en-PH";
-const DATE_OPTS: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
+export const LOCALE = "en-PH";
+/** Pinned so a due date reads the same on every device (a phone set to another zone must not shift it). */
+export const TIME_ZONE = "Asia/Manila";
+const DATE_OPTS: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", timeZone: TIME_ZONE };
+const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", timeZone: TIME_ZONE };
 
 export function isOverdue(iso: string, now = Date.now()): boolean {
   const t = new Date(iso).getTime();
@@ -36,6 +38,39 @@ export function dueLabel(iso: string, now = Date.now()): string {
   return date.getTime() < now ? `Overdue · was due ${when}` : `Due ${when}`;
 }
 
+/** One-line detail for a lesson/material row: duration, else file size, else the link host. */
+export function materialDetail(m: {
+  durationLabel: string | null;
+  attachment: { sizeLabel: string } | null;
+  link: { url: string } | null;
+}): string {
+  if (m.durationLabel) return m.durationLabel;
+  if (m.attachment) return m.attachment.sizeLabel;
+  if (m.link) {
+    try {
+      return new URL(m.link.url).hostname.replace(/^www\./, "");
+    } catch {
+      return "Video link";
+    }
+  }
+  return "";
+}
+
+/** "YYYY-MM-DD" in the device's LOCAL calendar. toISOString() is UTC, which shifts the day by one
+ *  in the Philippines (UTC+8) for anything before 8 AM. */
+export function toLocalIso(date: Date): string {
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
+/** Adds whole calendar days to a local "YYYY-MM-DD". */
+export function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return toLocalIso(d);
+}
+
 export function dayLabel(dayIso: string): string {
   return new Date(`${dayIso}T00:00:00`).toLocaleDateString(LOCALE, {
     weekday: "short",
@@ -46,6 +81,11 @@ export function dayLabel(dayIso: string): string {
 
 export function weekdayShort(dayIso: string): string {
   return new Date(`${dayIso}T00:00:00`).toLocaleDateString(LOCALE, { weekday: "short" });
+}
+
+/** Compact day-chip label: "Sun 15". */
+export function dayChipLabel(dayIso: string): string {
+  return `${weekdayShort(dayIso)} ${new Date(`${dayIso}T00:00:00`).getDate()}`;
 }
 
 /** 13 -> "1PM". */

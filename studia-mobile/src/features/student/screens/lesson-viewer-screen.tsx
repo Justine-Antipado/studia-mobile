@@ -1,6 +1,6 @@
-// lesson-viewer-screen.tsx — video/PDF/slide viewer, transcript (search + timestamps),
+// lesson-viewer-screen.tsx — video LINK (YouTube thumbnail + Watch on YouTube) / PDF / slide viewer, transcript (timestamps),
 // and an inline AI summary (TL;DR + bullets) with a cache-bypassing Regenerate action.
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -11,7 +11,8 @@ import {
   IconTile,
   ListState,
   PageTitle,
-  SearchField,
+  VideoLinkCard,
+  useToast,
 } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { C, OVERLAY } from "@/shared/constants/studia-colors";
@@ -19,8 +20,7 @@ import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
-import { VideoPlayer } from "@/features/student/components/video-player";
-import { useLesson } from "@/features/student/hooks/use-lessons";
+import { useLesson, useRegenerateSummary } from "@/features/student/hooks/use-lessons";
 
 function secToLabel(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -31,21 +31,29 @@ function secToLabel(sec: number): string {
 export default function StudentLessonViewer() {
   const { classId, id } = useRouteIds("classId", "id");
   const goBack = useSafeBack(classId ? { pathname: "/student/course-detail", params: { id: classId } } : "/student/courses");
-  const { data: lesson, loading, error, refetch, mutate } = useLesson(classId, id);
-  const [search, setSearch] = useState("");
+  const toast = useToast();
+  const { data: lesson, loading, error, refetch } = useLesson(classId, id);
+  const regenerateSummary = useRegenerateSummary(classId ?? "", id ?? "");
+  const regenerate = async () => {
+    const result = await regenerateSummary.run(undefined);
+    if (!result.ok) toast.show(result.error.message, { tone: "red" });
+    else toast.show(lesson?.aiSummary ? "Summary regenerated" : "Summary ready", { tone: "green" });
+  };
 
-  const transcript = useMemo(
-    () => (lesson?.transcript ?? []).filter((t) => t.text.toLowerCase().includes(search.toLowerCase())),
-    [lesson, search],
-  );
+  // A ready lesson with no summary yet is summarised automatically the first time it is opened
+  // (the server caches it, so later students just read it). A failure leaves the manual button.
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (autoTried.current || !lesson || lesson.aiSummary || lesson.processing !== "ready") return;
+    autoTried.current = true;
+    void regenerateSummary.run(undefined);
+  }, [lesson, regenerateSummary]);
 
-  const regenerate = () => {
-    if (!lesson?.aiSummary) return;
-    mutate((current) =>
-      current
-        ? { ...current, aiSummary: { ...current.aiSummary!, tldr: `${current.aiSummary!.tldr} (regenerated)` } }
-        : current!,
-    );
+  // YouTube lines restart the in-app player at their timestamp; other sources have no player to seek.
+  const [startSec, setStartSec] = useState(0);
+  const seek = (sec: number) => {
+    if (lesson?.link?.provider !== "youtube") return;
+    setStartSec(Math.floor(sec));
   };
 
   return (
@@ -61,23 +69,9 @@ export default function StudentLessonViewer() {
       >
         {lesson ? (
           <View style={{ gap: SPACE.lg }}>
-            {lesson.kind === "video" ? (
-              lesson.processing === "ready" ? (
-                <VideoPlayer />
-              ) : (
-                <View style={s.placeholder}>
-                  <IconTile
-                    name={lesson.processing === "failed" ? "warning-outline" : "time-outline"}
-                    size={56}
-                    bg={OVERLAY.tile}
-                    color={C.white}
-                  />
-                  <Text style={s.placeholderText}>
-                    {lesson.processing === "failed" ? "Transcription failed" : "AI is processing this video..."}
-                  </Text>
-                </View>
-              )
-            ) : (
+            {lesson.link ? (
+              <VideoLinkCard link={lesson.link} startSec={startSec} />
+            ) : lesson.attachment ? (
               <View style={s.placeholder}>
                 <IconTile
                   name={lesson.kind === "slide" ? "easel-outline" : "document-text-outline"}
@@ -87,9 +81,15 @@ export default function StudentLessonViewer() {
                 />
                 <Text style={s.placeholderText}>{lesson.attachment.name}</Text>
               </View>
-            )}
+            ) : null}
 
-            <AttachmentRow attachment={lesson.attachment} />
+            {lesson.attachment ? <AttachmentRow attachment={lesson.attachment} /> : null}
+
+            {lesson.processing === "processing" ? (
+              <Badge label="AI is preparing the transcript and summary..." tone="gold" />
+            ) : lesson.processing === "failed" ? (
+              <Badge label="No transcript could be fetched for this video. Ask your instructor to add one." tone="red" />
+            ) : null}
 
             {lesson.aiSummary ? (
               <Card>
@@ -103,19 +103,44 @@ export default function StudentLessonViewer() {
                   ))}
                 </View>
                 <View style={{ marginTop: SPACE.md }}>
-                  <ActionButton label="Regenerate" icon="sparkles-outline" variant="secondary" onPress={regenerate} />
+                  <ActionButton
+                    label={`Regenerate (${lesson.regensLeft} left)`}
+                    icon="sparkles-outline"
+                    variant="secondary"
+                    disabled={lesson.regensLeft === 0}
+                    loading={regenerateSummary.loading}
+                    onPress={regenerate}
+                  />
                 </View>
               </Card>
             ) : (
-              <Badge label="AI summary not available for this lesson yet" tone="gold" />
+              lesson.processing === "ready" ? (
+                <Card>
+                  <AiTag text="AI-generated summary" />
+                  <Text style={[TYPE.muted, { marginTop: SPACE.sm }]}>
+                    {regenerateSummary.loading
+                      ? "The AI is reading this lesson. This can take up to a minute."
+                      : "No summary yet. Generate one with AI."}
+                  </Text>
+                  <View style={{ marginTop: SPACE.md }}>
+                    <ActionButton label="Generate summary" icon="sparkles-outline" loading={regenerateSummary.loading} onPress={regenerate} />
+                  </View>
+                </Card>
+              ) : null
             )}
 
             {lesson.transcript.length > 0 ? (
               <View style={{ gap: SPACE.md }}>
                 <Text style={TYPE.h2}>Transcript</Text>
-                <SearchField value={search} onChangeText={setSearch} placeholder="Search transcript" />
-                {transcript.map((line) => (
-                  <Pressable key={line.id} style={s.transcriptLine}>
+                {lesson.transcript.map((line) => (
+                  <Pressable
+                    key={line.id}
+                    style={s.transcriptLine}
+                    onPress={() => seek(line.startSec)}
+                    disabled={lesson.link?.provider !== "youtube"}
+                    accessibilityRole={lesson.link?.provider === "youtube" ? "button" : undefined}
+                    accessibilityLabel={`${secToLabel(line.startSec)} ${line.text}`}
+                  >
                     <Text style={TYPE.eyebrow}>{secToLabel(line.startSec)}</Text>
                     <Text style={TYPE.body}>{line.text}</Text>
                   </Pressable>

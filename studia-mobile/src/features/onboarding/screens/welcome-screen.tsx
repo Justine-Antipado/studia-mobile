@@ -2,7 +2,7 @@
 
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +16,7 @@ const STUDIA_LOGO = require("@/assets/images/studia-mobile-logo.png");
 const MASCOT = require("@/assets/images/studia-mascot.png");
 
 export default function WelcomeScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -26,8 +26,7 @@ export default function WelcomeScreen() {
   const mascotSize = Math.min(width * 0.85, height * 0.4, 360);
   const logoSize = compact ? 64 : 80;
 
-  // TODO: palitan ang '/explore' kapag gawa na ang login/role screen
-  // Gamitin ang router.replace kung ayaw mong makabalik sa welcome screen.
+  // push (not replace) so Back returns to the welcome screen.
   const handleGetStarted = () => router.push("/explore");
   const handleLearnMore = () => router.push("/learn-more");
 

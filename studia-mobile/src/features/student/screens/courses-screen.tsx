@@ -1,17 +1,16 @@
 // courses-screen.tsx — list of joined classes + "Join Class" entry point (modal route).
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { ActionButton, AppList, ListState } from "@/shared/components/ui";
+import { ActionButton, AppList, ListState, PageTitle } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
-import { TYPE } from "@/shared/constants/tokens";
 import { ClassCard } from "@/features/student/components/class-card";
 import { useClasses } from "@/features/student/hooks/use-classes";
 import type { StudentClass } from "@/features/student/types/student";
 
 export default function StudentCourses() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useClasses();
   const classes = data ?? [];
 
@@ -29,9 +28,7 @@ export default function StudentCourses() {
 
   return (
     <Screen role="student" scroll={false} scope="student/courses">
-      <View style={s.head}>
-        <Text style={TYPE.h1}>Courses</Text>
-      </View>
+      <PageTitle title="Courses" />
       <ActionButton label="Join Class" icon="add" onPress={openJoin} />
 
       <View style={s.fill}>
@@ -54,6 +51,5 @@ export default function StudentCourses() {
 }
 
 const s = StyleSheet.create({
-  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   fill: { flex: 1 },
 });
