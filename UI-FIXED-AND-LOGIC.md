@@ -518,3 +518,79 @@ Idagdag ang **Hakbang 0** bago ang Batch C ng seksyon 4:
 12. Gusto mo bang **DEV tools panel** (reset data, simulate time, failure rate) sa Account?
 13. Papasok ba ang `jest-expo` + `npm run check` bilang bahagi ng gawain, o saka na?
 14. Payag ka bang gawing **derived** ang lahat ng bilang (studentCount/progress/pending) kahit mag-iba ang lumalabas na numbers sa demo?
+
+---
+
+# ADDENDUM 2 (2026-11-22) — Paglilinaw sa "remote vs mock" + Duplicate navigation (kailangan ng maraming back)
+
+> Audit pa rin; **walang app code na binago.**
+
+## D. Paglilinaw: "Justine (remote) vs Maria (mock)"
+
+Tama ka — **gumagana ang Sign in with Google at ang login**, at hindi iyon ang tinutukoy ko. Ang ibig kong sabihin:
+
+- Ang `DATA_SOURCE=remote` switch (`core/config/data-source.ts`) ay **binabasa lang ng auth** (`features/auth/data/auth-service.ts` at `core/data/supabase/end-session.ts`). Kaya totoo ang login/Google/OTP (Supabase) at ang pangalan sa header ay galing sa totoong account mo (**Justine Antipado · Instructor · IT**).
+- Ang **lahat ng ibang data** (classes, announcements, assignments, quizzes, students, notifications, planner…) ay galing sa `*-repository.ts` na **laging mock**, kahit naka-`remote` — wala silang tseke sa `isRemote` (grep: tanging 2 file ang gumagamit nito).
+- Resulta: naka-login ka bilang **Justine**, pero ang mga class na nakikita mo ay mock na "IT 321 · Prof. Maria Santos", at ang "Switch view" ay naglalagay ng ibang demo identity (Juan/Maria). Hindi ito bug sa login; pagkakahalo lang ng totoong sesyon at pekeng data. Iyan ang dahilan kung bakit sa screenshots mo ay may "Justine Antipado" (screenshot 1–2) at "Maria Santos" (screenshot 3) — dalawang magkaibang pinagmulan.
+- **Dagdag na maliit na bug (natuklasan ko):** `auth-screen.tsx` `onAuthenticated` → `setUser({...})` ay **hindi kumukopya ng `course` at `year`** mula sa `user` (nandoon ang `section` lang). Kaya ang student header tag ay maaaring "Student" lang o kulang ("BSIT 3-A" ay lumalabas lang sa demo user). I-check kung `User` ay may `course/year` at isama.
+- **Rekomendasyon:** mag-isip ng malinaw na dalawang mode —
+  - `mock` = *lahat* mock, kasama ang auth identity (ang pangalan ay mula sa demo/seed),
+  - `remote` = *lahat* remote (repos ay pumipili ayon sa `isRemote`), at habang wala pa ang remote repos, ipakita ang maliit na "Demo data" badge sa screens para hindi malito. 
+  - Para sa testing ngayon: gamitin ang `EXPO_PUBLIC_DATA_SOURCE=mock` (default) para konsistent ang identity (Juan/Maria) kasama ang unified mock-db sa Addendum A. Ang Google sign-in ay masusubukan pa rin sa `remote`, pero tanggapin na demo data ang laman ng mga screen.
+
+## E. ⚠️ Bug: paulit-ulit na nagbubukas ang sub page kapag maraming tap (double / multi-push)
+
+### E.1 Ano ang nangyayari
+Kapag mabilis na pinindot ang button/card na nagbubukas ng sub page (hal. Post, New, Assignment row, Class card), **bawat tap ay nagdadagdag ng bagong screen sa stack**, kaya kung 3 beses pinindot → 3 magkaparehong screen → 3 beses na back bago makalabas.
+
+### E.2 Root cause
+1. **Walang anumang proteksyon laban sa double navigation** sa buong app. 45 na `router.push(...)` call site (listahan sa E.4) na direktang tinatawag sa `onPress`. Ang `router.push` ay *laging* nagdaragdag ng bagong entry — hindi nito tinitingnan kung ang parehong route ay nasa taas na ng stack.
+2. Ang `Stack.Screen` sa `app/student/_layout.tsx` at `app/instructor/_layout.tsx` ay **walang `getId`** (React Navigation dedupe: kapag pareho ang ID, hindi gumagawa ng bagong screen kundi bumabalik sa umiiral). Walang `getId` saanman (grep).
+3. Habang tumatakbo ang **slide animation** (`STACK_SUBPAGE`, `DURATION.base`) at bago pa ma-unmount/ma-freeze ang naunang screen, ang button ay **tappable pa rin**; mas mabagal ang mabagal na phone (ColorOS atbp.), mas malaking window para sa dobleng tap.
+4. Ang mga reusable na pressable (`ListRow`, `Card`, `QuickAction`, `StatCard`, `ActionButton`) ay may `onPress` lang at walang debounce/lock. Ang `ActionButton` ay may `loading` lock pero para lang sa mutation, hindi para sa navigation (walang loading kapag nag-push lang).
+5. `useSafeBack` ay tama (`router.back()`), kaya ang problema ay hindi sa back kundi sa dami ng na-push.
+
+### E.3 Saan pa ito nangyayari (lahat ng may `router.push`)
+Lahat ng ito ay vulnerable sa parehong bug:
+
+| Area | Mga screen/file |
+|---|---|
+| **Instructor Home** | `home-screen.tsx` — 7 push (Classes, Gradebook, Create Quiz, Analytics, AI Quiz, Class, Grading); StatCards at QuickActions |
+| **Instructor Assessments tab** | `assessments-screen.tsx` — 5 push (Start synthesizer, Create Quiz, quiz-detail, grade-submission, gradebook) |
+| **Instructor Class detail tabs** | `stream-tab` (Post, announcement-detail), `materials-tab` (Upload, material-detail), `assessments-tab` (New assignment, assignment-detail, AI, New quiz, quiz-detail), `people-tab` (student-detail), `grades-tab` (gradebook) |
+| **Instructor lists** | `classes-screen` (create-class, class-detail), `gradebook-screen`, `grading-screen`, `quiz-detail-screen` ("Open grading"), `search-screen` |
+| **Student Home** | `home-screen.tsx` — `go()` (search/courses/todo/planner/ai), `openTask`, `openClass` |
+| **Student lists/tabs** | `courses-screen` (course-detail, join-class), `course-detail/{stream,lessons,tasks}-tab`, `todo-screen` (openTask), `search-screen` |
+| **Onboarding/Auth** | `welcome-screen` (Get Started, Learn more), `explore-screen` (→ `/auth`) — dobleng tap = dobleng `/explore` o `/auth` sa stack |
+| **Subpages na nagbubukas ng ibang subpage** | `quiz-detail → grading`, `gradebook → grade-submission`, atbp. — mas malala dahil dagdag na lalim |
+
+Mga katulad na panganib (hindi `push` pero parehong sanhi — dobleng aksyon):
+- **Mutations na may navigation sa dulo** (`router.replace` pagkatapos ng `run`) — ang `ActionButton loading` ay pumipigil lang pagkatapos mag-re-render; ang napakabilis na double-tap ay nakakapasok ng dalawang request (walang guard sa `useMutation`, tingnan 3.6): Create assignment/quiz/class, Post announcement, Upload material, Turn in, Publish, Grade ("Save & grade next").
+- **`router.setParams({ id: next.id })`** sa grade-submission ("Save & grade next") ay OK pero double-tap ay tatalon ng dalawang submission.
+- **Tab bar**: `StudiaTabBar` ay nagi-guard (`activeName !== route.name`) — ligtas.
+- **Auth screen** ay may `busyRef` guard — ligtas.
+- **Confirm dialog buttons** (`ConfirmDialog`): hindi ko nakitang lock; ang `Delete` na may `busy` lang. Double-tap ay posibleng dobleng delete request (mag-return `not_found` ang pangalawa → maling error toast).
+- **Modal routes** (`join-class`, `search`, `quiz-take`): `presentation: "modal"` ay maaari ring ma-stack nang dalawang beses.
+
+### E.4 Dapat gawin (pumili ng 1 pangunahing + 1 pantulong)
+1. **Pangunahing fix — `getId` sa lahat ng Stack.Screen** (`app/student/_layout.tsx`, `app/instructor/_layout.tsx`). Para sa mga screen na may identity (course-detail, class-detail, assignment-detail, announcement-detail, quiz-detail, material-detail, lesson-viewer, student-detail, grade-submission) gumamit ng `getId={({ params }) => JSON.stringify(params ?? {})}` o ng mga key param (`id`, `classId`). Para sa walang params (todo, planner, search, join-class, create-*): `getId={() => "singleton"}`. Kaya kapag nag-push ng parehong route+params, **hindi ito dodoble**; babalik sa umiiral. Gumagana ito sa Expo Router `Stack` (React Navigation `getId`). Ito ang pinaka-sentral dahil hindi kailangang galawin ang 45 call site.
+   - Tandaan: kung may *intentional* na pag-push ng parehong screen na magkaibang params (hal. dalawang magkaibang announcement), nasa `getId` ang pagkakaiba kaya OK.
+2. **Pantulong — `useNavigateOnce` / `useSafePush`** sa `shared/hooks`: isang hook na nagbabalot ng `router.push` na may **lock** (hal. ignore ang ulit sa loob ng ~600–800 ms o hanggang `transitionEnd`/focus event) — gagamitin ng lahat ng call site (palitan ang `router.push` ng `go(...)`). Pinipigilan din ang dobleng tap sa `Pressable` na `onPress`.
+3. **Pantulong sa antas ng component:** ang `ListRow`, `Card`, `QuickAction`, `StatCard`, `Chip`, `ActionButton` ay magkaroon ng built-in na **press guard** (ignore ang pangalawang press sa loob ng X ms) — isang lugar lang ang ibabago at saklaw ang lahat, kahit ang non-navigation (confirm/delete/post).
+4. **`useMutation`**: `if (inFlightRef.current) return pendingPromise` (single-flight) para sa dobleng submit/delete.
+5. **Para sa Modal routes**: `getId` din; at tiyaking hindi nagbubukas ang modal habang nagpe-present pa ang naunang isa.
+6. **Pagsubok**: manu-manong mabilis na triple-tap sa bawat item sa E.3 (lalo na sa mabagal na device); at sa unit/e2e kung magkakaroon ng jest — i-assert na `router.push` ay isang beses lang.
+
+### E.5 Karagdagang obserbasyon na may kaugnayan
+- `Screen` ay hindi nagba-block ng input habang may transition (walang `pointerEvents` guard) — kasama sa sanhi (E.2 #3).
+- `useSafeBack` hardware-back handler: kapag `router.canGoBack()` true → `return false` (hinahayaan ang navigator); okay. Pero ang bawat duplicate screen ay may sarili ring back handler kaya apektado ang bilang ng back na kailangan — mawawala sa fix ng E.4.
+- Sa `home-screen` (student) ang `go("courses"|"ai")` ay nag-`push` sa **tab route** (`/student/courses`, `/student/ai`) mula sa loob ng tab — dapat `router.navigate` (o tab switch) at hindi push, para hindi lumikha ng karagdagang history entry/duplicate tab navigation (na may `backBehavior="history"` ay nagdudulot ng dagdag na back). I-verify sa device.
+- Pagkatapos ng fix, i-update ang `docs/ROUTE-MAP.md` (kung paano dine-dedupe ang routes).
+
+## F. Pagbabago sa priority
+
+Idagdag sa **Batch A (quick wins)**: **E.4 #1 (`getId`) + #3 (press guard sa shared pressables)** — maliit ang gawa, malaki ang epekto sa pakiramdam ng app, at nakakaapekto sa lahat ng screen. Ilagay ito **una** sa listahan.
+
+**Dagdag na desisyon na kailangan ko:**
+15. Mock-mode: sang-ayon ka bang sa mock mode ay **demo identity lahat** (Juan/Maria) kahit nag-login ka ng Google, at sa remote mode ay pangalan mo ang gagamitin? (Tingnan D)
+16. Press guard: OK ba ang ~700 ms na lock sa shared pressables (`ListRow`/`Card`/`QuickAction`/`StatCard`/`ActionButton`)?
