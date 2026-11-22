@@ -1,7 +1,7 @@
 // lesson-viewer-screen.tsx — video LINK (YouTube thumbnail + Watch on YouTube) / PDF / slide viewer, transcript (timestamps),
 // and an inline AI summary (TL;DR + bullets) with a cache-bypassing Regenerate action.
-import { useEffect, useRef } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   ActionButton,
@@ -49,12 +49,11 @@ export default function StudentLessonViewer() {
     void regenerateSummary.run(undefined);
   }, [lesson, regenerateSummary]);
 
-  // YouTube lines can jump to their timestamp; other sources have no player to seek.
+  // YouTube lines restart the in-app player at their timestamp; other sources have no player to seek.
+  const [startSec, setStartSec] = useState(0);
   const seek = (sec: number) => {
     if (lesson?.link?.provider !== "youtube") return;
-    void Linking.openURL(`${lesson.link.url}&t=${Math.floor(sec)}s`).catch(() => {
-      toast.show("Could not open the link.", { tone: "red" });
-    });
+    setStartSec(Math.floor(sec));
   };
 
   return (
@@ -71,7 +70,7 @@ export default function StudentLessonViewer() {
         {lesson ? (
           <View style={{ gap: SPACE.lg }}>
             {lesson.link ? (
-              <VideoLinkCard link={lesson.link} />
+              <VideoLinkCard link={lesson.link} startSec={startSec} />
             ) : lesson.attachment ? (
               <View style={s.placeholder}>
                 <IconTile

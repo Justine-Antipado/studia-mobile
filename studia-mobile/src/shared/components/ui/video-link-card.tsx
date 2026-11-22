@@ -1,9 +1,10 @@
 // video-link-card.tsx — how a lesson VIDEO is shown: it is a link, not a file.
-//   YouTube  -> thumbnail we build from the validated video id + "Watch on YouTube"
+//   YouTube  -> plays in the app (YoutubePlayer) + an optional "Open in YouTube" button
 //   other    -> a link card with the host name + "Open link"
-// The link is opened by the system (YouTube app / browser). It is never rendered in a WebView, so
-// an instructor-supplied URL cannot run anything inside the app.
+// Only a YouTube id that passes the 11-character check is ever put in the player. An arbitrary
+// instructor-supplied URL is never rendered in a WebView; it is opened by the system instead.
 import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { VideoLink } from "@/core/types/content";
@@ -11,6 +12,7 @@ import { ActionButton } from "@/shared/components/ui/action-button";
 import { AppImage } from "@/shared/components/ui/app-image";
 import { Icon } from "@/shared/components/ui/icon";
 import { useToast } from "@/shared/components/ui/toast";
+import { YoutubePlayer, isYoutubeId } from "@/shared/components/ui/youtube-player";
 import { C, OVERLAY } from "@/shared/constants/studia-colors";
 import { FONT, RADIUS, SPACE, TYPE } from "@/shared/constants/tokens";
 import { youtubeThumbnail } from "@/shared/utils/video-link";
@@ -23,9 +25,11 @@ const hostOf = (url: string) => {
   }
 };
 
-export function VideoLinkCard({ link }: { link: VideoLink }) {
+export function VideoLinkCard({ link, startSec = 0 }: { link: VideoLink; /** Starts the in-app player at this second (transcript timestamps). */ startSec?: number }) {
   const toast = useToast();
+  const [playerFailed, setPlayerFailed] = useState(false);
   const isYoutube = link.provider === "youtube" && !!link.videoId;
+  const inApp = isYoutube && isYoutubeId(link.videoId) && !playerFailed;
 
   const open = async () => {
     try {
@@ -42,6 +46,9 @@ export function VideoLinkCard({ link }: { link: VideoLink }) {
 
   return (
     <View style={s.wrap}>
+      {inApp ? (
+        <YoutubePlayer videoId={link.videoId!} startSec={startSec} autoplay={startSec > 0} onError={() => setPlayerFailed(true)} />
+      ) : (
       <Pressable
         onPress={open}
         accessibilityRole="button"
@@ -64,8 +71,9 @@ export function VideoLinkCard({ link }: { link: VideoLink }) {
           </View>
         ) : null}
       </Pressable>
+      )}
       <ActionButton
-        label={isYoutube ? "Watch on YouTube" : "Open link"}
+        label={isYoutube ? (inApp ? "Open in YouTube" : "Watch on YouTube") : "Open link"}
         icon={isYoutube ? "logo-youtube" : "open-outline"}
         variant="secondary"
         onPress={open}
