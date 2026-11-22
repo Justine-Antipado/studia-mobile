@@ -4,7 +4,8 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { useLocalSearchParams, type Href } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import {
   createRef,
   useCallback,
@@ -16,7 +17,6 @@ import {
 import {
   Keyboard,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -151,7 +151,7 @@ const OTP_COPY: Record<OtpPurpose, string> = {
 };
 
 export default function Auth() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const params = useLocalSearchParams<{ role?: string }>();
@@ -620,7 +620,7 @@ export default function Auth() {
 
       <KeyboardAvoidingView
         style={s.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior="padding"
       >
         <ScrollView
           ref={scrollRef}

@@ -2,7 +2,7 @@
 // hidden when opened from a class) and filterable to "All" or one specific assignment/quiz.
 //   All              -> one row per student, overall % weighted by points
 //   a specific item  -> one row per student for that item (graded / pending / missing)
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -37,7 +37,7 @@ import type { GradeEntry } from "@/features/instructor/data/gradebook-repository
 type Row = { kind: "overall"; data: StudentOverall; id: string } | { kind: "entry"; data: GradeEntry; id: string };
 
 export default function GradebookScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack("/instructor/assessments");
   const presetClassId = useRouteId("classId");
   const classes = useInstructorClasses();

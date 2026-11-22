@@ -1,5 +1,5 @@
 // materials-tab.tsx — Class detail "Materials" tab: lessons/files with AI processing status.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { View } from "react-native";
 
 import { ActionButton, Badge, ListRow, ListState, SectionHeader } from "@/shared/components/ui";
@@ -19,7 +19,7 @@ const PROCESSING_TONE: Record<ProcessingState, Tone> = { processing: "orange", r
 const PROCESSING_LABEL: Record<ProcessingState, string> = { processing: "Processing", ready: "Ready", failed: "Failed" };
 
 export function MaterialsTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useClassMaterials(classId);
   const materials = data ?? [];
 

@@ -1,7 +1,7 @@
 // assignment-submissions.tsx — "Submissions" section of the instructor assignment detail:
 // summary counts, status filter chips, and one row per student (turned in / late / missing /
 // graded with score). Tapping a student opens the grading screen.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -42,7 +42,7 @@ export function AssignmentSubmissions({
   assignmentId: string;
   points: number;
 }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useAssignmentSubmissions(classId, assignmentId);
   const [filter, setFilter] = useState<Filter>("All");
   const rows = useMemo(() => data ?? [], [data]);

@@ -1,5 +1,5 @@
 // home-screen.tsx — greeting, quick actions, today's tasks, upcoming deadlines, continue learning.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
@@ -17,7 +17,7 @@ import type { Task } from "@/features/student/types/student";
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
 export default function StudentHome() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const classes = useClasses();
   const tasks = useTasks();
   const toggleTask = useToggleTask();

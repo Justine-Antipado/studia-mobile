@@ -1,5 +1,5 @@
 // lessons-tab.tsx — Course detail "Lessons" tab: materials with AI processing/ready states.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { View } from "react-native";
 
 import { Badge, ListRow, ListState } from "@/shared/components/ui";
@@ -8,7 +8,7 @@ import { materialDetail } from "@/features/student/logic/format";
 import { useLessons } from "@/features/student/hooks/use-lessons";
 
 export function LessonsTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useLessons(classId);
   const lessons = data ?? [];
 

@@ -1,5 +1,5 @@
 // tasks-tab.tsx — Course detail "Tasks" tab: this class's assignments + quizzes.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { View } from "react-native";
 
 import { Badge, ListRow, ListState } from "@/shared/components/ui";
@@ -12,7 +12,7 @@ const STATUS_TONE = { assigned: "primary", draft: "orange", submitted: "green", 
 const STATUS_LABEL = { assigned: "Assigned", draft: "Draft", submitted: "Submitted", late: "Late", graded: "Graded" } as const;
 
 export function TasksTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const assignments = useAssignments(classId);
   const quizzes = useQuizzes(classId);
   const loading = assignments.loading || quizzes.loading;

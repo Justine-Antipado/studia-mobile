@@ -1,6 +1,6 @@
 // assignment-detail-screen.tsx — instructor view: instructions, due date, points, late rule,
 // attachments, who turned it in / is missing (tap to grade), delete (confirm).
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -16,7 +16,7 @@ import { useDeleteAssignment, useInstructorAssignment } from "@/features/instruc
 
 export default function InstructorAssignmentDetailScreen() {
   const { classId, id } = useRouteIds("classId", "id");
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack(classId ? { pathname: "/instructor/class-detail", params: { id: classId } } : "/instructor/classes");
   const { data: assignment, loading, error, refetch } = useInstructorAssignment(classId, id);
   const deleteAssignment = useDeleteAssignment(classId ?? "");

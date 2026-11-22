@@ -12,6 +12,16 @@ import { QuizQuestionCard } from "@/features/student/components/quiz-question-ca
 import { useQuiz, useSubmitQuizAttempt } from "@/features/student/hooks/use-quizzes";
 import type { QuizAnswer } from "@/features/student/types/student";
 
+// When each quiz's countdown began. Module-level so leaving the screen and coming back resumes the
+// SAME clock instead of handing out a fresh full timer. Mock-only: the real server owns started_at.
+const startedAt = new Map<string, number>();
+
+function remainingSeconds(quizId: string, limitMin: number): number {
+  const began = startedAt.get(quizId) ?? Date.now();
+  startedAt.set(quizId, began);
+  return Math.max(0, Math.ceil(limitMin * 60 - (Date.now() - began) / 1000));
+}
+
 export default function StudentQuizTake() {
   const { classId, quizId } = useRouteIds("classId", "quizId");
   const router = useRouter();
@@ -28,7 +38,7 @@ export default function StudentQuizTake() {
   const [timerStartedFor, setTimerStartedFor] = useState<string | null>(null);
   if (quiz && quiz.id !== timerStartedFor) {
     setTimerStartedFor(quiz.id);
-    setSecondsLeft(quiz.timeLimitMin && !quiz.closed ? quiz.timeLimitMin * 60 : null);
+    setSecondsLeft(quiz.timeLimitMin && !quiz.closed ? remainingSeconds(quiz.id, quiz.timeLimitMin) : null);
   }
 
   const answeredCount = Object.values(answers).filter((v) => v !== null && v !== "").length;
@@ -39,6 +49,7 @@ export default function StudentQuizTake() {
       const list: QuizAnswer[] = quiz.questions.map((q) => ({ questionId: q.id, response: answers[q.id] ?? null }));
       const result = await submitAttempt.run(list);
       if (result.ok) {
+        if (quizId) startedAt.delete(quizId);
         router.replace({ pathname: "/student/quiz-result", params: { classId, quizId, attemptId: result.value.id } });
       } else {
         toast.show(result.error.message, { tone: "red" });

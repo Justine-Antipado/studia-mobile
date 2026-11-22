@@ -1,5 +1,5 @@
 // home-screen.tsx — Instructor Home: greeting, overview numbers, what needs grading, shortcuts.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -13,7 +13,7 @@ import { useInstructorStats } from "@/features/instructor/hooks/use-stats";
 import type { InstructorClass } from "@/features/instructor/types/instructor";
 
 export default function InstructorHomeScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const classes = useInstructorClasses();
   const stats = useInstructorStats();
 

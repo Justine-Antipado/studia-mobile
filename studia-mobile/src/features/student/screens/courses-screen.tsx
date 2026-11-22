@@ -1,5 +1,5 @@
 // courses-screen.tsx — list of joined classes + "Join Class" entry point (modal route).
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -10,7 +10,7 @@ import { useClasses } from "@/features/student/hooks/use-classes";
 import type { StudentClass } from "@/features/student/types/student";
 
 export default function StudentCourses() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { data, loading, error, refetch } = useClasses();
   const classes = data ?? [];
 

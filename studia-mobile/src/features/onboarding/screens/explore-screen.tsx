@@ -2,7 +2,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useEffect, useState } from "react";
 import {
   Animated,
@@ -70,7 +70,7 @@ const TERMS: { title: string; body: string }[] = [
 ];
 
 export default function ExploreScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
 

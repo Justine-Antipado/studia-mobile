@@ -2,7 +2,7 @@
 // useRoleUser(role)). Sub-pages (edit profile, change password, ...) are a later phase; entries
 // below are placeholders until those routes exist.
 import { useState } from "react";
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import Constants from "expo-constants";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -22,7 +22,7 @@ import { RADIUS, SHADOW, SPACE, TYPE } from "@/shared/constants/tokens";
 
 export function AccountScreen({ role }: { role: Role }) {
   const user = useRoleUser(role);
-  const router = useRouter();
+  const router = useSafeRouter();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   if (!user) return null;
 

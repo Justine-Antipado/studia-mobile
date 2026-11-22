@@ -1,5 +1,5 @@
 // search-screen.tsx — modal: search across classes and quizzes (debounced 300ms).
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
@@ -11,7 +11,7 @@ import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
 import { useQuizzes } from "@/features/instructor/hooks/use-quizzes";
 
 export default function InstructorSearchScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack("/instructor/home");
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");

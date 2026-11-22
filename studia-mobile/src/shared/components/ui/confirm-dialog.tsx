@@ -1,5 +1,6 @@
 // confirm-dialog.tsx — required before every destructive action (delete class, remove student,
 // leave class, logout) and before discarding unsaved form changes.
+import { useEffect, useRef } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppButton } from "@/shared/components/ui/app-button";
@@ -34,6 +35,20 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const c = TONES[tone];
+  // `busy` arrives via async state, so a fast double tap could fire onConfirm twice before it
+  // does. Latch the first press; re-arm whenever the dialog is shown again or busy ends.
+  const fired = useRef(false);
+  useEffect(() => {
+    if (!visible || !busy) fired.current = false;
+  }, [visible, busy]);
+  const confirmOnce = () => {
+    if (fired.current) return;
+    fired.current = true;
+    setTimeout(() => {
+      if (!busy) fired.current = false;
+    }, 800);
+    onConfirm();
+  };
 
   return (
     <Modal
@@ -62,7 +77,7 @@ export function ConfirmDialog({
               <AppButton label={cancelLabel} variant="secondary" disabled={busy} onPress={onCancel} />
             </View>
             <View style={s.flex}>
-              <AppButton label={confirmLabel} disabled={busy} onPress={onConfirm} />
+              <AppButton label={confirmLabel} disabled={busy} onPress={confirmOnce} />
             </View>
           </View>
         </View>

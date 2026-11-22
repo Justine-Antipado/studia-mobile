@@ -1,5 +1,5 @@
 // quiz-detail-screen.tsx — quiz preview (Draft / Published), questions, grading shortcut.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -19,7 +19,7 @@ const STATUS_LABEL: Record<QuizStatus, string> = { draft: "Draft", published: "P
 
 export default function QuizDetailScreen() {
   const id = useRouteId();
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack("/instructor/assessments");
   const { data: quiz, loading, error, refetch } = useQuiz(id);
   const deleteQuiz = useDeleteQuiz(quiz?.classId ?? "");

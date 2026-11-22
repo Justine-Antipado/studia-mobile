@@ -1,6 +1,6 @@
 // grades-tab.tsx — Class detail "Grades" tab: quick summary for THIS class (by classId, so two
 // sections sharing a subject code never mix), opens the full gradebook already scoped to it.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useMemo } from "react";
 import { View } from "react-native";
 
@@ -11,7 +11,7 @@ import { useGradebook } from "@/features/instructor/hooks/use-gradebook";
 import { statsOf } from "@/features/instructor/logic/gradebook-summary";
 
 export function GradesTab({ classId }: { classId: string }) {
-  const router = useRouter();
+  const router = useSafeRouter();
   const book = useGradebook(classId);
   const stats = useMemo(() => statsOf(book.data ?? []), [book.data]);
   const average = stats.averagePercent;

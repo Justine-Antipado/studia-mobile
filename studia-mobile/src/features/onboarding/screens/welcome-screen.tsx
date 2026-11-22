@@ -2,7 +2,7 @@
 
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,7 +16,7 @@ const STUDIA_LOGO = require("@/assets/images/studia-mobile-logo.png");
 const MASCOT = require("@/assets/images/studia-mascot.png");
 
 export default function WelcomeScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 

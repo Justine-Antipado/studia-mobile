@@ -1,5 +1,5 @@
 // search-screen.tsx — modal: search across classes and tasks (debounced 300ms).
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
@@ -12,7 +12,7 @@ import { useClasses } from "@/features/student/hooks/use-classes";
 import { useTasks } from "@/features/student/hooks/use-tasks";
 
 export default function StudentSearch() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack("/student/home");
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");

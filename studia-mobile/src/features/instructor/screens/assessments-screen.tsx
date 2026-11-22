@@ -1,6 +1,6 @@
 // assessments-screen.tsx — Assessments tab: AI synthesizer banner, manual create, quizzes list,
 // needs-grading shortcut, gradebook summary (docs/ROUTE-MAP.md).
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -20,7 +20,7 @@ const STATUS_TONE: Record<QuizStatus, Tone> = { draft: "primary", published: "gr
 const STATUS_LABEL: Record<QuizStatus, string> = { draft: "Draft", published: "Published" };
 
 export default function InstructorAssessmentsScreen() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const [tab, setTab] = useState<Tab>("Quizzes");
   const quizzes = useQuizzes();
   const submissions = useAllSubmissions();

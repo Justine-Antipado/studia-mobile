@@ -1,6 +1,6 @@
 // todo-screen.tsx — auto-generated checklist from assignments + quizzes. The tab strip stays on
 // top on its own; sorting/filtering lives in a bottom "Filter & sort" sheet.
-import { useRouter } from "expo-router";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -30,7 +30,7 @@ import {
 import type { Task } from "@/features/student/types/student";
 
 export default function StudentTodo() {
-  const router = useRouter();
+  const router = useSafeRouter();
   const goBack = useSafeBack("/student/home");
   const { data, loading, error, refetch } = useTasks();
   const toggleTask = useToggleTask();
