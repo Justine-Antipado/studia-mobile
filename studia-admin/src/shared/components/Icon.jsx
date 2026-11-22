@@ -38,6 +38,7 @@ export const Icon = {
   Eye: () => (<svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>),
   EyeOff: () => (<svg {...p}><path d="M3 3l18 18M10.6 6.1A9.9 9.9 0 0112 6c6.5 0 10 6 10 6a17 17 0 01-3.2 3.9M6.6 6.6A17 17 0 002 12s3.5 6 10 6c1.7 0 3.2-.4 4.5-1" /></svg>),
   User: () => (<svg {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21c.8-4 4-6 8-6s7.2 2 8 6" /></svg>),
+  Calendar: () => (<svg {...p}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>),
   Chevron: () => (<svg {...p} width="14" height="14"><path d="M9 6l6 6-6 6" /></svg>),
   ChevronDown: () => (<svg {...p} width="14" height="14"><path d="M6 9l6 6 6-6" /></svg>),
   ChevronLeft: () => (<svg {...p} width="16" height="16"><path d="M15 6l-6 6 6 6" /></svg>),

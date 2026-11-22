@@ -2,7 +2,6 @@
 // shown inside the mobile app as plain text (master prompt, section 7).
 import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { ROUTES } from '../../../core/config/routes';
 import EmptyState from '../../../shared/components/EmptyState';
 import PageHeader from '../../../shared/components/PageHeader';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -27,15 +26,20 @@ function LegalForm({ initial, save, saving }) {
   return (
     <>
       <div className="stack">
-        <Card title="Terms of use">
+        <Card className="settings-card" title="Terms of use">
           <textarea className="input textarea" value={form.terms} onChange={(e) => setForm({ ...form, terms: e.target.value })} />
         </Card>
-        <Card title="Privacy policy">
+        <Card className="settings-card" title="Privacy policy">
           <textarea className="input textarea" value={form.privacy} onChange={(e) => setForm({ ...form, privacy: e.target.value })} />
         </Card>
-        <button type="button" className="btn btn-primary btn-block" disabled={saving} onClick={publish}>
-          {saving ? 'Publishing…' : 'Publish policy'}
-        </button>
+        <div className="form-footer">
+          <button type="button" className="btn btn-ghost" disabled={saving} onClick={() => setForm(initial)}>
+            Reset
+          </button>
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={publish}>
+            {saving ? 'Publishing…' : 'Publish policy'}
+          </button>
+        </div>
       </div>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />
@@ -48,7 +52,7 @@ export default function Legal() {
 
   return (
     <>
-      <PageHeader title="Terms & privacy" subtitle="The text shown inside the mobile app." back={ROUTES.settings} />
+      <PageHeader title="Terms & privacy" subtitle="The text shown inside the mobile app." />
 
       {loading && <Skeleton height={340} radius="var(--radius-lg)" />}
 

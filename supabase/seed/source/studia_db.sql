@@ -135,7 +135,7 @@ CREATE TABLE users (
 CREATE TABLE otp_codes (
   id          VARCHAR(36)  NOT NULL,
   email       VARCHAR(254) NOT NULL,                  -- keyed by email, not user_id: a signup OTP predates a usable account
-  purpose     ENUM('signup','google_login','google_signup','reset','password_change') NOT NULL,
+  purpose     ENUM('signup','google_login','google_signup','reset','password_change','admin_login') NOT NULL,
   code_hash   VARCHAR(255) NOT NULL,                  -- hash of the 6-digit code
   attempts    TINYINT UNSIGNED NOT NULL DEFAULT 0,    -- OTP_MAX_ATTEMPTS = 5
   sent_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -152,7 +152,7 @@ CREATE TABLE otp_codes (
 CREATE TABLE auth_tokens (
   id          VARCHAR(36)  NOT NULL,
   email       VARCHAR(254) NOT NULL,
-  kind        ENUM('reset','google_profile') NOT NULL,
+  kind        ENUM('reset','google_profile','admin_pending_login') NOT NULL,
   token_hash  VARCHAR(255) NOT NULL,
   payload     JSON         DEFAULT NULL,              -- google_profile: {"full_name":"...","google_id":"..."}
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -199,6 +199,8 @@ CREATE TABLE login_attempts (
   role         ENUM('student','instructor','admin') DEFAULT NULL,  -- which app asked
   success      TINYINT(1)   NOT NULL DEFAULT 0,
   locked       TINYINT(1)   NOT NULL DEFAULT 0,       -- this attempt was refused by the lockout
+  stage        ENUM('password','otp') NOT NULL DEFAULT 'password',  -- which step of the login this row is
+  note         VARCHAR(120) DEFAULT NULL,             -- 'Password accepted, OTP sent', 'Wrong code', ...
   ip           VARCHAR(45)  DEFAULT NULL,
   user_agent   VARCHAR(255) DEFAULT NULL,
   attempted_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1167,12 +1169,12 @@ INSERT INTO settings (section, data, updated_by, updated_at) VALUES
 ('term','{"school_year":"2026-2027","semester":"1st Semester","start_date":"2026-08-11","end_date":"2026-12-18"}','u-admin-1','2026-11-18 09:00:00'),
 -- resend_seconds is 30 to match studia-mobile's OTP_RESEND_MS; the admin mock
 -- said 60 (SCHEMA-AUDIT.md, finding 22).
-('email','{"sender_email":"no-reply@omsu.edu.ph","otp_expiry_minutes":5,"require_otp_for_reset":true,"resend_seconds":30}','u-admin-1','2026-11-18 09:00:00'),
+('email','{"sender_email":"studia.noreply2026@gmail.com","otp_expiry_minutes":5,"require_otp_for_reset":true,"resend_seconds":30}','u-admin-1','2026-11-18 09:00:00'),
 ('security_policy','{"min_password_length":8,"require_uppercase":true,"require_lowercase":true,"require_number":true,"require_symbol":true,"max_password_length":64,"session_timeout_minutes":20,"max_login_attempts":5,"lockout_minutes":1}','u-admin-1','2026-11-18 09:00:00'),
 -- The union of both clients' whitelists, with the mobile app's two size caps
 -- (SCHEMA-AUDIT.md, finding 23).
 ('uploads','{"allowed_types":["pdf","doc","docx","ppt","pptx","mp4","mov","jpg","jpeg","png"],"max_material_size_mb":500,"max_submission_size_mb":50,"storage_quota_gb":50,"max_file_name_length":120}','u-admin-1','2026-11-18 09:00:00'),
-('system','{"maintenance_mode":false,"app_version":"v1.0.0","up_to_date":true,"timezone":"Asia/Manila"}','u-admin-1','2026-11-18 09:00:00'),
+('system','{"maintenance_mode":false,"maintenance":{"enabled":false,"scope":"all","roles":[],"features":[],"message":"","starts_at":null,"ends_at":null},"app_version":"v1.0.0","up_to_date":true,"timezone":"Asia/Manila"}','u-admin-1','2026-11-18 09:00:00'),
 ('backup','{"schedule":"nightly","retain_points":4}','u-admin-1','2026-11-16 02:00:00'),
 ('legal','{"terms":"1. Using STUDIA - provided by OMSU Mamburao Campus for learning and academic activities.","privacy":"STUDIA collects only the account and academic data needed to run classes, lessons and AI features for OMSU Mamburao Campus. Data is never sold or shared outside the university."}','u-admin-1','2026-11-18 09:00:00'),
 ('ai','{"summarizer":true,"planner":true,"quiz_synthesizer":true,"chat":true,"language":"English","daily_request_limit":5000}','u-admin-1','2026-11-18 09:00:00');

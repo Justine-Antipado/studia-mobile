@@ -2,11 +2,13 @@
 // lessons with their processing status, size and owner. Delete only; there is
 // no upload or edit here, lessons are created from the instructor's app.
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import * as contentRepo from '../data/contentRepository';
 import { path, ROUTES } from '../../../core/config/routes';
 import { formatBytes, formatDate } from '../../../core/logic/format';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { ActionButton, ActionRow } from '../../../shared/components/ActionButton';
+import Select from '../../../shared/components/Select';
 import DataTable from '../../../shared/components/DataTable';
 import EmptyState from '../../../shared/components/EmptyState';
 import { Icon } from '../../../shared/components/Icon';
@@ -18,11 +20,16 @@ import { useAsync, usePagination, useQueryState, useToast } from '../../../share
 
 const PAGE_SIZE = 10;
 const KINDS = ['video', 'pdf', 'slide'];
-const STATUSES = ['Ready', 'Processing', 'Failed'];
+const STATUS_OPTIONS = [
+  { value: 'Ready', label: 'Ready', dot: 'green' },
+  { value: 'Processing', label: 'Processing', dot: 'amber' },
+  { value: 'Failed', label: 'Failed', dot: 'red' },
+];
 const DEFAULTS = { page: 1, sort: 'postedAt', order: 'desc', q: '', kind: 'All', status: 'All' };
 const RESET_PAGE_ON = ['q', 'kind', 'status'];
 
 export default function Content() {
+  const navigate = useNavigate();
   const [query, setQuery] = useQueryState(DEFAULTS, { resetPageOn: RESET_PAGE_ON });
   const [selected, setSelected] = useState(new Set());
   const [deleteIds, setDeleteIds] = useState(null);
@@ -119,24 +126,24 @@ export default function Content() {
             onChange={(e) => setQuery({ q: e.target.value })}
           />
         </label>
-        <label className="field">
+        <div className="field">
           <span>Type</span>
-          <select className="input" value={query.kind} onChange={(e) => setQuery({ kind: e.target.value })}>
-            <option value="All">All types</option>
-            {KINDS.map((k) => (
-              <option key={k} value={k}>{k}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
+          <Select
+            label="Type"
+            value={query.kind}
+            options={[{ value: 'All', label: 'All types' }, ...KINDS.map((k) => ({ value: k, label: k }))]}
+            onChange={(kind) => setQuery({ kind })}
+          />
+        </div>
+        <div className="field">
           <span>Status</span>
-          <select className="input" value={query.status} onChange={(e) => setQuery({ status: e.target.value })}>
-            <option value="All">All statuses</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </label>
+          <Select
+            label="Status"
+            value={query.status}
+            options={[{ value: 'All', label: 'All statuses' }, ...STATUS_OPTIONS]}
+            onChange={(status) => setQuery({ status })}
+          />
+        </div>
       </div>
 
       <Card>
@@ -166,18 +173,20 @@ export default function Content() {
               selectedIds={selected}
               onSelectedChange={setSelected}
               rowLabel={(m) => m.title}
+              onRowClick={(m) => navigate(path(ROUTES.classDetail, { id: m.classId }))}
               caption="Content library"
               emptyTitle="No materials found"
               emptyMessage="Try a different filter or search term."
               renderActions={(m) => (
-                <>
-                  <Link to={path(ROUTES.classDetail, { id: m.classId })} className="link-btn">
-                    <Icon.Classes /> Open class
-                  </Link>
-                  <button type="button" className="link-btn warn" onClick={() => setDeleteIds([m.id])}>
-                    <Icon.Trash /> Delete
-                  </button>
-                </>
+                <ActionRow>
+                  <ActionButton
+                    icon="Classes"
+                    label="Open class"
+                    tone="primary"
+                    to={path(ROUTES.classDetail, { id: m.classId })}
+                  />
+                  <ActionButton icon="Trash" label="Delete" tone="danger" onClick={() => setDeleteIds([m.id])} />
+                </ActionRow>
               )}
             />
             {rows.length > 0 && <Pager pagination={pagination} onPageChange={(page) => setQuery({ page })} />}

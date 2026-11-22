@@ -65,14 +65,14 @@ export default function Dashboard() {
         <>
           <div className="stat-grid stat-grid-6">
             {[
-              ['Total users', data.stats.totalUsers],
-              ['Students', data.stats.students],
-              ['Instructors', data.stats.instructors],
-              ['Active today', data.stats.activeToday],
-              ['Classes', data.stats.classes],
-              ['AI requests', data.stats.aiRequests],
-            ].map(([label, value]) => (
-              <StatCard key={label} label={label} value={value} />
+              ['Total users', data.stats.totalUsers, ROUTES.users],
+              ['Students', data.stats.students, ROUTES.users],
+              ['Instructors', data.stats.instructors, ROUTES.users],
+              ['Active today', data.stats.activeToday, ROUTES.users],
+              ['Classes', data.stats.classes, ROUTES.classes],
+              ['AI requests', data.stats.aiRequests, ROUTES.ai],
+            ].map(([label, value, to]) => (
+              <StatCard key={label} label={label} value={value} to={to} />
             ))}
           </div>
 
@@ -83,6 +83,7 @@ export default function Dashboard() {
             <Card title="Users by role">
               <DonutChart
                 label="Users by role"
+                centerLabel="Total users"
                 slices={data.roleDistribution.map((s, i) => ({ ...s, color: i === 0 ? C.primary : C.gold }))}
               />
             </Card>

@@ -7,6 +7,8 @@ import CreateAnnouncementModal from '../components/CreateAnnouncementModal';
 import { AUDIENCE_LABELS } from '../logic/constants';
 import { formatDateTime } from '../../../core/logic/format';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { ActionButton, ActionRow } from '../../../shared/components/ActionButton';
+import Select from '../../../shared/components/Select';
 import DataTable from '../../../shared/components/DataTable';
 import EmptyState from '../../../shared/components/EmptyState';
 import { Icon } from '../../../shared/components/Icon';
@@ -138,23 +140,31 @@ export default function Announcements() {
             onChange={(e) => setQuery({ q: e.target.value })}
           />
         </label>
-        <label className="field">
+        <div className="field">
           <span>Audience</span>
-          <select className="input" value={query.audience} onChange={(e) => setQuery({ audience: e.target.value })}>
-            <option value="All">All audiences</option>
-            {Object.entries(AUDIENCE_LABELS).map(([key, label]) => (
-              <option key={key} value={key}>{label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
+          <Select
+            label="Audience"
+            value={query.audience}
+            options={[
+              { value: 'All', label: 'All audiences' },
+              ...Object.entries(AUDIENCE_LABELS).map(([value, label]) => ({ value, label })),
+            ]}
+            onChange={(audience) => setQuery({ audience })}
+          />
+        </div>
+        <div className="field">
           <span>Status</span>
-          <select className="input" value={query.status} onChange={(e) => setQuery({ status: e.target.value })}>
-            <option value="All">All statuses</option>
-            <option value="Scheduled">Scheduled</option>
-            <option value="Published">Published</option>
-          </select>
-        </label>
+          <Select
+            label="Status"
+            value={query.status}
+            options={[
+              { value: 'All', label: 'All statuses' },
+              { value: 'Scheduled', label: 'Scheduled', dot: 'amber' },
+              { value: 'Published', label: 'Published', dot: 'green' },
+            ]}
+            onChange={(status) => setQuery({ status })}
+          />
+        </div>
       </div>
 
       <Card>
@@ -193,9 +203,9 @@ export default function Announcements() {
                 </button>
               }
               renderActions={(a) => (
-                <button type="button" className="link-btn warn" onClick={() => setDeleteIds([a.id])}>
-                  <Icon.Trash /> Delete
-                </button>
+                <ActionRow>
+                  <ActionButton icon="Trash" label="Delete" tone="danger" onClick={() => setDeleteIds([a.id])} />
+                </ActionRow>
               )}
             />
             {rows.length > 0 && <Pager pagination={pagination} onPageChange={(page) => setQuery({ page })} />}

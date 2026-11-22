@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { NAV_GROUPS, activeItemFor } from '../../core/config/navigation';
 import { Icon, getIcon } from './Icon';
@@ -6,30 +6,45 @@ import { Avatar } from './ui';
 import omsuLogo from '../../assets/omsu-logo.png';
 import studiaLogo from '../../assets/studia-logo.png';
 
+/** Real sub-pages only: templates with a :param are detail routes, not menu entries. */
+const subPagesOf = (item) => item.children?.filter((c) => !c.path.includes(':')) ?? [];
+
 /**
  * Grouped navigation, driven entirely by core/config/navigation.js.
- * Collapsible on desktop, a drawer under 1024px. Sub-pages appear nested
- * under their parent while that section is active.
+ * Always fully expanded on desktop, an off-canvas drawer under 1024px.
+ * Items with sub-pages (Security, Settings) are accordion sections that
+ * expand and collapse on every click.
  */
-export default function Sidebar({
-  open,
-  collapsed,
-  counts = {},
-  admin,
-  onNavigate,
-  onToggleCollapse,
-  onLogout,
-}) {
+export default function Sidebar({ open, counts = {}, admin, onNavigate, onLogout }) {
   const { pathname } = useLocation();
   const activePath = activeItemFor(pathname);
-  // The menu remembers which page it was opened on, so any navigation closes
-  // it without an effect — including Back and Forward.
+
+  // Which expandable section owns the current route — that one starts open.
+  const routeSection = useMemo(() => {
+    for (const group of NAV_GROUPS) {
+      for (const item of group.items) {
+        if (subPagesOf(item).length === 0) continue;
+        if (activePath === item.path || pathname.startsWith(item.path + '/')) return item.path;
+      }
+    }
+    return null;
+  }, [activePath, pathname]);
+
+  // `choice === undefined` means "follow the route". A manual toggle stores the
+  // section it was made on, so it sticks until the user navigates elsewhere.
+  const [choice, setChoice] = useState({ on: null, value: undefined });
+  const expanded = choice.on === routeSection && choice.value !== undefined ? choice.value : routeSection;
+
+  const toggleSection = useCallback(
+    (path) => setChoice({ on: routeSection, value: expanded === path ? null : path }),
+    [expanded, routeSection]
+  );
+
+  // The account menu remembers which page it was opened on, so any navigation
+  // closes it without an effect — including Back and Forward.
   const [openedOn, setOpenedOn] = useState(null);
   const menuOpen = openedOn === pathname;
-  const setMenuOpen = useCallback(
-    (next) => setOpenedOn(next ? pathname : null),
-    [pathname]
-  );
+  const setMenuOpen = useCallback((next) => setOpenedOn(next ? pathname : null), [pathname]);
   const menuRef = useRef(null);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
@@ -74,71 +89,80 @@ export default function Sidebar({
   };
 
   return (
-    <aside
-      id="sidebar"
-      className={`sidebar ${open ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
-      aria-label="Portal navigation"
-    >
+    <aside id="sidebar" className={'sidebar ' + (open ? 'open' : '')} aria-label="Portal navigation">
       <div className="sidebar-top">
         <div className="sidebar-logos">
           <img src={omsuLogo} alt="OMSU seal" />
-          {!collapsed && <img src={studiaLogo} alt="STUDIA" />}
+          <img src={studiaLogo} alt="STUDIA" />
         </div>
-        <button
-          type="button"
-          className="collapse-btn"
-          onClick={onToggleCollapse}
-          aria-pressed={collapsed}
-          title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-        >
-          <Icon.Panel />
-          <span className="sr-only">{collapsed ? 'Expand navigation' : 'Collapse navigation'}</span>
-        </button>
       </div>
 
-      <nav className="sidebar-nav" aria-label="Main navigation">
+      <nav className="sidebar-nav no-scrollbar" aria-label="Main navigation">
         {NAV_GROUPS.map((group) => (
           <div className="nav-group" key={group.id}>
-            <p className="nav-group-label" aria-hidden={collapsed ? 'true' : undefined}>
-              {group.label}
-            </p>
+            <p className="nav-group-label">{group.label}</p>
             <ul>
               {group.items.map((item) => {
                 const IconCmp = getIcon(item.icon);
                 const isActive = activePath === item.path;
                 const badge = item.badge ? counts[item.badge] : 0;
-                const children = item.children?.filter((c) => !c.path.includes(':')) ?? [];
+                const children = subPagesOf(item);
+                const isSection = children.length > 0;
+                const isOpen = isSection && expanded === item.path;
+                const panelId = 'nav-sub-' + item.path.replace(/\W+/g, '-');
 
                 return (
                   <li key={item.path}>
                     <NavLink
                       to={item.path}
-                      onClick={onNavigate}
-                      title={collapsed ? item.label : undefined}
-                      className={`nav-item ${isActive ? 'active' : ''}`}
+                      onClick={() => {
+                        if (isSection) toggleSection(item.path);
+                        onNavigate?.();
+                      }}
+                      onKeyDown={(e) => {
+                        // Enter follows the link (and toggles through onClick);
+                        // Space toggles without leaving the page.
+                        if (isSection && e.key === ' ') {
+                          e.preventDefault();
+                          toggleSection(item.path);
+                        }
+                      }}
+                      className={
+                        'nav-item' + (isActive ? ' active' : '') + (isSection ? ' nav-item-parent' : '')
+                      }
                       aria-current={isActive ? 'page' : undefined}
+                      aria-expanded={isSection ? isOpen : undefined}
+                      aria-controls={isSection ? panelId : undefined}
                     >
                       <span className="nav-icon">
                         <IconCmp />
                       </span>
                       <span className="nav-label">{item.label}</span>
                       {badge > 0 && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
+                      {isSection && (
+                        <span className={'nav-chevron' + (isOpen ? ' open' : '')} aria-hidden="true">
+                          <Icon.ChevronDown />
+                        </span>
+                      )}
                     </NavLink>
 
-                    {children.length > 0 && isActive && !collapsed && (
-                      <ul className="nav-sub">
-                        {children.map((child) => (
-                          <li key={child.path}>
-                            <NavLink
-                              to={child.path}
-                              onClick={onNavigate}
-                              className={({ isActive: on }) => `nav-subitem ${on ? 'active' : ''}`}
-                            >
-                              {child.label}
-                            </NavLink>
-                          </li>
-                        ))}
-                      </ul>
+                    {isSection && (
+                      <div className={'nav-sub-wrap' + (isOpen ? ' open' : '')} id={panelId}>
+                        <ul className="nav-sub">
+                          {children.map((child) => (
+                            <li key={child.path}>
+                              <NavLink
+                                to={child.path}
+                                onClick={onNavigate}
+                                tabIndex={isOpen ? undefined : -1}
+                                className={({ isActive: on }) => 'nav-subitem ' + (on ? 'active' : '')}
+                              >
+                                {child.label}
+                              </NavLink>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </li>
                 );
@@ -180,17 +204,13 @@ export default function Sidebar({
           onClick={() => setMenuOpen(!menuOpen)}
         >
           <Avatar name={admin?.name || 'Admin'} size={34} />
-          {!collapsed && (
-            <span className="user-button-text">
-              <strong>{admin?.name || 'Administrator'}</strong>
-              <small>{admin?.email}</small>
-            </span>
-          )}
-          {!collapsed && (
-            <span className="user-button-caret" aria-hidden="true">
-              <Icon.ChevronDown />
-            </span>
-          )}
+          <span className="user-button-text">
+            <strong>{admin?.name || 'Administrator'}</strong>
+            <small>{admin?.email}</small>
+          </span>
+          <span className="user-button-caret" aria-hidden="true">
+            <Icon.ChevronDown />
+          </span>
         </button>
       </div>
     </aside>

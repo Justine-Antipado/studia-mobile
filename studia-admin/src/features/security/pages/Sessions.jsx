@@ -2,11 +2,10 @@
 // but it can be signed in from several devices at once.
 import { useState } from 'react';
 import * as securityRepo from '../data/securityRepository';
-import { ROUTES } from '../../../core/config/routes';
 import { formatRelative } from '../../../core/logic/format';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { ActionButton, ActionRow } from '../../../shared/components/ActionButton';
 import DataTable from '../../../shared/components/DataTable';
-import { Icon } from '../../../shared/components/Icon';
 import PageHeader from '../../../shared/components/PageHeader';
 import { SkeletonTable } from '../../../shared/components/Skeleton';
 import { Badge, Card, Toast } from '../../../shared/components/ui';
@@ -56,7 +55,7 @@ export default function Sessions() {
 
   return (
     <>
-      <PageHeader title="Active sessions" subtitle="Admin sessions you can revoke." back={ROUTES.security} />
+      <PageHeader title="Active sessions" subtitle="Admin sessions you can revoke." />
 
       <Card>
         {loading && <SkeletonTable rows={4} cols={5} />}
@@ -86,9 +85,9 @@ export default function Sessions() {
               s.current ? (
                 <span className="muted small">Current session</span>
               ) : (
-                <button type="button" className="link-btn warn" onClick={() => setRevokeId(s.id)}>
-                  <Icon.Trash /> Revoke
-                </button>
+                <ActionRow>
+                  <ActionButton icon="Trash" label="Revoke" tone="danger" onClick={() => setRevokeId(s.id)} />
+                </ActionRow>
               )
             }
           />

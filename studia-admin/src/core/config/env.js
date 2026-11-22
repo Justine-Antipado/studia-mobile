@@ -34,6 +34,9 @@ export const env = {
   supabaseUrl: str(raw.VITE_SUPABASE_URL, ''),
   supabaseAnonKey: str(raw.VITE_SUPABASE_ANON_KEY, ''),
   appName: str(raw.VITE_APP_NAME, 'STUDIA Admin'),
+  /** Default "from" address for OTP and notification mail. The SMTP credentials
+   *  behind it belong in the server's .env only — never in this bundle. */
+  mailFrom: str(raw.VITE_MAIL_FROM, 'studia.noreply2026@gmail.com'),
   sessionIdleMinutes: int(raw.VITE_SESSION_IDLE_MINUTES, 20),
   isDev: !!raw.DEV,
 };

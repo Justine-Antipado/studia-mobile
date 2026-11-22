@@ -1,3 +1,4 @@
+export { useCountUp } from './useCountUp';
 export { useAsync, useMutation } from './useAsync';
 export { useDebounce, useDebouncedCallback } from './useDebounce';
 export { useDocumentTitle } from './useDocumentTitle';

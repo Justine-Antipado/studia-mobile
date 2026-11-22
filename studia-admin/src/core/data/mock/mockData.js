@@ -1,4 +1,5 @@
 // Mock data — replace with real DB queries later (see core/data/api.js).
+import { env } from '../../config/env';
 import { COURSES, composeSection, DEPARTMENT_OF_COURSE, DEPARTMENTS, SECTIONS, YEARS } from '../../logic/validation';
 
 const STUDENT_FIRST = ['Juan', 'Ana', 'Mark', 'Liza', 'Carlo', 'Ella', 'Nico', 'Rosa', 'Paolo', 'Grace', 'Miguel', 'Jasmine', 'Rafael', 'Camille', 'Diego', 'Bea', 'Angelo', 'Trisha', 'Leo', 'Faith'];
@@ -302,12 +303,18 @@ export const mockActivity = [
 
 export const mockSettings = {
   term: { schoolYear: '2026–2027', semester: '1st Semester', startDate: '2026-08-11', endDate: '2026-12-18' },
-  email: { senderEmail: 'no-reply@omsu.edu.ph', otpExpiryMinutes: 5, requireOtpForReset: true, resendSeconds: 60 },
+  email: { senderEmail: env.mailFrom, otpExpiryMinutes: 5, requireOtpForReset: true, resendSeconds: 60 },
   // Mirrors studia-mobile's auth-service.ts defaults (LOGIN_MAX_FAILS 5, LOGIN_LOCK_MS 60s = 1 min);
   // mockBackend.login reads these live, so changing them here actually changes lockout behavior.
   securityPolicy: { minPasswordLength: 8, requireUppercase: true, requireNumber: true, requireSymbol: true, sessionTimeoutMinutes: 20, maxLoginAttempts: 5, lockoutMinutes: 1 },
   uploads: { allowedTypes: ['mp4', 'mov', 'pdf', 'pptx', 'docx'], maxVideoSizeMb: 500, maxDocumentSizeMb: 25, storageQuotaGb: 50 },
-  system: { maintenanceMode: false, appVersion: 'v1.0.0', upToDate: true },
+  system: {
+    maintenanceMode: false,
+    // See core/logic/maintenance.js for the shape and the isUnderMaintenance gate.
+    maintenance: { enabled: false, scope: 'all', roles: [], features: [], message: '', startsAt: '', endsAt: '' },
+    appVersion: 'v1.0.0',
+    upToDate: true,
+  },
   backup: {
     lastBackupAt: isoDaysAgo(4, 2),
     lastBackupSizeLabel: '1.8 GB',

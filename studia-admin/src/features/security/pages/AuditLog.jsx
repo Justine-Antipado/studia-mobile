@@ -2,8 +2,9 @@
 // performs is logged by the mock backend (see logAudit in mockBackend.js).
 import { useMemo } from 'react';
 import * as securityRepo from '../data/securityRepository';
-import { ROUTES } from '../../../core/config/routes';
 import { formatDateTime } from '../../../core/logic/format';
+import DateField from '../../../shared/components/DateField';
+import Select from '../../../shared/components/Select';
 import DataTable from '../../../shared/components/DataTable';
 import { Icon } from '../../../shared/components/Icon';
 import Pager from '../../../shared/components/Pager';
@@ -70,7 +71,7 @@ export default function AuditLog() {
       <PageHeader
         title="Audit log"
         subtitle="Every action this admin account performs, read-only."
-        back={ROUTES.security}
+       
         actions={
           <button type="button" className="btn btn-ghost" disabled={!rows.length} onClick={exportCsv}>
             <Icon.Download /> Export CSV
@@ -83,23 +84,24 @@ export default function AuditLog() {
           <span>Search</span>
           <input className="input" value={query.q} placeholder="Actor or summary" onChange={(e) => setQuery({ q: e.target.value })} />
         </label>
-        <label className="field">
+        <div className="field">
           <span>Action</span>
-          <select className="input" value={query.action} onChange={(e) => setQuery({ action: e.target.value })}>
-            <option value="All">All actions</option>
-            {ACTIONS.map((a) => (
-              <option key={a.value} value={a.value}>{a.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
+          <Select
+            label="Action"
+            searchable
+            value={query.action}
+            options={[{ value: 'All', label: 'All actions' }, ...ACTIONS]}
+            onChange={(action) => setQuery({ action })}
+          />
+        </div>
+        <div className="field">
           <span>From</span>
-          <input type="date" className="input" value={query.from} onChange={(e) => setQuery({ from: e.target.value })} />
-        </label>
-        <label className="field">
+          <DateField label="From" placeholder="Any date" value={query.from} onChange={(from) => setQuery({ from })} />
+        </div>
+        <div className="field">
           <span>To</span>
-          <input type="date" className="input" value={query.to} onChange={(e) => setQuery({ to: e.target.value })} />
-        </label>
+          <DateField label="To" placeholder="Any date" value={query.to} onChange={(to) => setQuery({ to })} />
+        </div>
       </div>
 
       <Card>

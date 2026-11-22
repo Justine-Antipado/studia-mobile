@@ -4,6 +4,8 @@ import { useState } from 'react';
 import * as announcementsRepo from '../data/announcementsRepository';
 import { AUDIENCE_LABELS } from '../logic/constants';
 import { COURSES, LIMITS } from '../../../core/logic/validation';
+import DateField from '../../../shared/components/DateField';
+import Select from '../../../shared/components/Select';
 import { Modal, Toggle } from '../../../shared/components/ui';
 import { useMutation } from '../../../shared/hooks';
 
@@ -100,34 +102,28 @@ export default function CreateAnnouncementModal({ onClose, onCreated }) {
         </label>
 
         <div className="two-col">
-          <label className="field">
+          <div className="field">
             <span>Audience</span>
-            <select
-              className="input"
+            <Select
+              label="Audience"
               value={form.audience}
-              onChange={(e) => setForm((f) => ({ ...f, audience: e.target.value }))}
-            >
-              {Object.entries(AUDIENCE_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
-          </label>
+              options={Object.entries(AUDIENCE_LABELS).map(([value, label]) => ({ value, label }))}
+              onChange={(audience) => setForm((f) => ({ ...f, audience }))}
+            />
+          </div>
 
           {form.audience === 'course' && (
-            <label className="field">
+            <div className="field">
               <span>Course</span>
-              <select
-                className="input"
+              <Select
+                label="Course"
+                searchable
                 value={form.course}
-                aria-invalid={!!fieldErrors.course || undefined}
-                onChange={(e) => setForm((f) => ({ ...f, course: e.target.value }))}
-              >
-                {COURSES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                options={COURSES.map((c) => ({ value: c, label: c }))}
+                onChange={(course) => setForm((f) => ({ ...f, course }))}
+              />
               {fieldErrors.course && <p className="field-error">{fieldErrors.course}</p>}
-            </label>
+            </div>
           )}
         </div>
 
@@ -141,18 +137,17 @@ export default function CreateAnnouncementModal({ onClose, onCreated }) {
         </div>
 
         {form.scheduled && (
-          <label className="field">
+          <div className="field">
             <span>Publish at</span>
-            <input
-              type="datetime-local"
-              className="input"
+            <DateField
+              label="Publish at"
+              withTime
+              min={minScheduleAt.slice(0, 10)}
               value={form.scheduledAt}
-              min={minScheduleAt}
-              aria-invalid={!!fieldErrors.scheduledAt || undefined}
-              onChange={(e) => setForm((f) => ({ ...f, scheduledAt: e.target.value }))}
+              onChange={(scheduledAt) => setForm((f) => ({ ...f, scheduledAt }))}
             />
             {fieldErrors.scheduledAt && <p className="field-error">{fieldErrors.scheduledAt}</p>}
-          </label>
+          </div>
         )}
       </div>
     </Modal>

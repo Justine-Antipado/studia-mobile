@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { ROUTES } from '../../../core/config/routes';
 import EmptyState from '../../../shared/components/EmptyState';
 import PageHeader from '../../../shared/components/PageHeader';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -39,7 +38,7 @@ function UploadsForm({ initial, save, saving }) {
 
   return (
     <>
-      <Card>
+      <Card className="settings-card">
         <h4 className="subhead" style={{ marginTop: 0 }}>Allowed file types</h4>
         <div className="chips" role="group" aria-label="Allowed file types">
           {TYPE_OPTIONS.map((t) => (
@@ -89,9 +88,14 @@ function UploadsForm({ initial, save, saving }) {
           </label>
         </div>
 
-        <button type="button" className="btn btn-primary btn-block mt" disabled={saving} onClick={onSave}>
-          {saving ? 'Saving…' : 'Save uploads'}
-        </button>
+        <div className="form-footer">
+          <button type="button" className="btn btn-ghost" disabled={saving} onClick={() => setForm(initial)}>
+            Reset
+          </button>
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={onSave}>
+            {saving ? 'Saving…' : 'Save uploads'}
+          </button>
+        </div>
       </Card>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />
@@ -104,7 +108,7 @@ export default function Uploads() {
 
   return (
     <>
-      <PageHeader title="Uploads" subtitle="Allowed file types, size limits and quota." back={ROUTES.settings} />
+      <PageHeader title="Uploads" subtitle="Allowed file types, size limits and quota." />
 
       {loading && <Skeleton height={300} radius="var(--radius-lg)" />}
 

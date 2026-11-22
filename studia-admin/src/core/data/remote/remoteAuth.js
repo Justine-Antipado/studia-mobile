@@ -12,7 +12,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import { env } from '../../config/env';
-import { ApiError, ERROR_CODES } from '../http/errors';
+import { ApiError, ERROR_CODES, fail } from '../http/errors';
 
 const TIMEOUT_MS = 20_000;
 const GENERIC = 'Those credentials do not match an administrator account.';
@@ -88,6 +88,16 @@ export const remoteAuth = {
   },
 
   /** Revokes this browser's session on the server; the local copy is removed even if that call fails. */
+  // Supabase Auth is not wired to the admin OTP step yet; docs/api-contract.md
+  // specifies both endpoints. Until then this path must not sign anyone in.
+  async verifyLoginOtp() {
+    throw fail(501, 'Admin login codes are not available on this data source yet.');
+  },
+
+  async resendLoginOtp() {
+    throw fail(501, 'Admin login codes are not available on this data source yet.');
+  },
+
   async logout() {
     try {
       await getSupabase().auth.signOut({ scope: 'local' });

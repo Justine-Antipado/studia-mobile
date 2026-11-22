@@ -1,6 +1,16 @@
+import Select from '../../../shared/components/Select';
 import { COURSES, DEPARTMENTS, SECTIONS, YEARS } from '../../../core/logic/validation';
 
-const STATUSES = ['Active', 'Inactive'];
+// `dot` colours the status options in the menu.
+const STATUS_OPTIONS = [
+  { value: 'All', label: 'All statuses' },
+  { value: 'Active', label: 'Active', dot: 'green' },
+  { value: 'Inactive', label: 'Inactive', dot: 'grey' },
+];
+const withAll = (all, values, labelFor = (v) => String(v)) => [
+  { value: 'All', label: all },
+  ...values.map((v) => ({ value: v, label: labelFor(v) })),
+];
 
 /**
  * The /users filter bar. Every control is a labelled field, and every change
@@ -22,51 +32,53 @@ export default function UserFilters({ query, onChange }) {
           onChange={(e) => onChange({ q: e.target.value })}
         />
       </label>
-      <label className="field">
+      <div className="field">
         <span>Course</span>
-        <select className="input" value={query.course} onChange={(e) => onChange({ course: e.target.value })}>
-          <option value="All">All courses</option>
-          {COURSES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
+        <Select
+          label="Course"
+          searchable
+          value={query.course}
+          options={withAll('All courses', COURSES)}
+          onChange={(course) => onChange({ course })}
+        />
+      </div>
+      <div className="field">
         <span>Year</span>
-        <select className="input" value={query.year} onChange={(e) => onChange({ year: e.target.value })}>
-          <option value="All">All years</option>
-          {YEARS.map((y) => (
-            <option key={y} value={y}>Year {y}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
+        <Select
+          label="Year"
+          value={query.year}
+          options={withAll('All years', YEARS, (y) => 'Year ' + y)}
+          onChange={(year) => onChange({ year })}
+        />
+      </div>
+      <div className="field">
         <span>Section</span>
-        <select className="input" value={query.section} onChange={(e) => onChange({ section: e.target.value })}>
-          <option value="All">All sections</option>
-          {SECTIONS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
+        <Select
+          label="Section"
+          value={query.section}
+          options={withAll('All sections', SECTIONS)}
+          onChange={(section) => onChange({ section })}
+        />
+      </div>
+      <div className="field">
         <span>Department</span>
-        <select className="input" value={query.department} onChange={(e) => onChange({ department: e.target.value })}>
-          <option value="All">All departments</option>
-          {DEPARTMENTS.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
+        <Select
+          label="Department"
+          searchable
+          value={query.department}
+          options={withAll('All departments', DEPARTMENTS)}
+          onChange={(department) => onChange({ department })}
+        />
+      </div>
+      <div className="field">
         <span>Status</span>
-        <select className="input" value={query.status} onChange={(e) => onChange({ status: e.target.value })}>
-          <option value="All">All statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      </label>
+        <Select
+          label="Status"
+          value={query.status}
+          options={STATUS_OPTIONS}
+          onChange={(status) => onChange({ status })}
+        />
+      </div>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import * as settingsRepo from '../data/settingsRepository';
 import { useAuth } from '../../auth/hooks/useAuth';
-import { ROUTES } from '../../../core/config/routes';
 import { PASSWORD_RULES } from '../../../core/logic/validation';
 import EmptyState from '../../../shared/components/EmptyState';
 import { Icon } from '../../../shared/components/Icon';
@@ -118,7 +117,7 @@ export default function Account() {
 
   return (
     <>
-      <PageHeader title="Admin account" subtitle="Profile and password change with OTP." back={ROUTES.settings} />
+      <PageHeader title="Admin account" subtitle="Profile and password change with OTP." />
 
       {loading && <Skeleton height={420} radius="var(--radius-lg)" />}
 
@@ -136,7 +135,7 @@ export default function Account() {
       )}
 
       {!loading && !error && settings && (
-        <Card>
+        <Card className="settings-card">
           <div className="profile-row">
             <Avatar name={admin?.name ?? 'Admin'} size={52} />
             <div>
@@ -146,9 +145,11 @@ export default function Account() {
           </div>
 
           <p className="step">Step 1 · Send OTP to {admin?.email}</p>
-          <button type="button" className="btn btn-soft btn-block" onClick={sendOtp} disabled={busy || cooldown > 0}>
-            {cooldown > 0 ? `Resend OTP (0:${String(cooldown).padStart(2, '0')})` : otpSent ? 'Resend OTP' : 'Send OTP'}
-          </button>
+          <div className="form-footer">
+            <button type="button" className="btn btn-soft" onClick={sendOtp} disabled={busy || cooldown > 0}>
+              {cooldown > 0 ? `Resend OTP (0:${String(cooldown).padStart(2, '0')})` : otpSent ? 'Resend OTP' : 'Send OTP'}
+            </button>
+          </div>
 
           <p className="step">
             Step 2 · Enter OTP{cooldown > 0 && ` (resend in 0:${String(cooldown).padStart(2, '0')})`}
@@ -199,14 +200,16 @@ export default function Account() {
           </div>
           <RuleChecklist password={pw} />
           {mismatch && <p className="field-error mt">Passwords don't match.</p>}
-          <button
-            type="button"
-            className="btn btn-primary btn-block mt"
-            disabled={!verified || !allRulesMet || !pw2 || mismatch || busy}
-            onClick={updatePassword}
-          >
-            Update password
-          </button>
+          <div className="form-footer">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!verified || !allRulesMet || !pw2 || mismatch || busy}
+              onClick={updatePassword}
+            >
+              Update password
+            </button>
+          </div>
         </Card>
       )}
 

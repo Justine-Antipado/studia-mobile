@@ -3,6 +3,7 @@
 // Navigate from explore.tsx with:  router.push({ pathname: "/auth", params: { role } });
 
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import {
@@ -27,6 +28,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { DATA_SOURCE } from "@/core/config/data-source";
 import { setUser } from "@/core/data/storage/session-store";
 import { AppButton } from "@/shared/components/ui/app-button";
 // import {
@@ -149,6 +151,37 @@ const OTP_COPY: Record<OtpPurpose, string> = {
   google_signup: "Verify your Google email to continue.",
   reset: "Enter the code to reset your password.",
 };
+
+/**
+ * DEV-ONLY diagnostic: says which app is actually running the bundle and whether the
+ * Google native module is linked. Expo Go can never link RNGoogleSignin, so a
+ * "storeClient" + "missing" pair explains a Google button that cannot work.
+ * Safe to delete once the dev-build / Expo Go question is settled.
+ */
+async function logRuntimeEnv() {
+  let googleSignin: string;
+  try {
+    await import("@react-native-google-signin/google-signin");
+    googleSignin = "linked";
+  } catch (e) {
+    googleSignin = `missing (${e instanceof Error ? e.message : String(e)})`;
+  }
+  console.log(
+    "[studia:env]",
+    JSON.stringify(
+      {
+        executionEnvironment: Constants.executionEnvironment, // storeClient = Expo Go, bare/standalone = dev build
+        appOwnership: Constants.appOwnership, // "expo" = Expo Go
+        isExpoGo: Constants.executionEnvironment === "storeClient",
+        appName: Constants.expoConfig?.name,
+        dataSource: DATA_SOURCE,
+        googleSignin,
+      },
+      null,
+      2,
+    ),
+  );
+}
 
 export default function Auth() {
   const router = useRouter();
@@ -377,6 +410,7 @@ export default function Auth() {
 
   const submitGoogle = () =>
     guard(async () => {
+      if (__DEV__) await logRuntimeEnv();
       const res = await loginWithGoogle(role);
       startOtp(res.email, res.purpose, res);
     }, true);

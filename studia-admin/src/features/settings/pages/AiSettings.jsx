@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import * as aiRepo from '../../ai/data/aiRepository';
 import FeatureToggles from '../../ai/components/FeatureToggles';
-import { ROUTES } from '../../../core/config/routes';
+import Select from '../../../shared/components/Select';
 import EmptyState from '../../../shared/components/EmptyState';
 import PageHeader from '../../../shared/components/PageHeader';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -57,28 +57,31 @@ function AiSettingsForm({ settings, setSettings, save, saving }) {
   return (
     <>
       <div className="stack">
-        <Card title="Feature toggles">
+        <Card className="settings-card" title="Feature toggles">
           <FeatureToggles toggles={settings.ai} busyFeature={busyFeature} onToggle={onToggle} />
         </Card>
 
-        <Card title="Language & limits">
+        <Card className="settings-card" title="Language & limits">
           <div className="two-col">
-            <label className="field">
+            <div className="field">
               <span>Language</span>
-              <select className="input" value={settings.ai.language} onChange={(e) => onLanguageChange(e.target.value)}>
-                {LANGUAGES.map((l) => (
-                  <option key={l}>{l}</option>
-                ))}
-              </select>
-            </label>
+              <Select
+                label="Language"
+                value={settings.ai.language}
+                options={LANGUAGES}
+                onChange={onLanguageChange}
+              />
+            </div>
             <label className="field">
               <span>Daily request limit</span>
               <input type="number" min={100} className="input" value={limit} onChange={(e) => setLimit(Number(e.target.value))} />
             </label>
           </div>
-          <button type="button" className="btn btn-primary btn-block mt" disabled={saving} onClick={onSaveLimits}>
-            {saving ? 'Saving…' : 'Save limits'}
-          </button>
+          <div className="form-footer">
+            <button type="button" className="btn btn-primary" disabled={saving} onClick={onSaveLimits}>
+              {saving ? 'Saving…' : 'Save limits'}
+            </button>
+          </div>
         </Card>
       </div>
 
@@ -92,7 +95,7 @@ export default function AiSettings() {
 
   return (
     <>
-      <PageHeader title="AI settings" subtitle="Feature toggles, language and limits." back={ROUTES.settings} />
+      <PageHeader title="AI settings" subtitle="Feature toggles, language and limits." />
 
       {loading && <Skeleton height={320} radius="var(--radius-lg)" />}
 

@@ -3,13 +3,14 @@
 // gone — status is Active/Inactive, set in the mobile app; this page is read
 // and delete only (View, Export, Delete per row; bulk delete via selection).
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import UserFilters from '../components/UserFilters';
+import { useNavigate } from 'react-router-dom';
 import * as usersRepo from '../data/usersRepository';
 import { path, ROUTES } from '../../../core/config/routes';
 import { formatDate, formatRelative } from '../../../core/logic/format';
 import { composeSection } from '../../../core/logic/validation';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { ActionButton, ActionRow } from '../../../shared/components/ActionButton';
 import DataTable from '../../../shared/components/DataTable';
 import { Icon } from '../../../shared/components/Icon';
 import Pager from '../../../shared/components/Pager';
@@ -47,6 +48,7 @@ const toCsvRow = (u) => [u.name, u.email, u.role, u.course ?? '', u.year ?? '', 
 const exportCsv = (rows, filename = 'studia-users.csv') => downloadCsv(filename, CSV_HEADERS, rows.map(toCsvRow));
 
 export default function Users() {
+  const navigate = useNavigate();
   const [query, setQuery] = useQueryState(DEFAULTS, { resetPageOn: RESET_PAGE_ON });
   const [selected, setSelected] = useState(new Set());
   const [deleteIds, setDeleteIds] = useState(null);
@@ -189,21 +191,20 @@ export default function Users() {
               selectedIds={selected}
               onSelectedChange={setSelected}
               rowLabel={(u) => u.name}
+              onRowClick={(u) => navigate(path(ROUTES.userDetail, { id: u.id }))}
               caption="Users"
               emptyTitle="No users found"
               emptyMessage="Try a different filter or search term."
               renderActions={(u) => (
-                <>
-                  <Link to={path(ROUTES.userDetail, { id: u.id })} className="link-btn">
-                    <Icon.Eye /> View
-                  </Link>
-                  <button type="button" className="link-btn" onClick={() => exportCsv([u], `studia-user-${u.id}.csv`)}>
-                    <Icon.Download /> Export
-                  </button>
-                  <button type="button" className="link-btn warn" onClick={() => setDeleteIds([u.id])}>
-                    <Icon.Trash /> Delete
-                  </button>
-                </>
+                <ActionRow>
+                  <ActionButton icon="Eye" label="View" tone="primary" to={path(ROUTES.userDetail, { id: u.id })} />
+                  <ActionButton
+                    icon="Download"
+                    label="Export"
+                    onClick={() => exportCsv([u], `studia-user-${u.id}.csv`)}
+                  />
+                  <ActionButton icon="Trash" label="Delete" tone="danger" onClick={() => setDeleteIds([u.id])} />
+                </ActionRow>
               )}
             />
             {rows.length > 0 && <Pager pagination={pagination} onPageChange={(page) => setQuery({ page })} />}
@@ -213,9 +214,13 @@ export default function Users() {
 
       <ConfirmDialog
         open={!!deleteIds}
-        title={`Delete ${deleteIds?.length ?? 0} user${(deleteIds?.length ?? 0) === 1 ? '' : 's'}?`}
-        confirmWord="DELETE"
-        confirmLabel="Delete permanently"
+        title={
+          deleteTargets.length === 1
+            ? `Delete ${deleteTargets[0].name}?`
+            : `Delete ${deleteIds?.length ?? 0} users?`
+        }
+        confirmWord={deleteTargets.length === 1 ? undefined : 'DELETE'}
+        confirmLabel={deleteTargets.length === 1 ? 'Delete' : 'Delete permanently'}
         busy={busy}
         onConfirm={runDelete}
         onClose={() => setDeleteIds(null)}

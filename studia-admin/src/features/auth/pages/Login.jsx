@@ -1,6 +1,6 @@
 // Phase 2: glassmorphism login — frosted card over the campus photo, animated
 // entrance, caps-lock hint, attempt counter, lockout countdown, accessible
-// errors. The demo box still comes from core/config/demo.js.
+// errors. The demo box comes from core/config/demo.js and only on the mock data source.
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { getDemoCredentials } from '../../../core/config/demo';
@@ -11,15 +11,18 @@ import { validateField } from '../../../core/logic/validation';
 import { Icon } from '../../../shared/components/Icon';
 import { useDocumentTitle } from '../../../shared/hooks';
 import { useAuth } from '../hooks/useAuth';
+import LoginOtpForm from '../components/LoginOtpForm';
 import campus from '../../../assets/omsu-campus.jpg';
 import mascot from '../../../assets/studia-mascot.png';
 import studiaLogo from '../../../assets/studia-logo.png';
 import omsuLogo from '../../../assets/omsu-logo.png';
 
-const demo = getDemoCredentials();
+// Remote auth = real Supabase accounts only, so the demo box is hidden even though the rest of
+// the portal still reads mock data (VITE_USE_MOCK). Pure-mock builds keep it.
+const demo = env.dataSource === 'remote' ? null : getDemoCredentials();
 
 export default function Login() {
-  const { isAuthed, login } = useAuth();
+  const { isAuthed, login, verifyOtp, resendOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [identifier, setIdentifier] = useState('');
@@ -31,6 +34,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [lockedUntil, setLockedUntil] = useState(null);
   const [lockSeconds, setLockSeconds] = useState(0);
+  // Set once the password is accepted: the pending login awaiting its code.
+  const [pending, setPending] = useState(null);
 
   useDocumentTitle(`Sign in · ${env.appName}`, 'Administrator sign-in for the STUDIA portal.');
 
@@ -58,6 +63,11 @@ export default function Login() {
     if (typeof e.getModifierState === 'function') setCapsOn(e.getModifierState('CapsLock'));
   };
 
+  const goToPortal = () => {
+    const to = location.state?.from?.pathname ?? ROUTES.dashboard;
+    navigate(to === ROUTES.login ? ROUTES.dashboard : to, { replace: true });
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     if (isLocked || loading) return;
@@ -76,9 +86,14 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await login(identifier, password);
-      const to = location.state?.from?.pathname ?? ROUTES.dashboard;
-      navigate(to === ROUTES.login ? ROUTES.dashboard : to, { replace: true });
+      const result = await login(identifier, password);
+      // A correct password only buys a code: the session comes after step two.
+      if (result?.otpRequired) {
+        setPending(result);
+        setPassword('');
+        return;
+      }
+      goToPortal();
     } catch (err) {
       if (err.status === 429) {
         const retryAfterSec = err.meta?.retryAfterSec ?? 60;
@@ -112,6 +127,24 @@ export default function Login() {
           <p>Occidental Mindoro State University — Mamburao Campus</p>
         </div>
 
+        {pending ? (
+          <div className="login-card">
+            <LoginOtpForm
+              maskedEmail={pending.maskedEmail}
+              expiresInSec={pending.expiresInSec}
+              resendInSec={pending.resendInSec}
+              onVerify={async (code) => {
+                await verifyOtp(pending.pendingToken, code);
+                goToPortal();
+              }}
+              onResend={() => resendOtp(pending.pendingToken)}
+              onCancel={() => {
+                setPending(null);
+                setError('');
+              }}
+            />
+          </div>
+        ) : (
         <form className="login-card" onSubmit={onSubmit} noValidate>
           <h2>Welcome back</h2>
           <p className="muted">Sign in with the administrator account.</p>
@@ -204,7 +237,7 @@ export default function Login() {
             Admin accounts can't be created here. Contact the system owner if you've lost access.
           </p>
 
-          {/* Only rendered while VITE_USE_MOCK=true; the credentials live in
+          {/* Only for the mock data source; the credentials live in
               core/config/demoCredentials.js and nowhere else. */}
           {demo && (
             <details className="demo-creds">
@@ -214,6 +247,7 @@ export default function Login() {
             </details>
           )}
         </form>
+        )}
 
         <p className="login-footer">OMSU STUDIA · Private administrator portal</p>
       </div>

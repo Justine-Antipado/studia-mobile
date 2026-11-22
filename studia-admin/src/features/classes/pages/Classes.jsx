@@ -2,11 +2,13 @@
 // Modelled on features/users/pages/Users.jsx — same DataTable + useQueryState
 // + bulk/row ConfirmDialog pattern, so the two list pages behave identically.
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import * as classesRepo from '../data/classesRepository';
 import { path, ROUTES } from '../../../core/config/routes';
 import { COURSES } from '../../../core/logic/validation';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { ActionButton, ActionRow } from '../../../shared/components/ActionButton';
+import Select from '../../../shared/components/Select';
 import DataTable from '../../../shared/components/DataTable';
 import EmptyState from '../../../shared/components/EmptyState';
 import { Icon } from '../../../shared/components/Icon';
@@ -21,6 +23,7 @@ const DEFAULTS = { page: 1, sort: 'title', order: 'asc', q: '', course: 'All', s
 const RESET_PAGE_ON = ['q', 'course', 'status'];
 
 export default function Classes() {
+  const navigate = useNavigate();
   const [query, setQuery] = useQueryState(DEFAULTS, { resetPageOn: RESET_PAGE_ON });
   const [selected, setSelected] = useState(new Set());
   const [deleteIds, setDeleteIds] = useState(null);
@@ -117,23 +120,29 @@ export default function Classes() {
             onChange={(e) => setQuery({ q: e.target.value })}
           />
         </label>
-        <label className="field">
+        <div className="field">
           <span>Course</span>
-          <select className="input" value={query.course} onChange={(e) => setQuery({ course: e.target.value })}>
-            <option value="All">All courses</option>
-            {COURSES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
+          <Select
+            label="Course"
+            searchable
+            value={query.course}
+            options={[{ value: 'All', label: 'All courses' }, ...COURSES.map((c) => ({ value: c, label: c }))]}
+            onChange={(course) => setQuery({ course })}
+          />
+        </div>
+        <div className="field">
           <span>Status</span>
-          <select className="input" value={query.status} onChange={(e) => setQuery({ status: e.target.value })}>
-            <option value="All">All statuses</option>
-            <option value="Active">Active</option>
-            <option value="Archived">Archived</option>
-          </select>
-        </label>
+          <Select
+            label="Status"
+            value={query.status}
+            options={[
+              { value: 'All', label: 'All statuses' },
+              { value: 'Active', label: 'Active', dot: 'green' },
+              { value: 'Archived', label: 'Archived', dot: 'grey' },
+            ]}
+            onChange={(status) => setQuery({ status })}
+          />
+        </div>
       </div>
 
       <Card>
@@ -163,18 +172,15 @@ export default function Classes() {
               selectedIds={selected}
               onSelectedChange={setSelected}
               rowLabel={(c) => c.title}
+              onRowClick={(c) => navigate(path(ROUTES.classDetail, { id: c.id }))}
               caption="Classes"
               emptyTitle="No classes found"
               emptyMessage="Try a different filter or search term."
               renderActions={(c) => (
-                <>
-                  <Link to={path(ROUTES.classDetail, { id: c.id })} className="link-btn">
-                    <Icon.Eye /> View
-                  </Link>
-                  <button type="button" className="link-btn warn" onClick={() => setDeleteIds([c.id])}>
-                    <Icon.Trash /> Delete
-                  </button>
-                </>
+                <ActionRow>
+                  <ActionButton icon="Eye" label="View" tone="primary" to={path(ROUTES.classDetail, { id: c.id })} />
+                  <ActionButton icon="Trash" label="Delete" tone="danger" onClick={() => setDeleteIds([c.id])} />
+                </ActionRow>
               )}
             />
             {rows.length > 0 && <Pager pagination={pagination} onPageChange={(page) => setQuery({ page })} />}
@@ -184,9 +190,13 @@ export default function Classes() {
 
       <ConfirmDialog
         open={!!deleteIds}
-        title={`Delete ${deleteIds?.length ?? 0} class${(deleteIds?.length ?? 0) === 1 ? '' : 'es'}?`}
-        confirmWord="DELETE"
-        confirmLabel="Delete permanently"
+        title={
+          deleteTargets.length === 1
+            ? `Delete ${deleteTargets[0].title}?`
+            : `Delete ${deleteIds?.length ?? 0} classes?`
+        }
+        confirmWord={deleteTargets.length === 1 ? undefined : 'DELETE'}
+        confirmLabel={deleteTargets.length === 1 ? 'Delete' : 'Delete permanently'}
         busy={busy}
         onConfirm={runDelete}
         onClose={() => setDeleteIds(null)}

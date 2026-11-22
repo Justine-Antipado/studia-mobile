@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { ROUTES } from '../../../core/config/routes';
+import DateField from '../../../shared/components/DateField';
+import Select from '../../../shared/components/Select';
 import EmptyState from '../../../shared/components/EmptyState';
 import PageHeader from '../../../shared/components/PageHeader';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -34,37 +35,52 @@ function TermForm({ initial, save, saving }) {
 
   return (
     <>
-      <Card>
+      <Card className="settings-card">
         <div className="two-col">
-          <label className="field">
+          <div className="field">
             <span>School year</span>
-            <select className="input" value={form.schoolYear} onChange={(e) => setForm({ ...form, schoolYear: e.target.value })}>
-              {SCHOOL_YEARS.map((y) => (
-                <option key={y}>{y}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
+            <Select
+              label="School year"
+              value={form.schoolYear}
+              options={SCHOOL_YEARS}
+              onChange={(schoolYear) => setForm({ ...form, schoolYear })}
+            />
+          </div>
+          <div className="field">
             <span>Semester</span>
-            <select className="input" value={form.semester} onChange={(e) => setForm({ ...form, semester: e.target.value })}>
-              {SEMESTERS.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
+            <Select
+              label="Semester"
+              value={form.semester}
+              options={SEMESTERS}
+              onChange={(semester) => setForm({ ...form, semester })}
+            />
+          </div>
+          <div className="field">
             <span>Start date</span>
-            <input type="date" className="input" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
-          </label>
-          <label className="field">
+            <DateField
+              label="Start date"
+              value={form.startDate}
+              onChange={(startDate) => setForm({ ...form, startDate })}
+            />
+          </div>
+          <div className="field">
             <span>End date</span>
-            <input type="date" className="input" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
-          </label>
+            <DateField
+              label="End date"
+              value={form.endDate}
+              onChange={(endDate) => setForm({ ...form, endDate })}
+            />
+          </div>
         </div>
         {fieldError && <p className="field-error mt">{fieldError}</p>}
-        <button type="button" className="btn btn-primary btn-block mt" disabled={saving} onClick={onSave}>
-          {saving ? 'Saving…' : 'Save term'}
-        </button>
+        <div className="form-footer">
+          <button type="button" className="btn btn-ghost" disabled={saving} onClick={() => setForm(initial)}>
+            Reset
+          </button>
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={onSave}>
+            {saving ? 'Saving…' : 'Save term'}
+          </button>
+        </div>
       </Card>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />
@@ -77,7 +93,7 @@ export default function Term() {
 
   return (
     <>
-      <PageHeader title="Academic term" subtitle="School year, semester and dates." back={ROUTES.settings} />
+      <PageHeader title="Academic term" subtitle="School year, semester and dates." />
 
       {loading && <Skeleton height={260} radius="var(--radius-lg)" />}
 

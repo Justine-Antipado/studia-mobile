@@ -1,7 +1,6 @@
 // Phase 7: security posture checklist and scanner-style findings. Read-only
 // — "findings come from the API; use mock data now" (master prompt, 5).
 import * as securityRepo from '../data/securityRepository';
-import { ROUTES } from '../../../core/config/routes';
 import EmptyState from '../../../shared/components/EmptyState';
 import PageHeader from '../../../shared/components/PageHeader';
 import { SkeletonCards } from '../../../shared/components/Skeleton';
@@ -16,7 +15,7 @@ export default function Vulnerabilities() {
 
   return (
     <>
-      <PageHeader title="Vulnerabilities" subtitle="Security posture checklist and findings, with recommended fixes." back={ROUTES.security} />
+      <PageHeader title="Vulnerabilities" subtitle="Security posture checklist and findings, with recommended fixes." />
 
       {loading && <SkeletonCards count={6} height={120} />}
 

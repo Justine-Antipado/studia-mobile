@@ -2,7 +2,6 @@
 // live, so saving here actually changes lockout behavior, not just a label.
 import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { ROUTES } from '../../../core/config/routes';
 import EmptyState from '../../../shared/components/EmptyState';
 import PageHeader from '../../../shared/components/PageHeader';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -26,7 +25,7 @@ function SecurityPolicyForm({ initial, save, saving }) {
 
   return (
     <>
-      <Card>
+      <Card className="settings-card">
         <h4 className="subhead" style={{ marginTop: 0 }}>Password rules</h4>
         <div className="two-col">
           <label className="field">
@@ -91,9 +90,14 @@ function SecurityPolicyForm({ initial, save, saving }) {
           </label>
         </div>
 
-        <button type="button" className="btn btn-primary btn-block mt" disabled={saving} onClick={onSave}>
-          {saving ? 'Saving…' : 'Save policy'}
-        </button>
+        <div className="form-footer">
+          <button type="button" className="btn btn-ghost" disabled={saving} onClick={() => setForm(initial)}>
+            Reset
+          </button>
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={onSave}>
+            {saving ? 'Saving…' : 'Save policy'}
+          </button>
+        </div>
       </Card>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />
@@ -106,7 +110,7 @@ export default function SecurityPolicy() {
 
   return (
     <>
-      <PageHeader title="Security policy" subtitle="Password rules, session and lockout limits." back={ROUTES.settings} />
+      <PageHeader title="Security policy" subtitle="Password rules, session and lockout limits." />
 
       {loading && <Skeleton height={320} radius="var(--radius-lg)" />}
 

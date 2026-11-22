@@ -26,7 +26,7 @@ export default function Topbar({ onOpenNav, navOpen, unread = 0 }) {
       </button>
 
       <div className="topbar-context">
-        <strong>{page?.title ?? 'STUDIA Admin'}</strong>
+        <h1>{page?.title ?? 'STUDIA Admin'}</h1>
         <small className="muted">{descriptionFor(pathname)}</small>
       </div>
 

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import * as settingsRepo from '../data/settingsRepository';
 import { useSettings } from '../hooks/useSettings';
-import { ROUTES } from '../../../core/config/routes';
 import { formatDateTime } from '../../../core/logic/format';
 import EmptyState from '../../../shared/components/EmptyState';
 import { Icon } from '../../../shared/components/Icon';
@@ -30,7 +29,7 @@ export default function Backup() {
 
   return (
     <>
-      <PageHeader title="Backup" subtitle="Last backup, restore points and manual runs." back={ROUTES.settings} />
+      <PageHeader title="Backup" subtitle="Last backup, restore points and manual runs." />
 
       {loading && <Skeleton height={260} radius="var(--radius-lg)" />}
 
@@ -48,7 +47,7 @@ export default function Backup() {
       )}
 
       {!loading && !error && settings && (
-        <Card>
+        <Card className="settings-card">
           <div className="backup-row">
             <span className="check-tile">
               <Icon.Check />
@@ -60,9 +59,11 @@ export default function Backup() {
               </small>
             </div>
           </div>
-          <button type="button" className="btn btn-soft btn-block" onClick={runBackup} disabled={backing}>
-            {backing ? 'Backing up…' : 'Back up now'}
-          </button>
+          <div className="form-footer">
+            <button type="button" className="btn btn-soft" onClick={runBackup} disabled={backing}>
+              {backing ? 'Backing up…' : 'Back up now'}
+            </button>
+          </div>
 
           <h4 className="subhead">Restore points</h4>
           <ul className="dt-cards">

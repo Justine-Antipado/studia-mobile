@@ -25,6 +25,8 @@ export default function DataTable({
   selectedIds = EMPTY_SET,
   onSelectedChange,
   renderActions,
+  onRowClick,
+  rowClassName,
   caption,
   emptyTitle = 'No results',
   emptyMessage = 'Nothing matches the current filters.',
@@ -68,7 +70,11 @@ export default function DataTable({
         {rows.map((row) => {
           const id = rowKey(row);
           return (
-            <li className="dt-card" key={id}>
+            <li
+              className={'dt-card' + (rowClassName ? ' ' + rowClassName(row) : '') + (onRowClick ? ' dt-clickable' : '')}
+              key={id}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
               <div className="dt-card-head">
                 {selectable && (
                   <input
@@ -153,7 +159,19 @@ export default function DataTable({
         {rows.map((row) => {
           const id = rowKey(row);
           return (
-            <tr key={id}>
+            <tr
+              key={id}
+              className={(rowClassName ? rowClassName(row) : '') + (onRowClick ? ' dt-clickable' : '')}
+              onClick={
+                onRowClick
+                  ? (e) => {
+                      // A click on a button or link inside the row is that control's, not the row's.
+                      if (e.target.closest('button, a, input, label, [role="button"]')) return;
+                      onRowClick(row);
+                    }
+                  : undefined
+              }
+            >
               {selectable && (
                 <td className="dt-check">
                   <input

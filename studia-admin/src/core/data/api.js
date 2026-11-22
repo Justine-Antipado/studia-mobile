@@ -27,6 +27,9 @@ export const isMockBackend = env.useMock;
  * audit-logged server side). Everything else still follows VITE_USE_MOCK until its phase lands. */
 const authBackend = import.meta.env.VITE_DATA_SOURCE === 'remote' ? remoteAuth : backend;
 export const login = (identifier, password) => authBackend.login(identifier, password);
+/** Second step of every admin login: the emailed 6-digit code. */
+export const verifyLoginOtp = (pendingToken, code) => authBackend.verifyLoginOtp(pendingToken, code);
+export const resendLoginOtp = (pendingToken) => authBackend.resendLoginOtp(pendingToken);
 export const logout = () => authBackend.logout();
 
 /* --- shell --- */

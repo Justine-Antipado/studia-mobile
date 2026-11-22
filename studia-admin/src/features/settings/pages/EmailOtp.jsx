@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
-import { ROUTES } from '../../../core/config/routes';
 import { isEmail } from '../../../core/logic/validation';
+import Select from '../../../shared/components/Select';
 import EmptyState from '../../../shared/components/EmptyState';
 import PageHeader from '../../../shared/components/PageHeader';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -34,36 +34,41 @@ function EmailOtpForm({ initial, save, saving }) {
 
   return (
     <>
-      <Card>
-        <div className="two-col">
-          <label className="field">
+      <Card className="settings-card">
+        <div className="form-grid">
+          <label className="field field-wide">
             <span>Sender email</span>
-            <input className="input" value={form.senderEmail} onChange={(e) => setForm({ ...form, senderEmail: e.target.value })} />
+            <input
+              className="input"
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              value={form.senderEmail}
+              aria-invalid={!!fieldError || undefined}
+              onChange={(e) => {
+                setForm({ ...form, senderEmail: e.target.value });
+                if (fieldError) setFieldError('');
+              }}
+            />
           </label>
-          <label className="field">
+          <div className="field">
             <span>OTP expiry</span>
-            <select
-              className="input"
+            <Select
+              label="OTP expiry"
               value={form.otpExpiryMinutes}
-              onChange={(e) => setForm({ ...form, otpExpiryMinutes: Number(e.target.value) })}
-            >
-              {EXPIRY_OPTIONS.map((m) => (
-                <option key={m} value={m}>{m} minutes</option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
+              options={EXPIRY_OPTIONS.map((m) => ({ value: m, label: m + ' minutes' }))}
+              onChange={(otpExpiryMinutes) => setForm({ ...form, otpExpiryMinutes })}
+            />
+          </div>
+          <div className="field">
             <span>Resend interval</span>
-            <select
-              className="input"
+            <Select
+              label="Resend interval"
               value={form.resendSeconds}
-              onChange={(e) => setForm({ ...form, resendSeconds: Number(e.target.value) })}
-            >
-              {RESEND_OPTIONS.map((s) => (
-                <option key={s} value={s}>{s} seconds</option>
-              ))}
-            </select>
-          </label>
+              options={RESEND_OPTIONS.map((s) => ({ value: s, label: s + ' seconds' }))}
+              onChange={(resendSeconds) => setForm({ ...form, resendSeconds })}
+            />
+          </div>
         </div>
         {fieldError && <p className="field-error mt">{fieldError}</p>}
         <div className="switch-row mt">
@@ -73,9 +78,14 @@ function EmailOtpForm({ initial, save, saving }) {
           </div>
           <Toggle checked={form.requireOtpForReset} onChange={(v) => setForm({ ...form, requireOtpForReset: v })} label="Require OTP for reset" />
         </div>
-        <button type="button" className="btn btn-primary btn-block mt" disabled={saving} onClick={onSave}>
-          {saving ? 'Saving…' : 'Save settings'}
-        </button>
+        <div className="form-footer">
+          <button type="button" className="btn btn-ghost" disabled={saving} onClick={() => setForm(initial)}>
+            Reset
+          </button>
+          <button type="button" className="btn btn-primary" disabled={saving} onClick={onSave}>
+            {saving ? 'Saving…' : 'Save settings'}
+          </button>
+        </div>
       </Card>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />
@@ -88,7 +98,7 @@ export default function EmailOtp() {
 
   return (
     <>
-      <PageHeader title="Email & OTP" subtitle="Sender address, expiry and resend interval." back={ROUTES.settings} />
+      <PageHeader title="Email & OTP" subtitle="Sender address, expiry and resend interval." />
 
       {loading && <Skeleton height={260} radius="var(--radius-lg)" />}
 

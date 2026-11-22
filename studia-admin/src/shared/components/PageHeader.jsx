@@ -3,12 +3,12 @@ import Breadcrumbs from './Breadcrumbs';
 import { Icon } from './Icon';
 
 /**
- * The one page header: breadcrumbs, optional Back, exactly one <h1>, a
- * subtitle and an actions slot. Every page renders this first.
+ * The in-page header: breadcrumbs, an optional Back button and an actions slot.
+ * The title and subtitle live in the Topbar, fed by core/config/navigation.js,
+ * so they are never repeated here (title/subtitle props are accepted and
+ * ignored for compatibility with the pages that still pass them).
  */
 export default function PageHeader({
-  title,
-  subtitle,
   actions,
   back,
   breadcrumbOverrides,
@@ -19,6 +19,7 @@ export default function PageHeader({
   return (
     <header className="page-header">
       <Breadcrumbs overrides={breadcrumbOverrides} />
+      {(back || actions) && (
       <div className="page-header-row">
         <div className="page-header-text">
           {back && (
@@ -31,11 +32,10 @@ export default function PageHeader({
               <span>Back</span>
             </button>
           )}
-          <h1>{title}</h1>
-          {subtitle && <p className="page-subtitle">{subtitle}</p>}
         </div>
         {actions && <div className="page-header-actions">{actions}</div>}
       </div>
+      )}
       {children}
     </header>
   );

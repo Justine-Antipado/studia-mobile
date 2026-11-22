@@ -2,7 +2,6 @@
 // appends a real row here on every attempt, success or fail.
 import { useMemo } from 'react';
 import * as securityRepo from '../data/securityRepository';
-import { ROUTES } from '../../../core/config/routes';
 import { formatDateTime } from '../../../core/logic/format';
 import DataTable from '../../../shared/components/DataTable';
 import Pager from '../../../shared/components/Pager';
@@ -48,13 +47,20 @@ export default function LoginAttempts() {
   const columns = [
     { key: 'at', header: 'When', primary: true, render: (a) => formatDateTime(a.at) },
     { key: 'identifier', header: 'Identifier used', render: (a) => a.identifier },
+    {
+      key: 'stage',
+      header: 'Step',
+      render: (a) => (a.stage === 'otp' ? 'Login code' : 'Password'),
+    },
     { key: 'result', header: 'Result', render: resultBadge },
     { key: 'ip', header: 'IP address', render: (a) => a.ip },
+    { key: 'device', header: 'Device', render: (a) => a.device ?? '—', hideCompact: true },
+    { key: 'note', header: 'Detail', render: (a) => a.note ?? '—' },
   ];
 
   return (
     <>
-      <PageHeader title="Login attempts" subtitle="Failed logins, lockouts and IP addresses." back={ROUTES.security} />
+      <PageHeader title="Login attempts" subtitle="Failed logins, lockouts and IP addresses." />
 
       <Tabs
         aria-label="Filter by result"

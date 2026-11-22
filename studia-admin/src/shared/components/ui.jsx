@@ -168,7 +168,7 @@ export function Modal({ title, description, children, onClose, actions, labelled
 export function Toast({ message, kind = 'ok', onDone }) {
   useEffect(() => {
     if (!message) return undefined;
-    const t = setTimeout(onDone, 3200);
+    const t = setTimeout(onDone, 2500);
     return () => clearTimeout(t);
   }, [message, onDone]);
   if (!message) return null;
