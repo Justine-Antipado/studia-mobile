@@ -22,6 +22,8 @@ export function useLiveUpdates(): void {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
         if (hiddenAt && Date.now() - hiddenAt > STALE_AFTER_MS) queryCache.clear();
+        // Realtime sleeps while the app is in the background, so catch up on the alerts right away.
+        else queryCache.invalidate("notifications");
         hiddenAt = null;
       } else if (hiddenAt === null) {
         hiddenAt = Date.now();

@@ -1,6 +1,7 @@
 # send-push
 
-Delivers each new `notifications` row to the owner's phone via Expo Push.
+Delivers each new `notifications` row to the owner's phone via Expo Push and to their email via Gmail SMTP
+(announcements, assignments, quizzes, grades, lessons, class changes).
 
 ## One-time setup
 
@@ -8,8 +9,10 @@ Delivers each new `notifications` row to the owner's phone via Expo Push.
 2. Pick a long random string for `<SECRET>`, then deploy and set it on the function:
    ```bash
    supabase functions deploy send-push --no-verify-jwt
-   supabase secrets set PUSH_WEBHOOK_SECRET=<SECRET>
+   supabase secrets set PUSH_WEBHOOK_SECRET=<SECRET> SMTP_USER=<gmail> SMTP_PASS=<app password>
    ```
+   `SMTP_USER` / `SMTP_PASS` are the same Gmail account and app password used for the login codes
+   (docs/AUTH-SETUP.md). Without them the function still sends the push, just no email.
 3. In the SQL editor, store the same secret and the function URL in Vault (the trigger reads them):
    ```sql
    select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/send-push', 'push_function_url');

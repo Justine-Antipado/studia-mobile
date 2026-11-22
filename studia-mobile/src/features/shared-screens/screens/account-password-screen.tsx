@@ -1,6 +1,7 @@
-// account-password-screen.tsx — change password: choose a new password (same strength rules and meter
-// as sign-up / reset on the auth screen), then confirm with a 6-digit code emailed to the account.
-// The server checks the code and sets the password in one call.
+// account-password-screen.tsx — change password (same strength rules and meter
+// as sign-up / reset on the auth screen). Order: email a 6-digit code, enter it, then choose the new
+// password (the strength checklist only appears once typing starts). The server checks the code and
+// sets the password in one call.
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -15,17 +16,19 @@ import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 
-type Step = "new" | "otp";
+type Step = "start" | "otp" | "new";
 
 export function AccountPasswordScreen({ role }: { role: Role }) {
   const user = useRoleUser(role);
   const toast = useToast();
   const goBack = useSafeBack(`/${role}/account`);
-  const [step, setStep] = useState<Step>("new");
+  const [step, setStep] = useState<Step>("start");
   const [devCode, setDevCode] = useState<string | undefined>();
+  const [code, setCode] = useState("");
   const [pw, setPw] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  const email = user?.email ?? "your email";
 
   const sendCode = async () => {
     setBusy(true);
@@ -36,26 +39,50 @@ export function AccountPasswordScreen({ role }: { role: Role }) {
     setStep("otp");
   };
 
-  const save = async (code: string): Promise<string | null> => {
+  // The server verifies the code and sets the password in one call, so the code is held here until
+  // the new password is chosen. A wrong code sends the user back to the code step.
+  const save = async () => {
+    setBusy(true);
     const r = await profileRepository.changePassword(pw, code);
-    if (!r.ok) return r.error.message;
+    setBusy(false);
+    if (!r.ok) {
+      toast.show(r.error.message, { tone: "red" });
+      if (r.error.code === "validation" && /code/i.test(r.error.message)) setStep("otp");
+      return;
+    }
     toast.show("Password changed", { tone: "green" });
     goBack();
-    return null;
   };
 
   const strong = isStrongPassword(pw);
   const mismatch = confirm.length > 0 && confirm !== pw;
-  const canContinue = strong && pw === confirm;
+  const canSave = strong && pw === confirm;
+
+  const back = step === "new" ? () => setStep("otp") : step === "otp" ? () => setStep("start") : goBack;
 
   return (
     <Screen role={role} scope={`${role}/account-password`}>
-      <PageTitle title="Password" onBack={step === "otp" ? () => setStep("new") : goBack} />
-      {step === "new" ? (
+      <PageTitle title="Password" onBack={back} />
+      {step === "start" ? (
         <View style={{ gap: SPACE.md }}>
-          <Text style={TYPE.body}>
-            {`Choose a new password. We'll email a verification code to ${user?.email ?? "your email"} to confirm it's you.`}
-          </Text>
+          <Text style={TYPE.body}>{`First we'll email a 6-digit verification code to ${email} to confirm it's you.`}</Text>
+          <ActionButton label="Send verification code" icon="mail-outline" loading={busy} onPress={sendCode} />
+        </View>
+      ) : step === "otp" ? (
+        <OtpStep
+          email={email}
+          devCode={devCode}
+          confirmLabel="Continue"
+          onSubmit={async (c) => {
+            setCode(c);
+            setStep("new");
+            return null;
+          }}
+          onResend={sendCode}
+        />
+      ) : (
+        <View style={{ gap: SPACE.md }}>
+          <Text style={TYPE.body}>Code accepted. Choose your new password.</Text>
           <FormField
             label="New password"
             value={pw}
@@ -66,7 +93,7 @@ export function AccountPasswordScreen({ role }: { role: Role }) {
             autoComplete="new-password"
             maxLength={LIMITS.password}
           />
-          {!strong ? <PasswordMeter password={pw} /> : null}
+          {pw.length > 0 && !strong ? <PasswordMeter password={pw} /> : null}
           <FormField
             label="Confirm password"
             value={confirm}
@@ -78,22 +105,8 @@ export function AccountPasswordScreen({ role }: { role: Role }) {
             maxLength={LIMITS.password}
             error={mismatch ? "Passwords don't match." : null}
           />
-          <ActionButton
-            label="Send verification code"
-            icon="mail-outline"
-            disabled={!canContinue}
-            loading={busy}
-            onPress={sendCode}
-          />
+          <ActionButton label="Change password" icon="lock-closed-outline" disabled={!canSave} loading={busy} onPress={save} />
         </View>
-      ) : (
-        <OtpStep
-          email={user?.email ?? "your email"}
-          devCode={devCode}
-          confirmLabel="Verify & change password"
-          onSubmit={save}
-          onResend={sendCode}
-        />
       )}
     </Screen>
   );

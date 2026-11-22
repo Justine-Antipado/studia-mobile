@@ -3,8 +3,9 @@ import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { ListRow, PageTitle, QuickAction, SectionHeader } from "@/shared/components/ui";
+import { EmptyState, ListRow, ListState, PageTitle, QuickAction, SectionHeader } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
+import { TONES } from "@/shared/constants/studia-colors";
 import { SPACE } from "@/shared/constants/tokens";
 import { ClassCard } from "@/features/student/components/class-card";
 import { TaskRow } from "@/features/student/components/task-row";
@@ -34,7 +35,11 @@ export default function StudentHome() {
   }, [tasks.data]);
 
   const continueLearning = useMemo(
-    () => (classes.data ?? []).filter((c) => c.progress > 0 && c.progress < 1).slice(0, 2),
+    () => {
+      // In-progress classes first; a class with no progress yet still belongs here so the section is never empty.
+      const open = (classes.data ?? []).filter((c) => c.progress < 1);
+      return open.sort((a, b) => b.progress - a.progress).slice(0, 2);
+    },
     [classes.data],
   );
 
@@ -70,57 +75,75 @@ export default function StudentHome() {
       refreshing={tasks.loading && !!tasks.data}
       onRefresh={tasks.refetch}
     >
-      <PageTitle title="Home" />
+      <View style={s.page}>
+        <PageTitle title="Home" />
 
-      <View style={s.actions}>
-        <QuickAction icon="book-outline" label="My Courses" onPress={openCourses} />
-        <QuickAction icon="checkbox-outline" label="To-do" onPress={openTodo} />
-        <QuickAction icon="calendar-outline" label="Planner" tone="blue" onPress={openPlanner} />
-        <QuickAction icon="sparkles-outline" label="AI Assistant" tone="gold" onPress={openAi} />
-      </View>
+        <View style={s.block}>
+          <SectionHeader title="Quick actions" />
+          <View style={s.actions}>
+            <QuickAction icon="book-outline" label="My Courses" onPress={openCourses} />
+            <QuickAction icon="checkbox-outline" label="To-do" tone="green" onPress={openTodo} />
+            <QuickAction icon="calendar-outline" label="Planner" tone="blue" onPress={openPlanner} />
+            <QuickAction icon="sparkles-outline" label="AI Assistant" tone="gold" onPress={openAi} />
+          </View>
+        </View>
 
-      {todayTasks.length > 0 ? (
-        <View style={s.section}>
+        <View style={s.block}>
           <SectionHeader title="Today's tasks" action="View All" onAction={openTodo} />
-          {todayTasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              onToggle={() => toggle(task.id)}
-              onPress={() => openTask(task)}
-            />
-          ))}
+          <ListState loading={tasks.loading} error={tasks.error} onRetry={tasks.refetch}>
+            {todayTasks.length === 0 ? (
+              <ListRow
+                icon="checkmark-circle-outline"
+                iconBg={TONES.green.bg}
+                iconColor={TONES.green.fg}
+                title="All caught up"
+                subtitle="Nothing is due today."
+                onPress={openTodo}
+              />
+            ) : (
+              todayTasks.map((task) => (
+                <TaskRow key={task.id} task={task} onToggle={() => toggle(task.id)} onPress={() => openTask(task)} />
+              ))
+            )}
+          </ListState>
         </View>
-      ) : null}
 
-      {upcoming.length > 0 ? (
-        <View style={s.section}>
+        <View style={s.block}>
           <SectionHeader title="Upcoming deadlines" action="View All" onAction={openTodo} />
-          {upcoming.map((task) => (
-            <ListRow
-              key={task.id}
-              icon={task.kind === "quiz" ? "help-circle-outline" : "document-text-outline"}
-              title={task.title}
-              subtitle={`${task.classCode} · ${dueLabel(task.dueAt)}`}
-              onPress={openTodo}
-            />
-          ))}
+          <ListState loading={tasks.loading} error={tasks.error} onRetry={tasks.refetch}>
+            {upcoming.length === 0 ? (
+              <EmptyState icon="calendar-outline" title="No upcoming deadlines" message="Assignments and quizzes with due dates will show up here." />
+            ) : (
+              upcoming.map((task) => (
+                <ListRow
+                  key={task.id}
+                  icon={task.kind === "quiz" ? "help-circle-outline" : "document-text-outline"}
+                  title={task.title}
+                  subtitle={`${task.classCode} · ${dueLabel(task.dueAt)}`}
+                  onPress={openTodo}
+                />
+              ))
+            )}
+          </ListState>
         </View>
-      ) : null}
 
-      {continueLearning.length > 0 ? (
-        <View style={s.section}>
+        <View style={s.block}>
           <SectionHeader title="Continue Learning" action="View All" onAction={openCourses} />
-          {continueLearning.map((c) => (
-            <ClassCard key={c.id} item={c} onPress={() => openClass(c.id)} />
-          ))}
+          <ListState loading={classes.loading} error={classes.error} onRetry={classes.refetch}>
+            {continueLearning.length === 0 ? (
+              <EmptyState icon="school-outline" title="No courses yet" message="Join a class with a code from your instructor to start learning." />
+            ) : (
+              continueLearning.map((c) => <ClassCard key={c.id} item={c} onPress={() => openClass(c.id)} />)
+            )}
+          </ListState>
         </View>
-      ) : null}
+      </View>
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
   actions: { flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", rowGap: SPACE.sm + 2 },
-  section: { gap: SPACE.md },
+  page: { gap: SPACE.xl },
+  block: { gap: SPACE.md },
 });
