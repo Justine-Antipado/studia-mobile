@@ -9,6 +9,11 @@ export function mockNow(): number {
   return Date.now() + (__DEV__ ? offsetMs : 0);
 }
 
+/** `mockNow()` as an ISO string — use for every stored timestamp so simulated time stays consistent. */
+export function mockNowIso(): string {
+  return new Date(mockNow()).toISOString();
+}
+
 export function getClockOffset(): number {
   return offsetMs;
 }

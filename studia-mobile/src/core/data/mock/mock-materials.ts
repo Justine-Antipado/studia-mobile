@@ -9,6 +9,7 @@ import { dbId, mockDb, type DbMaterial, type DbTranscriptLine } from "@/core/dat
 import { canAccess, isOwner } from "@/core/data/mock/mock-announcements";
 import { classCodeOf, notify, studentIdsOf } from "@/core/data/mock/mock-notifications";
 import type { Attachment, VideoLink } from "@/core/types/content";
+import { mockNowIso } from "@/core/data/mock/mock-clock";
 
 export const MAX_SUMMARY_REGENS = 3;
 const PIPELINE_DELAY_MS = 4000;
@@ -79,7 +80,7 @@ export function addLink(classId: string, title: string, link: VideoLink): DbMate
     objectives: [],
     aiSummary: null,
     summaryRegens: 0,
-    postedAt: new Date().toISOString(),
+    postedAt: mockNowIso(),
   };
   mockDb.materials = [m, ...mockDb.materials];
   mockDb.emit();
@@ -102,7 +103,7 @@ export function addUpload(classId: string, title: string, attachment: Attachment
     objectives: [],
     aiSummary: null,
     summaryRegens: 0,
-    postedAt: new Date().toISOString(),
+    postedAt: mockNowIso(),
   };
   mockDb.materials = [m, ...mockDb.materials];
   mockDb.emit();

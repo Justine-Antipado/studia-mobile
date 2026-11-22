@@ -6,6 +6,7 @@ import { ME, dbId, mockDb, type DbAssignment } from "@/core/data/mock/mock-db";
 import { classCodeOf, notify, studentIdsOf } from "@/core/data/mock/mock-notifications";
 import { mockCall } from "@/core/data/mock/mock-latency";
 import type { Attachment, InstructorAssignment } from "@/features/instructor/types/instructor";
+import { mockNowIso } from "@/core/data/mock/mock-clock";
 
 export type AssignmentDraft = {
   title: string;
@@ -51,7 +52,7 @@ class MockInstructorAssignmentRepository implements InstructorAssignmentReposito
       points: draft.points,
       allowLate: draft.allowLate,
       attachments: draft.attachments,
-      createdAt: new Date().toISOString(),
+      createdAt: mockNowIso(),
     };
     mockDb.assignments = [assignment, ...mockDb.assignments];
     mockDb.emit();

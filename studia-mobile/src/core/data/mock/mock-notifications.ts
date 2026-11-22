@@ -4,6 +4,7 @@
 //   - the actor is never notified about their own action
 //   - readAt is set by the owner only (RLS: owner can update read state)
 import { dbId, mockDb, type DbNotification, type NotificationTag } from "@/core/data/mock/mock-db";
+import { mockNowIso } from "@/core/data/mock/mock-clock";
 
 export type NotifyInput = {
   tag: NotificationTag;
@@ -14,7 +15,7 @@ export type NotifyInput = {
 
 /** Notify every user in `userIds` except `actorId`. */
 export function notify(userIds: readonly string[], input: NotifyInput, actorId?: string) {
-  const now = new Date().toISOString();
+  const now = mockNowIso();
   const rows: DbNotification[] = [...new Set(userIds)]
     .filter((id) => id !== actorId)
     .map((userId) => ({
@@ -49,14 +50,14 @@ export function markRead(userId: string, id: string): boolean {
   const n = mockDb.notifications.find((x) => x.id === id && x.userId === userId);
   if (!n) return false;
   if (!n.readAt) {
-    mockDb.notifications = mockDb.notifications.map((x) => (x.id === id ? { ...x, readAt: new Date().toISOString() } : x));
+    mockDb.notifications = mockDb.notifications.map((x) => (x.id === id ? { ...x, readAt: mockNowIso() } : x));
     mockDb.emit();
   }
   return true;
 }
 
 export function markAllRead(userId: string) {
-  const now = new Date().toISOString();
+  const now = mockNowIso();
   mockDb.notifications = mockDb.notifications.map((x) => (x.userId === userId && !x.readAt ? { ...x, readAt: now } : x));
   mockDb.emit();
 }

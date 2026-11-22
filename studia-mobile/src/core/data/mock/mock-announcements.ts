@@ -9,6 +9,7 @@
 import { dbId, mockDb, type DbAnnouncement, type DbComment } from "@/core/data/mock/mock-db";
 import { classCodeOf, nameOf, notify, studentIdsOf } from "@/core/data/mock/mock-notifications";
 import type { Comment } from "@/core/types/content";
+import { mockNowIso } from "@/core/data/mock/mock-clock";
 
 export type AnnouncementView = {
   id: string;
@@ -78,7 +79,7 @@ export function createAnnouncement(
     authorId,
     title: input.title.trim(),
     body: input.body.trim(),
-    postedAt: new Date().toISOString(),
+    postedAt: mockNowIso(),
     pinned: input.pinned,
   };
   mockDb.announcements = [a, ...mockDb.announcements];
@@ -99,7 +100,7 @@ export function removeAnnouncement(classId: string, id: string, userId: string):
 export function addComment(classId: string, id: string, userId: string, text: string): Comment | null {
   const a = mockDb.announcements.find((x) => x.classId === classId && x.id === id);
   if (!a || !canAccess(classId, userId)) return null;
-  const c: DbComment = { id: dbId("c"), announcementId: id, authorId: userId, text, postedAt: new Date().toISOString() };
+  const c: DbComment = { id: dbId("c"), announcementId: id, authorId: userId, text, postedAt: mockNowIso() };
   mockDb.comments = [...mockDb.comments, c];
   mockDb.emit();
   // The author of the post and everyone who already commented hear about the new comment.

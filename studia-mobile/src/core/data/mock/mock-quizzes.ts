@@ -4,7 +4,7 @@
 //   - An attempt "needs grading" while it has an essay question and no gradedScore.
 //   - Students only ever see published quizzes of classes they are enrolled in.
 //   - Only the class owner lists attempts or grades them.
-import { mockNow } from "@/core/data/mock/mock-clock";
+import { mockNow, mockNowIso } from "@/core/data/mock/mock-clock";
 import { dbId, mockDb, type DbAttempt, type DbQuiz } from "@/core/data/mock/mock-db";
 import { isOwner } from "@/core/data/mock/mock-announcements";
 import { classCodeOf, nameOf, notify, ownerOf } from "@/core/data/mock/mock-notifications";
@@ -58,7 +58,7 @@ export function submitWindow(quiz: DbQuiz, now = mockNow()): SubmitWindow {
 }
 
 export function submitAttempt(quiz: DbQuiz, studentId: string, answers: DbAttempt["answers"]): DbAttempt {
-  const now = new Date().toISOString();
+  const now = mockNowIso();
   const attempt: DbAttempt = {
     id: dbId("att"),
     quizId: quiz.id,

@@ -8,6 +8,7 @@ import { classCodeOf, notify } from "@/core/data/mock/mock-notifications";
 import { mockCall } from "@/core/data/mock/mock-latency";
 import { parseScore } from "@/features/instructor/logic/quiz-validation";
 import type { Attachment } from "@/features/instructor/types/instructor";
+import { mockNowIso } from "@/core/data/mock/mock-clock";
 
 export type AssignmentSubmissionStatus = "missing" | "draft" | "submitted" | "late" | "graded";
 
@@ -96,7 +97,7 @@ class MockAssignmentSubmissionRepository implements AssignmentSubmissionReposito
       status: "graded",
       score: parsed.value,
       feedback: feedback.trim() || null,
-      gradedAt: new Date().toISOString(),
+      gradedAt: mockNowIso(),
     };
     mockDb.submissions = mockDb.submissions.map((s) => (s.id === next.id ? next : s));
     mockDb.emit();

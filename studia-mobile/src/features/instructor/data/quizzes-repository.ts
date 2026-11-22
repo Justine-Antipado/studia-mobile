@@ -12,6 +12,7 @@ import { ownedQuizzes } from "@/core/data/mock/mock-quizzes";
 import { defaultSchedule, validateSchedule } from "@/features/instructor/logic/quiz-schedule";
 import { validateQuizDraft } from "@/features/instructor/logic/quiz-validation";
 import type { Quiz, QuizDraft, QuizQuestion } from "@/features/instructor/types/instructor";
+import { mockNowIso } from "@/core/data/mock/mock-clock";
 
 export interface QuizRepository {
   list(): Promise<Result<Quiz[]>>;
@@ -117,7 +118,7 @@ class MockQuizRepository implements QuizRepository {
       dueAt: schedule.dueAt,
       allowLate: schedule.allowLate,
       closesAt: schedule.allowLate ? schedule.closesAt : null,
-      createdAt: new Date().toISOString(),
+      createdAt: mockNowIso(),
       questions: toDbQuestions(draft),
     };
     mockDb.quizzes = [quiz, ...mockDb.quizzes];

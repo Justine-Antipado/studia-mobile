@@ -6,6 +6,7 @@ import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, dbId, mockDb, type DbPlanner, type DbPlannerBlock } from "@/core/data/mock/mock-db";
 import { mockCall } from "@/core/data/mock/mock-latency";
+import { mockNow } from "@/core/data/mock/mock-clock";
 import { addDaysIso, toLocalIso } from "@/shared/utils/format";
 import { taskRepository } from "@/features/student/data/tasks-repository";
 import type { PlannerBlock, PlannerWeek } from "@/features/student/types/student";
@@ -22,7 +23,7 @@ const WINDOW_DAYS = 7;
 const HOURS = [16, 17, 18, 19, 20, 15, 14];
 
 /** The planner is a rolling window: today + the next 6 days (not a calendar week). */
-const windowStart = () => toLocalIso(new Date());
+const windowStart = () => toLocalIso(new Date(mockNow()));
 
 /**
  * Spreads one review block per pending task over the window (the evening before it is due, or

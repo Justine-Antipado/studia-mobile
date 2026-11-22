@@ -9,6 +9,7 @@ import { mockCall } from "@/core/data/mock/mock-latency";
 import { finalScore, maxScoreOf, needsGrading, ownedQuizzes } from "@/core/data/mock/mock-quizzes";
 import { parseScore } from "@/features/instructor/logic/quiz-validation";
 import type { Submission } from "@/features/instructor/types/instructor";
+import { mockNowIso } from "@/core/data/mock/mock-clock";
 
 export interface SubmissionRepository {
   list(): Promise<Result<Submission[]>>;
@@ -79,7 +80,7 @@ class MockSubmissionRepository implements SubmissionRepository {
       ...a,
       gradedScore: parsed.value,
       feedback: feedback.trim() || null,
-      gradedAt: new Date().toISOString(),
+      gradedAt: mockNowIso(),
     };
     mockDb.attempts = mockDb.attempts.map((x) => (x.id === id ? next : x));
     mockDb.emit();

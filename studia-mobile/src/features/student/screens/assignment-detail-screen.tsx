@@ -20,7 +20,7 @@ import type { Tone } from "@/shared/constants/studia-colors";
 import { useRouteIds } from "@/core/logic/route-params";
 import { useForceBack, useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
-import { dueLabel, scoreTone, toPercent } from "@/features/student/logic/format";
+import { dueLabel, isOverdue, scoreTone, toPercent } from "@/features/student/logic/format";
 import { validateSubmissionText } from "@/features/student/logic/validators";
 import { useAssignment, useAttachAssignment, useTurnInAssignment } from "@/features/student/hooks/use-assignments";
 import { useFilePicker } from "@/features/student/hooks/use-file-picker";
@@ -138,10 +138,19 @@ export default function StudentAssignmentDetail() {
 
             {assignment.status === "draft" ? (
               <View style={{ gap: SPACE.md }}>
-                <Badge label="Not allowed late — saved as a draft until you turn it in" tone="orange" />
+                <Badge
+                  label={
+                    isOverdue(assignment.dueAt) && !assignment.allowLate
+                      ? "Deadline passed — late work isn't allowed. Ask your instructor to reopen it."
+                      : "Saved as a draft until you turn it in"
+                  }
+                  tone="orange"
+                />
                 {assignment.submissionText ? <Text style={TYPE.body}>{assignment.submissionText}</Text> : null}
                 {assignment.submissionFile ? <AttachmentRow attachment={assignment.submissionFile} /> : null}
-                <ActionButton label="Turn in" icon="checkmark-circle-outline" loading={turnIn.loading} onPress={turnInDraft} />
+                {isOverdue(assignment.dueAt) && !assignment.allowLate ? null : (
+                  <ActionButton label="Turn in" icon="checkmark-circle-outline" loading={turnIn.loading} onPress={turnInDraft} />
+                )}
               </View>
             ) : null}
 

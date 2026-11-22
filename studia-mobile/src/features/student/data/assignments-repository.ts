@@ -2,11 +2,11 @@
 // instructor's row; "my" submission is the row in `submissions` for the signed-in student, so a
 // turn-in here shows up in the instructor's Submissions list (and a grade shows up here).
 // Late rule: allowLate=true -> submitting after dueAt is tagged "late". allowLate=false and
-// already overdue -> a picked file is saved as a draft only; "Turn in" (reopening) submits it
-// without a late tag, per docs/UI-BRIEF business rules.
+// already overdue -> a picked file is saved as a draft only. "Turn in" works once the instructor
+// has extended the due date (submitted) or allowed late work (late); until then it is refused.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
-import { mockNow } from "@/core/data/mock/mock-clock";
+import { mockNow, mockNowIso } from "@/core/data/mock/mock-clock";
 import { ME, dbId, mockDb, type DbAssignment, type DbSubmission } from "@/core/data/mock/mock-db";
 import { classCodeOf, nameOf, notify, ownerOf } from "@/core/data/mock/mock-notifications";
 import { mockCall } from "@/core/data/mock/mock-latency";
@@ -96,7 +96,7 @@ class MockAssignmentRepository implements AssignmentRepository {
       assignmentId: id,
       studentId: ME.student,
       status: willSubmitNow ? (overdue ? "late" : "submitted") : "draft",
-      submittedAt: willSubmitNow ? new Date().toISOString() : null,
+      submittedAt: willSubmitNow ? mockNowIso() : null,
       text: input.text || current?.text || null,
       file: input.file ?? current?.file ?? null,
       score: null,
@@ -112,7 +112,14 @@ class MockAssignmentRepository implements AssignmentRepository {
     if (!a || !visible(a, classId)) return fail(appError("not_found", "This assignment no longer exists."));
     const current = mockDb.submissionOf(id, ME.student);
     if (!current || current.status !== "draft") return fail(appError("conflict", "Nothing to turn in.", false));
-    save({ ...current, status: "submitted", submittedAt: new Date().toISOString() }, a);
+    // A draft exists only because the deadline passed with late work not allowed. Turning it in
+    // must not bypass that rule: it stays blocked until the instructor extends the due date or
+    // allows late work (then it is tagged "late" if it is still past due).
+    const overdue = mockNow() > new Date(a.dueAt).getTime();
+    if (overdue && !a.allowLate) {
+      return fail(appError("conflict", "The deadline has passed and late work isn't allowed. Ask your instructor to reopen it.", false));
+    }
+    save({ ...current, status: overdue ? "late" : "submitted", submittedAt: mockNowIso() }, a);
     return ok(toAssignment(a));
   }
 }
