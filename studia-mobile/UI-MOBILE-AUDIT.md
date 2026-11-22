@@ -14,7 +14,7 @@
 | 2 | Notification detail bago mark-read | ✅ | `notifications-screen.tsx` — `BottomSheet` detail; mark-read nasa pagbukas ng detail; `body` na sa type; badge ay `unread \|\| undefined` na (hindi na hardcoded `2`) |
 | 3 | Account subpages (+OTP, photo) | ✅ | May `account-personal/password/privacy/about/photo` routes sa student at instructor; `expo-image-picker` nasa deps; migration `…013_otp_profile_update`, `…015_user_avatars` |
 | 4 | Instructor comment sa announcement | ✅ | `addComment` sa instructor repo + hook; shared `comment-composer.tsx` |
-| 5 | Assignment custom due, edit, late dropdown | ✅ | `date-time-field.tsx`, `select-field.tsx`, `assignment-form.tsx`, route `edit-assignment`; `@react-native-community/datetimepicker` nasa deps |
+| 5 | Assignment custom due, edit, late dropdown | ✅ | `date-time-field.tsx`, `select-field.tsx`, `assignment-form.tsx`, route `edit-assignment`; custom bottom-sheet picker na ngayon (wala nang `@react-native-community/datetimepicker`) |
 | 6 | Keyboard natatakpan (Android) | ⚠️ **Hindi tiyak** | Tingnan 1.1 |
 | 7 | Header chips overflow/margin | ✅ | `segmented-tabs.tsx` — wala nang `marginHorizontal` |
 | 8 | Tanggalin greeting, tab titles | ✅ | `PageTitle` na: Home, Courses, Classes, Assessments, Account; walang "Good day/Welcome back" (maliban sa auth card) |

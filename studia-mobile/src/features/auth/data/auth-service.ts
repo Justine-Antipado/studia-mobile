@@ -22,7 +22,17 @@ export {
 
 const service: AuthService = isRemote ? remoteAuthService : mockAuthService;
 
-if (isRemote) void restoreRemoteSession().catch(() => undefined); // never let a failed restore crash startup
+/**
+ * Resolves once the stored session (if any) has been loaded into the user store. The root layout
+ * holds the splash screen until then, so a signed-in user is not bounced to /auth for a moment on
+ * every launch. Never rejects, and gives up after 4 s so a bad connection cannot trap the splash.
+ */
+export const sessionReady: Promise<void> = isRemote
+  ? Promise.race([
+      restoreRemoteSession().catch(() => undefined), // a failed restore must not crash startup
+      new Promise<void>((resolve) => setTimeout(resolve, 4000)),
+    ])
+  : Promise.resolve();
 
 export const login = service.login.bind(service);
 export const register = service.register.bind(service);

@@ -27,7 +27,6 @@
           "iosUrlScheme": "com.googleusercontent.apps.591672082298-fn2b59aem60h9i87ekv8729ecaf0pged"
         }
       ],
-      "@react-native-community/datetimepicker",
       [
         "expo-image-picker",
         {

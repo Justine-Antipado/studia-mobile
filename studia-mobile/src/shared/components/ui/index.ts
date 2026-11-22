@@ -34,7 +34,6 @@ export { ProgressBar } from "@/shared/components/ui/progress-bar";
 export { QuickAction } from "@/shared/components/ui/quick-action";
 export { RoleGate } from "@/shared/components/ui/role-gate";
 export { Screen } from "@/shared/components/ui/screen";
-export { SearchField } from "@/shared/components/ui/search-field";
 export { SectionHeader } from "@/shared/components/ui/section-header";
 export { SegmentedTabs } from "@/shared/components/ui/segmented-tabs";
 export { VideoLinkCard } from "@/shared/components/ui/video-link-card";
