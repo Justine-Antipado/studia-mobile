@@ -3,10 +3,11 @@
 // material is readable straight away; a pasted transcript is stored by set_material_transcript.
 import { appError, fail, ok, type Result } from "@/core/data/errors/app-error";
 import { toAttachment, uploadPicked, type StoredFile } from "@/core/data/supabase/file-upload";
-import { db, guard, must, myId } from "@/core/data/supabase/remote";
+import { db, guard, must, mustOk, myId } from "@/core/data/supabase/remote";
 import { durationLabel } from "@/features/student/data/lessons-remote";
 import type { MaterialRepository } from "@/features/instructor/data/materials-repository";
 import type { Attachment, Material } from "@/features/instructor/types/instructor";
+import { newId } from "@/shared/utils/id";
 import { parseVideoLink } from "@/shared/utils/video-link";
 
 const SELECT =
@@ -66,14 +67,13 @@ export class RemoteMaterialRepository implements MaterialRepository {
     return guard(async () => {
       const me = await myId();
       const fileId = await uploadPicked(input.attachment, "materials");
-      const row = must(
+      const id = newId("mat"); // no RETURNING: see classes-remote (select policy can't see the new row)
+      mustOk(
         await db()
           .from("materials")
-          .insert({ class_id: classId, title: input.title.trim(), kind: input.attachment.kind === "slide" ? "slide" : "pdf", file_id: fileId, owner_id: me })
-          .select("id")
-          .single(),
-      ) as { id: string };
-      const made = await fetchOne(classId, row.id);
+          .insert({ id, class_id: classId, title: input.title.trim(), kind: input.attachment.kind === "slide" ? "slide" : "pdf", file_id: fileId, owner_id: me }),
+      );
+      const made = await fetchOne(classId, id);
       if (!made) throw appError("not_found", "This class no longer exists.");
       return made;
     }, "This class no longer exists.");
@@ -84,10 +84,12 @@ export class RemoteMaterialRepository implements MaterialRepository {
     if (!parsed.ok) return fail(appError("validation", parsed.error, false));
     return guard(async () => {
       const me = await myId();
-      const row = must(
+      const id = newId("mat");
+      mustOk(
         await db()
           .from("materials")
           .insert({
+            id,
             class_id: classId,
             title: input.title.trim(),
             kind: "video",
@@ -95,11 +97,9 @@ export class RemoteMaterialRepository implements MaterialRepository {
             video_url: parsed.link.url,
             video_provider: parsed.link.provider,
             video_id: parsed.link.videoId,
-          })
-          .select("id")
-          .single(),
-      ) as { id: string };
-      const made = await fetchOne(classId, row.id);
+          }),
+      );
+      const made = await fetchOne(classId, id);
       if (!made) throw appError("not_found", "This class no longer exists.");
       return made;
     }, "This class no longer exists.");
