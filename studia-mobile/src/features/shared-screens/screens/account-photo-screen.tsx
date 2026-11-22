@@ -7,7 +7,7 @@ import { Text, View } from "react-native";
 import { displayName, useRoleUser } from "@/core/data/storage/session-store";
 import type { Role } from "@/core/types/role";
 import { pickAvatar, type AvatarSource } from "@/features/shared-screens/logic/avatar-image";
-import { profileRepository } from "@/features/shared-screens/data/profile-repository";
+import { profileRepository, type AvatarFile } from "@/features/shared-screens/data/profile-repository";
 import { ActionButton, ConfirmDialog, PageTitle, useToast } from "@/shared/components/ui";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { Screen } from "@/shared/components/ui/screen";
@@ -18,20 +18,20 @@ export function AccountPhotoScreen({ role }: { role: Role }) {
   const user = useRoleUser(role);
   const toast = useToast();
   const goBack = useSafeBack(`/${role}/account`);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<AvatarFile | null>(null);
   const [picking, setPicking] = useState<AvatarSource | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   if (!user) return null;
   const name = displayName(user);
-  const shown = preview ?? user.avatarUri ?? null;
+  const shown = preview?.uri ?? user.avatarUri ?? null;
 
   const pick = async (source: AvatarSource) => {
     setPicking(source);
     const result = await pickAvatar(source);
     setPicking(null);
-    if (result.ok) setPreview(result.uri);
+    if (result.ok) setPreview({ uri: result.uri, base64: result.base64 });
     else if (result.reason !== "cancelled") toast.show(result.message, { tone: "red" });
   };
 

@@ -278,4 +278,5 @@ export async function restoreRemoteSession(): Promise<void> {
       }),
     ),
   );
+  void import("@/features/shared-screens/data/profile-repository").then((m) => m.profileRepository.loadAvatar());
 }

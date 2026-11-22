@@ -28,6 +28,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { setUser } from "@/core/data/storage/session-store";
+import { profileRepository } from "@/features/shared-screens/data/profile-repository";
 import { toProfile } from "@/features/auth/logic/user-profile";
 import { AppButton } from "@/shared/components/ui/app-button";
 // import {
@@ -295,6 +296,7 @@ export default function Auth() {
     // The session token is persisted by the Supabase client (core/data/supabase/secure-storage.ts).
     const { user } = session;
     setUser(toProfile(user));
+    void profileRepository.loadAvatar(); // saved photo comes from the database
     router.replace(HOME_ROUTES[user.role ?? role]);
   };
 

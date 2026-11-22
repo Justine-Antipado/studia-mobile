@@ -4,6 +4,7 @@
 // this store only holds the profile for the current run.
 import { useSyncExternalStore } from "react";
 
+import { isRemote } from "@/core/config/data-source";
 import type { Role } from "@/core/types/role";
 
 export type UserProfile = {
@@ -35,6 +36,9 @@ const subscribe = (cb: () => void) => {
 };
 const snapshot = () => current;
 
+/** Non-reactive read for data-layer code. UI uses useUser(). */
+export const getUser = () => current;
+
 export function useUser(): UserProfile | null {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
@@ -60,7 +64,7 @@ const DEMO: Record<Role, UserProfile> = {
 export function useRoleUser(role: Role): UserProfile | null {
   const u = useUser();
   if (u) return u;
-  return __DEV__ ? DEMO[role] : null;
+  return __DEV__ && !isRemote ? DEMO[role] : null;
 }
 
 /* ---------- display helpers ---------- */

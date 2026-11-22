@@ -1,7 +1,7 @@
-// account-info-screens.tsx — read-only Account sub pages: Privacy Policy and About.
-import Constants from "expo-constants";
+// account-info-screens.tsx — read-only Account sub pages: Privacy Policy and About (= Learn More).
 import { Text, View } from "react-native";
 
+import { LearnMoreView } from "@/features/onboarding/screens/learn-more-screen";
 import type { Role } from "@/core/types/role";
 import { Card, PageTitle } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
@@ -46,23 +46,10 @@ export function AccountPrivacyScreen({ role }: { role: Role }) {
   );
 }
 
+/** About Application shows the same content as the welcome screen's "Learn More". */
 export function AccountAboutScreen({ role }: { role: Role }) {
   const goBack = useSafeBack(`/${role}/account`);
-  const version = Constants.expoConfig?.version ?? "1.0.0";
-  return (
-    <Screen role={role} scope={`${role}/account-about`}>
-      <PageTitle title="About Application" onBack={goBack} />
-      <Card>
-        <View style={{ gap: SPACE.xs }}>
-          <Text style={TYPE.h2}>STUDIA Mobile</Text>
-          <Text style={TYPE.muted}>{`Version ${version}`}</Text>
-          <Text style={TYPE.body}>
-            An AI-assisted learning platform for Occidental Mindoro State University – Mamburao Campus.
-          </Text>
-        </View>
-      </Card>
-    </Screen>
-  );
+  return <LearnMoreView onBack={goBack} />;
 }
 
 export const StudentAccountPrivacy = () => <AccountPrivacyScreen role="student" />;

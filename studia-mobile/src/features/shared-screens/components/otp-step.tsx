@@ -1,23 +1,24 @@
-// otp-step.tsx — "enter the 6-digit code" step shared by the OTP-protected account edits.
+// otp-step.tsx — "enter the 6-digit code" step shared by the OTP-protected account edits. The code is
+// checked by the server together with the save (see profile-repository.ts), not here.
 import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { isOtp } from "@/features/auth/logic/auth-validation";
-import { profileRepository, type OtpPurpose } from "@/features/shared-screens/data/profile-repository";
 import { ActionButton, FormField, useToast } from "@/shared/components/ui";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 
 export function OtpStep({
-  purpose,
   email,
   devCode,
-  onVerified,
+  confirmLabel = "Verify & save",
+  onSubmit,
   onResend,
 }: {
-  purpose: OtpPurpose;
   email: string;
   devCode?: string;
-  onVerified: () => void;
+  confirmLabel?: string;
+  /** Runs the save with the code. Resolve with an error message to show it, or null on success. */
+  onSubmit: (code: string) => Promise<string | null>;
   onResend: () => void;
 }) {
   const toast = useToast();
@@ -31,12 +32,11 @@ export function OtpStep({
       return;
     }
     setBusy(true);
-    const r = await profileRepository.verifyOtp(purpose, code);
+    const message = await onSubmit(code);
     setBusy(false);
-    if (r.ok) onVerified();
-    else {
-      setError(r.error.message);
-      toast.show(r.error.message, { tone: "red" });
+    if (message) {
+      setError(message);
+      toast.show(message, { tone: "red" });
     }
   };
 
@@ -55,7 +55,7 @@ export function OtpStep({
         maxLength={6}
         error={error}
       />
-      <ActionButton label="Verify & save" icon="checkmark" loading={busy} onPress={verify} />
+      <ActionButton label={confirmLabel} icon="checkmark" loading={busy} onPress={verify} />
       <ActionButton label="Send a new code" variant="secondary" onPress={onResend} />
     </View>
   );

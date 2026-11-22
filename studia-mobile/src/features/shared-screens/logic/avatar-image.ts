@@ -12,7 +12,7 @@ export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 export type AvatarSource = "camera" | "gallery";
 
 export type AvatarPick =
-  | { ok: true; uri: string }
+  | { ok: true; uri: string; base64: string }
   | { ok: false; reason: "cancelled" }
   | { ok: false; reason: "denied"; canAskAgain: boolean; message: string }
   | { ok: false; reason: "error"; message: string };
@@ -50,8 +50,9 @@ export async function pickAvatar(source: AvatarSource): Promise<AvatarPick> {
     if (asset.type && asset.type !== "image") return { ok: false, reason: "error", message: "Choose a photo." };
 
     const ref = await ImageManipulator.manipulate(asset.uri).resize({ width: AVATAR_PX }).renderAsync();
-    const saved = await ref.saveAsync({ format: SaveFormat.JPEG, compress: AVATAR_QUALITY });
-    return { ok: true, uri: saved.uri };
+    const saved = await ref.saveAsync({ format: SaveFormat.JPEG, compress: AVATAR_QUALITY, base64: true });
+    if (!saved.base64) return { ok: false, reason: "error", message: "Could not use that photo. Please try another one." };
+    return { ok: true, uri: saved.uri, base64: saved.base64 };
   } catch {
     // Never surface the native message: it can contain a device file path.
     return { ok: false, reason: "error", message: "Could not use that photo. Please try another one." };

@@ -1,13 +1,12 @@
 // account-screen.tsx — one implementation, role-aware via `role` (profile comes from
-// useRoleUser(role)). Sub-pages (edit profile, change password, ...) are a later phase; entries
-// below are placeholders until those routes exist.
+// useRoleUser(role), which is the signed-in user loaded from the database).
 import { useState } from "react";
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import Constants from "expo-constants";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { displayName, tagLabel, useRoleUser } from "@/core/data/storage/session-store";
-import { signOut, switchUser } from "@/core/logic/sign-out";
+import { signOut } from "@/core/logic/sign-out";
 import type { Role } from "@/core/types/role";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
@@ -31,28 +30,6 @@ export function AccountScreen({ role }: { role: Role }) {
     void signOut();
     // Goes straight to the auth screen, carrying the role so it can open on the right tab.
     router.replace({ pathname: "/auth", params: { role } });
-  };
-
-  const switchDemoRole = () => {
-    if (role === "instructor") {
-      void switchUser({
-        role: "student",
-        fullName: "Juan Dela Cruz",
-        email: "juan.delacruz@omsu.edu.ph",
-        course: "BSIT",
-        year: "3",
-        section: "A",
-      });
-      router.replace("/student/home");
-    } else {
-      void switchUser({
-        role: "instructor",
-        fullName: "Maria Santos",
-        email: "maria.santos@omsu.edu.ph",
-        department: "IT Department",
-      });
-      router.replace("/instructor/home");
-    }
   };
 
   return (
@@ -103,16 +80,6 @@ export function AccountScreen({ role }: { role: Role }) {
         subtitle="Camera, gallery or remove"
         onPress={() => router.push(`/${role}/account-photo`)}
       />
-      {__DEV__ ? (
-      <ListRow
-        icon="swap-horizontal-outline"
-        title={`Switch to ${role === "instructor" ? "Student" : "Instructor"} View`}
-        subtitle="Preview other role UI"
-        iconBg={`${C.blue}1F`}
-        iconColor={C.blue}
-        onPress={switchDemoRole}
-      />
-      ) : null}
 
       <Pressable
         onPress={() => setConfirmingLogout(true)}

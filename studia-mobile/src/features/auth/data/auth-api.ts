@@ -76,7 +76,7 @@ export async function post<T>(
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${REMOTE_ENV.apiUrl}/api/auth/${path}`, {
+    res = await fetch(`${REMOTE_ENV.apiUrl}/api/${path.includes("/") ? path : `auth/${path}`}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",

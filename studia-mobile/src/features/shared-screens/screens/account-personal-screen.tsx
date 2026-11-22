@@ -1,5 +1,5 @@
-// account-personal-screen.tsx — view / edit profile. Saving needs an email OTP first; nothing is
-// applied (and the session user is not changed) until the code is verified.
+// account-personal-screen.tsx — view / edit profile. Saving emails an OTP; the server verifies it and
+// writes the change to the database, and the session user is only updated after that succeeds.
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -59,11 +59,12 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
     setStep("otp");
   };
 
-  const apply = async () => {
-    const r = await profileRepository.updateProfile(user, patch());
-    if (!r.ok) return toast.show(r.error.message, { tone: "red" });
+  const apply = async (code: string): Promise<string | null> => {
+    const r = await profileRepository.updateProfile(user, patch(), code);
+    if (!r.ok) return r.error.message;
     toast.show("Profile updated", { tone: "green" });
     goBack();
+    return null;
   };
 
   return (
@@ -71,10 +72,9 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
       <PageTitle title="Personal Information" onBack={goBack} />
       {step === "otp" ? (
         <OtpStep
-          purpose="profile_update"
           email={isEmail(user.email) ? user.email : "your email"}
           devCode={devCode}
-          onVerified={apply}
+          onSubmit={apply}
           onResend={sendCode}
         />
       ) : (

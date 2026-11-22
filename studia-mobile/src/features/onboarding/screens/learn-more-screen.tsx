@@ -104,8 +104,8 @@ function FeatureCard({ icon, color, title, desc }: Feature) {
   );
 }
 
-export default function LearnMoreScreen() {
-  const router = useRouter();
+/** The full "Learn more" page. Shared by the welcome flow and Account > About Application. */
+export function LearnMoreView({ onBack }: { onBack: () => void }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -138,7 +138,7 @@ export default function LearnMoreScreen() {
           <View style={s.blobB} />
 
           <Pressable
-            onPress={() => router.back()}
+            onPress={onBack}
             hitSlop={12}
             style={[
               s.back,
@@ -261,6 +261,11 @@ export default function LearnMoreScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+export default function LearnMoreScreen() {
+  const router = useRouter();
+  return <LearnMoreView onBack={() => router.back()} />;
 }
 
 const shadow = Platform.select({

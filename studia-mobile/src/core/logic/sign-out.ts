@@ -6,7 +6,7 @@
 // token expiry) must go through here rather than calling setUser(null) on its own.
 import { queryCache } from "@/core/data/cache/query-cache";
 import { endRemoteSession } from "@/core/data/supabase/end-session";
-import { setUser, type UserProfile } from "@/core/data/storage/session-store";
+import { setUser } from "@/core/data/storage/session-store";
 import { clearImageCache } from "@/shared/components/ui/app-image";
 
 /** Query cache + image memory/disk cache. Never touches the session itself. */
@@ -19,11 +19,5 @@ export async function clearAllCaches(): Promise<void> {
 export async function signOut(): Promise<void> {
   await endRemoteSession(); // revoke the server session first; a no-op in mock mode
   setUser(null);
-  await clearAllCaches();
-}
-
-/** Replaces the signed-in user (DEV role switch, later: /me refresh) and purges the old data. */
-export async function switchUser(next: UserProfile): Promise<void> {
-  setUser(next);
   await clearAllCaches();
 }

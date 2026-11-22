@@ -1,7 +1,7 @@
 // screen.tsx — header + content wrapper used by EVERY screen.
 // Responsibilities: app header, offline banner, safe scroll area, keyboard-safe content,
 // pull-to-refresh, centered max-width content on tablets, and an ErrorBoundary around the body.
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   RefreshControl,
@@ -14,6 +14,7 @@ import {
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { queryCache } from "@/core/data/cache/query-cache";
 import { useRoleUser } from "@/core/data/storage/session-store";
 import type { Role } from "@/core/types/role";
 import { AppHeader } from "@/shared/components/ui/app-header";
@@ -52,6 +53,21 @@ export function Screen({
   contentStyle,
 }: Props) {
   const user = useRoleUser(role);
+  // Every screen can be pulled down to reload: clearing the query cache makes each mounted query
+  // refetch in the background (the data on screen stays until the new data arrives). A screen that
+  // passes its own onRefresh keeps it; full-bleed screens (header={false}, e.g. quiz taking) don't.
+  const [pulling, setPulling] = useState(false);
+  useEffect(() => {
+    if (!pulling) return;
+    const t = setTimeout(() => setPulling(false), 900);
+    return () => clearTimeout(t);
+  }, [pulling]);
+  const pullToReload = useCallback(() => {
+    setPulling(true);
+    queryCache.clear();
+  }, []);
+  const refresh = onRefresh ?? (header ? pullToReload : undefined);
+  const spinning = onRefresh ? refreshing : pulling;
   const { isTablet } = useResponsive();
   const insets = useSafeAreaInsets();
   const inner: StyleProp<ViewStyle> = [s.inner, { maxWidth: isTablet ? MAX_CONTENT_WIDTH : 640 }];
@@ -88,14 +104,14 @@ export function Screen({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            bounces={!!onRefresh}
+            bounces={!!refresh}
             alwaysBounceVertical={false}
-            overScrollMode={onRefresh ? "always" : "never"}
+            overScrollMode={refresh ? "always" : "never"}
             refreshControl={
-              onRefresh ? (
+              refresh ? (
                 <RefreshControl
-                  refreshing={!!refreshing}
-                  onRefresh={onRefresh}
+                  refreshing={!!spinning}
+                  onRefresh={refresh}
                   colors={[C.primary]}
                   tintColor={C.primary}
                 />
