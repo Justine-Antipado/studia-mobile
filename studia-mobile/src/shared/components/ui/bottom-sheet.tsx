@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -42,7 +41,7 @@ export function BottomSheet({
     >
       <Pressable style={s.backdrop} accessibilityLabel="Close" onPress={onClose} />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
         style={s.anchor}
       >
         <View style={[s.sheet, { paddingBottom: Math.max(insets.bottom, SPACE.lg) }]}>

@@ -3,12 +3,16 @@
 // defined below.
 export {
   PASSING_PERCENT,
+  addDaysIso,
+  dayChipLabel,
   dayLabel,
   dueLabel,
   hourLabel,
   isOverdue,
+  materialDetail,
   scoreTone,
   timeAgo,
+  toLocalIso,
   toPercent,
   weekdayShort,
 } from "@/shared/utils/format";

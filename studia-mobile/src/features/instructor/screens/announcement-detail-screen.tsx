@@ -1,17 +1,18 @@
-// announcement-detail-screen.tsx — announcement body + comment moderation (delete any comment),
+// announcement-detail-screen.tsx — announcement body + comments (post as instructor, delete any),
 // delete the announcement itself.
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { ActionButton, Badge, Card, ConfirmDialog, ListState, PageTitle, SectionHeader, useToast } from "@/shared/components/ui";
+import { ActionButton, Badge, Card, CommentComposer, ConfirmDialog, ListState, PageTitle, SectionHeader, useToast } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { CommentRow } from "@/shared/components/ui/comment-row";
 import { timeAgo } from "@/features/instructor/logic/format";
-import { useAnnouncement, useDeleteAnnouncement, useDeleteComment } from "@/features/instructor/hooks/use-announcements";
+import { validateCommentText } from "@/features/student/logic/validators";
+import { useAddComment, useAnnouncement, useDeleteAnnouncement, useDeleteComment } from "@/features/instructor/hooks/use-announcements";
 
 export default function InstructorAnnouncementDetailScreen() {
   const { classId, id } = useRouteIds("classId", "id");
@@ -19,6 +20,7 @@ export default function InstructorAnnouncementDetailScreen() {
   const toast = useToast();
   const goBack = useSafeBack(classId ? { pathname: "/instructor/class-detail", params: { id: classId } } : "/instructor/classes");
   const { data: announcement, loading, error, refetch } = useAnnouncement(classId, id);
+  const addComment = useAddComment(classId ?? "", id ?? "");
   const deleteComment = useDeleteComment(classId ?? "", id ?? "");
   const deleteAnnouncement = useDeleteAnnouncement(classId ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -69,6 +71,8 @@ export default function InstructorAnnouncementDetailScreen() {
                 />
               ))}
             </View>
+
+            <CommentComposer validate={validateCommentText} onSubmit={addComment.run} loading={addComment.loading} />
 
             <ActionButton label="Delete announcement" icon="trash-outline" variant="danger" onPress={() => setConfirmDelete(true)} />
           </View>

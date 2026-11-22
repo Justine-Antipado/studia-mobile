@@ -89,10 +89,15 @@ export const isEmail = (v: string) =>
   v.length <= LIMITS.email && EMAIL_RE.test(v);
 export const isOtp = (v: string) => /^\d{6}$/.test(v);
 
+/** New accounts must use Gmail (server hook, migration 010). Only sign-up applies this. */
+export const isGmail = (v: string) => /^[a-z0-9._+-]{1,64}@gmail\.com$/.test(v);
+
 type Ctx = {
   role: Role;
   /** Needed to validate "confirm". */
   password?: string;
+  /** true on sign-up only: a NEW account must use a @gmail.com address. */
+  gmailOnly?: boolean;
   /** false on the login screen: we only check "not empty", never reveal password rules. */
   strict?: boolean;
 };
@@ -120,7 +125,8 @@ export function validateField(
     case "email": {
       const v = normalizeEmail(raw);
       if (!v) return "Email is required.";
-      return isEmail(v) ? null : "Enter a valid email address.";
+      if (!isEmail(v)) return "Enter a valid email address.";
+      return ctx.gmailOnly && !isGmail(v) ? "Use a Gmail address (you@gmail.com)." : null;
     }
     case "phone":
       return normalizePhone(raw) === null

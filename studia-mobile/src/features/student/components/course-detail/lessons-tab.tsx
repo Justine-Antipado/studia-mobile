@@ -4,6 +4,7 @@ import { View } from "react-native";
 
 import { Badge, ListRow, ListState } from "@/shared/components/ui";
 import { SPACE } from "@/shared/constants/tokens";
+import { materialDetail } from "@/features/student/logic/format";
 import { useLessons } from "@/features/student/hooks/use-lessons";
 
 export function LessonsTab({ classId }: { classId: string }) {
@@ -27,7 +28,7 @@ export function LessonsTab({ classId }: { classId: string }) {
             key={l.id}
             icon={l.kind === "video" ? "play-circle-outline" : l.kind === "slide" ? "easel-outline" : "document-text-outline"}
             title={l.title}
-            subtitle={l.durationLabel ?? l.attachment.name}
+            subtitle={materialDetail(l)}
             onPress={() => router.push({ pathname: "/student/lesson-viewer", params: { classId, id: l.id } })}
             trailing={
               l.processing === "processing" ? (

@@ -41,7 +41,7 @@ export function AppHeader({ user }: { user: UserProfile }) {
               </Text>
             </View>
           </View>
-          <Avatar name={name} size={36} />
+          <Avatar name={name} uri={user.avatarUri} size={36} />
         </View>
       </View>
     </View>

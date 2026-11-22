@@ -1,9 +1,13 @@
-// assignments-repository.ts — assignment detail + submission.
+// assignments-repository.ts — student view over the shared mock DB. An assignment is the
+// instructor's row; "my" submission is the row in `submissions` for the signed-in student, so a
+// turn-in here shows up in the instructor's Submissions list (and a grade shows up here).
 // Late rule: allowLate=true -> submitting after dueAt is tagged "late". allowLate=false and
 // already overdue -> a picked file is saved as a draft only; "Turn in" (reopening) submits it
 // without a late tag, per docs/UI-BRIEF business rules.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { ME, dbId, mockDb, type DbAssignment, type DbSubmission } from "@/core/data/mock/mock-db";
+import { classCodeOf, nameOf, notify, ownerOf } from "@/core/data/mock/mock-notifications";
 import { mockCall } from "@/core/data/mock/mock-latency";
 import type { Assignment, Attachment } from "@/features/student/types/student";
 
@@ -16,98 +20,58 @@ export interface AssignmentRepository {
   turnIn(classId: string, id: string): Promise<Result<Assignment>>;
 }
 
-const hoursFromNow = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString();
+function toAssignment(a: DbAssignment): Assignment {
+  const s = mockDb.submissionOf(a.id, ME.student);
+  return {
+    id: a.id,
+    classId: a.classId,
+    title: a.title,
+    instructions: a.instructions,
+    dueAt: a.dueAt,
+    points: a.points,
+    allowLate: a.allowLate,
+    attachments: a.attachments,
+    status: s?.status ?? "assigned",
+    submittedAt: s?.submittedAt ?? null,
+    submissionText: s?.text ?? null,
+    submissionFile: s?.file ?? null,
+    score: s?.score ?? null,
+    feedback: s?.feedback ?? null,
+  };
+}
 
-let ASSIGNMENTS: Assignment[] = [
-  {
-    id: "as1",
-    classId: "it321",
-    title: "Firewall Rule Design Exercise",
-    instructions: "Design an iptables-style rule set for a small office network (1 server, 10 workstations). Submit as a PDF.",
-    dueAt: hoursFromNow(30),
-    points: 20,
-    allowLate: true,
-    attachments: [{ id: "ia1", name: "Exercise_Brief.pdf", kind: "pdf", sizeLabel: "420 KB" }],
-    status: "assigned",
-    submittedAt: null,
-    submissionText: null,
-    submissionFile: null,
-    score: null,
-    feedback: null,
-  },
-  {
-    id: "as2",
-    classId: "it321",
-    title: "CIA Triad Reflection Paper",
-    instructions: "Write a one-page reflection on how the CIA triad applies to a system you use daily. Late submissions are not accepted.",
-    dueAt: hoursFromNow(-20),
-    points: 10,
-    allowLate: false,
-    attachments: [],
-    status: "assigned",
-    submittedAt: null,
-    submissionText: null,
-    submissionFile: null,
-    score: null,
-    feedback: null,
-  },
-  {
-    id: "as3",
-    classId: "it321",
-    title: "Quiz 1 Corrections",
-    instructions: "Resubmit corrected answers for the 3 items you missed on Quiz 1.",
-    dueAt: hoursFromNow(-200),
-    points: 5,
-    allowLate: true,
-    attachments: [],
-    status: "graded",
-    submittedAt: hoursFromNow(-210),
-    submissionText: "Corrections: Q4 confidentiality, Q7 symmetric key, Q12 IDS vs IPS.",
-    submissionFile: null,
-    score: 5,
-    feedback: "All three corrections are accurate. Great work!",
-  },
-  {
-    id: "as4",
-    classId: "it314",
-    title: "REST API Design Proposal",
-    instructions: "Propose resource names and HTTP verbs for a simple library system API.",
-    dueAt: hoursFromNow(50),
-    points: 15,
-    allowLate: true,
-    attachments: [],
-    status: "assigned",
-    submittedAt: null,
-    submissionText: null,
-    submissionFile: null,
-    score: null,
-    feedback: null,
-  },
-  {
-    id: "as5",
-    classId: "it318",
-    title: "Expo Project Setup",
-    instructions: "Submit a screenshot of your running Expo app plus the GitHub repo link.",
-    dueAt: hoursFromNow(72),
-    points: 10,
-    allowLate: true,
-    attachments: [],
-    status: "assigned",
-    submittedAt: null,
-    submissionText: null,
-    submissionFile: null,
-    score: null,
-    feedback: null,
-  },
-];
+const visible = (a: DbAssignment | undefined, classId: string) =>
+  !!a && a.classId === classId && mockDb.isEnrolled(classId, ME.student);
+
+function save(next: DbSubmission, a: DbAssignment) {
+  const exists = mockDb.submissions.some((s) => s.id === next.id);
+  mockDb.submissions = exists ? mockDb.submissions.map((s) => (s.id === next.id ? next : s)) : [...mockDb.submissions, next];
+  mockDb.emit();
+  // A draft is not turned in, so the instructor is only told once real work arrives.
+  const owner = ownerOf(a.classId);
+  if (next.status !== "draft" && owner) {
+    notify([owner], {
+      tag: "Grade",
+      title: `${nameOf(ME.student)} turned in ${a.title}`,
+      meta: `${classCodeOf(a.classId)}${next.status === "late" ? " · Late" : ""}`,
+    });
+  }
+}
 
 class MockAssignmentRepository implements AssignmentRepository {
   listByClass(classId: string): Promise<Result<Assignment[]>> {
-    return mockCall(() => ASSIGNMENTS.filter((a) => a.classId === classId).sort((a, b) => a.dueAt.localeCompare(b.dueAt)));
+    return mockCall(() =>
+      mockDb.isEnrolled(classId, ME.student)
+        ? mockDb.assignmentsOf(classId).map(toAssignment).sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+        : [],
+    );
   }
 
   get(classId: string, id: string): Promise<Result<Assignment | null>> {
-    return mockCall(() => ASSIGNMENTS.find((a) => a.classId === classId && a.id === id) ?? null);
+    return mockCall(() => {
+      const a = mockDb.assignments.find((x) => x.id === id);
+      return visible(a, classId) ? toAssignment(a!) : null;
+    });
   }
 
   async attach(
@@ -116,35 +80,39 @@ class MockAssignmentRepository implements AssignmentRepository {
     input: { text: string; file: Attachment | null },
   ): Promise<Result<Assignment>> {
     await new Promise((resolve) => setTimeout(resolve, 450));
-    const current = ASSIGNMENTS.find((a) => a.classId === classId && a.id === id);
-    if (!current) return fail(appError("not_found", "This assignment no longer exists."));
-    if (current.status === "submitted" || current.status === "late" || current.status === "graded") {
+    const a = mockDb.assignments.find((x) => x.id === id);
+    if (!a || !visible(a, classId)) return fail(appError("not_found", "This assignment no longer exists."));
+    const current = mockDb.submissionOf(id, ME.student);
+    if (current && current.status !== "draft") {
       return fail(appError("conflict", "This was already turned in.", false));
     }
 
-    const now = Date.now();
-    const overdue = now > new Date(current.dueAt).getTime();
-    const willSubmitNow = current.allowLate || !overdue;
+    const overdue = Date.now() > new Date(a.dueAt).getTime();
+    const willSubmitNow = a.allowLate || !overdue;
 
-    const next: Assignment = {
-      ...current,
-      submissionText: input.text || current.submissionText,
-      submissionFile: input.file ?? current.submissionFile,
+    save({
+      id: current?.id ?? dbId("sb"),
+      assignmentId: id,
+      studentId: ME.student,
       status: willSubmitNow ? (overdue ? "late" : "submitted") : "draft",
       submittedAt: willSubmitNow ? new Date().toISOString() : null,
-    };
-    ASSIGNMENTS = ASSIGNMENTS.map((a) => (a.id === id ? next : a));
-    return ok(next);
+      text: input.text || current?.text || null,
+      file: input.file ?? current?.file ?? null,
+      score: null,
+      feedback: null,
+      gradedAt: null,
+    }, a);
+    return ok(toAssignment(a));
   }
 
   async turnIn(classId: string, id: string): Promise<Result<Assignment>> {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    const current = ASSIGNMENTS.find((a) => a.classId === classId && a.id === id);
-    if (!current) return fail(appError("not_found", "This assignment no longer exists."));
-    if (current.status !== "draft") return fail(appError("conflict", "Nothing to turn in.", false));
-    const next: Assignment = { ...current, status: "submitted", submittedAt: new Date().toISOString() };
-    ASSIGNMENTS = ASSIGNMENTS.map((a) => (a.id === id ? next : a));
-    return ok(next);
+    const a = mockDb.assignments.find((x) => x.id === id);
+    if (!a || !visible(a, classId)) return fail(appError("not_found", "This assignment no longer exists."));
+    const current = mockDb.submissionOf(id, ME.student);
+    if (!current || current.status !== "draft") return fail(appError("conflict", "Nothing to turn in.", false));
+    save({ ...current, status: "submitted", submittedAt: new Date().toISOString() }, a);
+    return ok(toAssignment(a));
   }
 }
 

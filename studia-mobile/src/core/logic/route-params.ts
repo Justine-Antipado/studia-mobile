@@ -15,16 +15,6 @@ export function parseId(value: string | string[] | undefined): string | null {
   return raw && ID_PATTERN.test(raw) ? raw : null;
 }
 
-export function parseInteger(
-  value: string | string[] | undefined,
-  { min = 0, max = Number.MAX_SAFE_INTEGER }: { min?: number; max?: number } = {},
-): number | null {
-  const raw = first(value)?.trim();
-  if (!raw || !/^-?\d{1,15}$/.test(raw)) return null;
-  const n = Number(raw);
-  return n >= min && n <= max ? n : null;
-}
-
 /** Validates a param against a fixed set of allowed values (role, tab name, difficulty...). */
 export function parseEnum<T extends string>(
   value: string | string[] | undefined,
@@ -32,14 +22,6 @@ export function parseEnum<T extends string>(
 ): T | null {
   const raw = first(value)?.trim();
   return allowed.find((a) => a === raw) ?? null;
-}
-
-/** Plain text param (search query, prefilled title): trimmed, length-capped, no control chars. */
-export function parseText(value: string | string[] | undefined, maxLength = 200): string {
-  return (first(value) ?? "")
-    .replace(/[\u0000-\u001F\u007F]/g, "")
-    .trim()
-    .slice(0, maxLength);
 }
 
 /**

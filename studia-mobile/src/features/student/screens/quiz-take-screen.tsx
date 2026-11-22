@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
-import { ActionButton, ConfirmDialog, ListState, PageTitle, ProgressBar, useToast } from "@/shared/components/ui";
+import { ActionButton, ConfirmDialog, EmptyState, ListState, PageTitle, ProgressBar, useToast } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
@@ -28,7 +28,7 @@ export default function StudentQuizTake() {
   const [timerStartedFor, setTimerStartedFor] = useState<string | null>(null);
   if (quiz && quiz.id !== timerStartedFor) {
     setTimerStartedFor(quiz.id);
-    setSecondsLeft(quiz.timeLimitMin ? quiz.timeLimitMin * 60 : null);
+    setSecondsLeft(quiz.timeLimitMin && !quiz.closed ? quiz.timeLimitMin * 60 : null);
   }
 
   const answeredCount = Object.values(answers).filter((v) => v !== null && v !== "").length;
@@ -76,7 +76,13 @@ export default function StudentQuizTake() {
         onBack={goBack}
       />
       <ListState loading={loading} error={error} empty={!loading && !quiz} onRetry={refetch} emptyIcon="help-circle-outline" emptyTitle="Quiz not found">
-        {quiz ? (
+        {quiz && quiz.closed && !quiz.attempt ? (
+          <EmptyState
+            icon="lock-closed-outline"
+            title="This quiz is closed"
+            message="The deadline has passed and it no longer accepts submissions. Ask your instructor if you need more time."
+          />
+        ) : quiz ? (
           <View style={{ gap: SPACE.lg }}>
             <ProgressBar value={answeredCount / Math.max(quiz.questions.length, 1)} label={`${answeredCount}/${quiz.questions.length} answered`} />
             {quiz.questions.map((q, i) => (

@@ -1,9 +1,11 @@
-// classes-repository.ts — DB-ready interface + in-memory mock. Swapping to the real API means
-// replacing this file only; useClasses()/useClass() in hooks/use-classes.ts never change.
+// classes-repository.ts — student view over the shared mock DB (core/data/mock/mock-db.ts).
+// Joining/leaving edits the enrollments table, so the instructor roster and student count change
+// too. Progress is derived from the assignments this student has turned in.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { ME, mockDb, type DbClass } from "@/core/data/mock/mock-db";
+import { nameOf, notify } from "@/core/data/mock/mock-notifications";
 import { mockCall } from "@/core/data/mock/mock-latency";
-import { CLASS_DIRECTORY, JOIN_CODES } from "@/features/student/data/class-directory";
 import type { StudentClass } from "@/features/student/types/student";
 
 export interface ClassRepository {
@@ -13,46 +15,45 @@ export interface ClassRepository {
   leave(id: string): Promise<Result<void>>;
 }
 
-const PROGRESS: Record<string, number> = { it321: 0.7, it314: 0.45, it318: 0.3, ge105: 0.8 };
-const joined = new Set<string>(["it321", "it314", "it318", "ge105"]);
-
-function toStudentClass(id: string): StudentClass | undefined {
-  const facts = CLASS_DIRECTORY.find((c) => c.id === id);
-  if (!facts) return undefined;
+function toStudentClass(c: DbClass): StudentClass {
   return {
-    id: facts.id,
-    code: facts.code,
-    title: facts.title,
-    section: facts.section,
-    teacher: facts.teacher,
-    progress: PROGRESS[facts.id] ?? 0,
-    joinCode: JOIN_CODES[facts.id] ?? "",
+    id: c.id,
+    code: c.code,
+    title: c.title,
+    section: c.section,
+    teacher: `Prof. ${mockDb.user(c.ownerId)?.name ?? "Instructor"}`,
+    progress: mockDb.progressOf(c.id, ME.student),
   };
 }
 
 class MockClassRepository implements ClassRepository {
   list(): Promise<Result<StudentClass[]>> {
-    return mockCall(() => Array.from(joined).map((id) => toStudentClass(id)!).filter(Boolean));
+    return mockCall(() => mockDb.classesOfStudent(ME.student).map(toStudentClass));
   }
 
   get(id: string): Promise<Result<StudentClass | null>> {
-    return mockCall(() => (joined.has(id) ? toStudentClass(id) ?? null : null));
+    return mockCall(() => {
+      const c = mockDb.cls(id);
+      return c && !c.archived && mockDb.isEnrolled(id, ME.student) ? toStudentClass(c) : null;
+    });
   }
 
   async joinByCode(code: string): Promise<Result<StudentClass>> {
     await new Promise((resolve) => setTimeout(resolve, 350));
-    const facts = CLASS_DIRECTORY.find((c) => JOIN_CODES[c.id] === code.trim().toUpperCase());
-    if (!facts) return fail(appError("not_found", "No class matches that code. Check it and try again."));
-    if (joined.has(facts.id)) return fail(appError("conflict", "You already joined this class.", false));
-    joined.add(facts.id);
-    PROGRESS[facts.id] = 0;
-    return ok(toStudentClass(facts.id)!);
+    const c = mockDb.classes.find((x) => !x.archived && x.joinCode === code.trim().toUpperCase());
+    if (!c) return fail(appError("not_found", "No class matches that code. Check it and try again."));
+    if (mockDb.isEnrolled(c.id, ME.student)) return fail(appError("conflict", "You already joined this class.", false));
+    mockDb.enrollments = [...mockDb.enrollments, { classId: c.id, studentId: ME.student }];
+    mockDb.emit();
+    notify([c.ownerId], { tag: "Class", title: `${nameOf(ME.student)} joined your class`, meta: `${c.code} · ${c.section}` });
+    return ok(toStudentClass(c));
   }
 
   async leave(id: string): Promise<Result<void>> {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    if (!joined.has(id)) return fail(appError("not_found", "You are not in this class."));
-    joined.delete(id);
+    if (!mockDb.isEnrolled(id, ME.student)) return fail(appError("not_found", "You are not in this class."));
+    mockDb.enrollments = mockDb.enrollments.filter((e) => !(e.classId === id && e.studentId === ME.student));
+    mockDb.emit();
     return ok(undefined);
   }
 }

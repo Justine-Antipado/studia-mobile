@@ -17,7 +17,7 @@ Audit only, except the two Auth fixes at the bottom. Verified from the repo; ite
 **Phase 1 (infra + schema)**
 - `studia-prod`: migrations not pushed yet (**YOU**: link prod, `supabase db push --remote`). Prod Vercel env points to an empty DB.
 - Storage buckets `materials` / `submissions` not confirmed (**YOU**, dashboard).
-- Material cap is 40 MB in DB (free plan) but mobile UI copy/validator say 500 MB (UI change, needs your OK).
+- Material cap is 50 MB in DB (migration 012, the free-plan maximum) and in the mobile validator/UI copy. Migrations 011-013 are written but NOT pushed or run anywhere yet.
 - `supabase db reset` (local) never run: Docker not installed. The exit criterion was only met via `db push --remote`.
 - Dev seed passwords were printed in chat: rotate (**YOU**).
 - `eas init` / `eas update:configure` not done (needed for EAS Update OTA).

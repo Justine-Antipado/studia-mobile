@@ -1,5 +1,7 @@
-// class-directory.ts — the facts every instructor repository needs to stamp a class code/title
-// onto its own records, without each repository hand-typing the same literals.
+// class-directory.ts — class facts for the instructor repositories, read from the shared mock DB
+// (core/data/mock/mock-db.ts). studentCount is derived from enrollments, never typed.
+import { ME, mockDb } from "@/core/data/mock/mock-db";
+
 export type ClassFacts = {
   id: string;
   code: string;
@@ -9,13 +11,21 @@ export type ClassFacts = {
   joinCode: string;
 };
 
-export const CLASS_DIRECTORY: readonly ClassFacts[] = [
-  { id: "it321", code: "IT 321", title: "Information Assurance and Security", section: "BSIT 3-A", studentCount: 38, joinCode: "K7P9QX" },
-  { id: "it314", code: "IT 314", title: "Web Systems and Technologies", section: "BSIT 3-B", studentCount: 34, joinCode: "M2D8LA" },
-  { id: "it318", code: "IT 318", title: "Mobile Application Development", section: "BSIT 3-C", studentCount: 31, joinCode: "R5T3ZB" },
-  { id: "it322", code: "IT 322", title: "Systems Integration and Architecture", section: "BSIT 4-A", studentCount: 25, joinCode: "W9C4NH" },
-];
-
 export function classFacts(classId: string): ClassFacts | undefined {
-  return CLASS_DIRECTORY.find((c) => c.id === classId);
+  const c = mockDb.cls(classId);
+  if (!c) return undefined;
+  return {
+    id: c.id,
+    code: c.code,
+    title: c.title,
+    section: c.section,
+    studentCount: mockDb.studentsOf(c.id).length,
+    joinCode: c.joinCode,
+  };
 }
+
+/** Snapshot of the classes the signed-in instructor owns (used to seed per-class content). */
+export const CLASS_DIRECTORY: readonly ClassFacts[] = mockDb.classes
+  .filter((c) => c.ownerId === ME.instructor)
+  .map((c) => classFacts(c.id))
+  .filter((c): c is ClassFacts => !!c);

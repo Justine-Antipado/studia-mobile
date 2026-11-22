@@ -28,6 +28,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { setUser } from "@/core/data/storage/session-store";
+import { toProfile } from "@/features/auth/logic/user-profile";
 import { AppButton } from "@/shared/components/ui/app-button";
 // import {
 //   Banner,
@@ -81,7 +82,6 @@ const STUDIA_LOGO = require("@/assets/images/studia-mobile-logo.png");
 const OMSC_LOGO = require("@/assets/images/omsc.logo.png");
 
 const BANNER_MS = 4500;
-//const HOME_ROUTE = "@/app/home" as Href; // TODO: replace with your home / tabs route
 const HOME_ROUTES: Record<Role, Href> = {
   student: "/student/home",
   instructor: "/instructor/home",
@@ -291,22 +291,10 @@ export default function Auth() {
     }
   };
 
-  // const onAuthenticated = (session: Session) => {
-  //   // TODO: persist session.accessToken with expo-secure-store (never AsyncStorage), then navigate.
-  //   router.replace(HOME_ROUTE);
-  //   void session;
-  // };
   const onAuthenticated = (session: Session) => {
-    // TODO: persist session.accessToken with expo-secure-store (never AsyncStorage)
+    // The session token is persisted by the Supabase client (core/data/supabase/secure-storage.ts).
     const { user } = session;
-    setUser({
-      role: user.role,
-      fullName: user.fullName,
-      email: user.email,
-      department: user.department,
-      section: user.section,
-      phone: user.phone,
-    });
+    setUser(toProfile(user));
     router.replace(HOME_ROUTES[user.role ?? role]);
   };
 
@@ -355,7 +343,7 @@ export default function Auth() {
   const submitSignup = () =>
     guard(async () => {
       const keys = FIELD_ORDER.signup[role];
-      const errs = validateAll(keys, form, { role });
+      const errs = validateAll(keys, form, { role, gmailOnly: true });
       if (Object.keys(errs).length) {
         applyErrors(errs, keys);
         showBanner("error", "Please fix the highlighted fields.");
@@ -605,7 +593,7 @@ export default function Auth() {
     <Field
       {...bind("email")}
       label="Email"
-      placeholder="you@school.edu.ph"
+      placeholder="you@gmail.com"
       keyboardType="email-address"
       autoCapitalize="none"
       autoCorrect={false}
@@ -746,6 +734,7 @@ export default function Auth() {
                 />
                 {roleNodes}
                 {emailNode(false)}
+                <Text style={s.muted}>New accounts need a Gmail address (@gmail.com).</Text>
                 {phoneNode(false)}
                 <Field
                   {...bind("password")}

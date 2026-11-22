@@ -14,7 +14,8 @@ import { generateQuiz } from "@/features/instructor/logic/ai-quiz-generator";
 import { OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
 import type { Difficulty, QuizQuestion } from "@/features/instructor/types/instructor";
 
-const COUNTS = [5, 10, 15] as const;
+const MAX_QUESTIONS = 50;
+const QUICK_COUNTS = [5, 10, 15, 20] as const;
 const LEVELS: Difficulty[] = ["Easy", "Medium", "Hard"];
 
 export default function AiQuizScreen() {
@@ -26,7 +27,7 @@ export default function AiQuizScreen() {
 
   const [topic, setTopic] = useState("");
   const [classId, setClassId] = useState<string | null>(presetClassId);
-  const [count, setCount] = useState<number>(5);
+  const [countText, setCountText] = useState("5");
   const [level, setLevel] = useState<Difficulty>("Medium");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,10 @@ export default function AiQuizScreen() {
 
   const generate = async () => {
     if (!topic.trim()) return setError("Enter a topic first.");
+    const count = Number(countText);
+    if (!Number.isInteger(count) || count < 1 || count > MAX_QUESTIONS) {
+      return setError(`Number of questions must be a whole number from 1 to ${MAX_QUESTIONS}.`);
+    }
     setError(null);
     setLoading(true);
     try {
@@ -79,8 +84,16 @@ export default function AiQuizScreen() {
 
       <View style={{ gap: SPACE.sm }}>
         <Text style={TYPE.label}>Number of questions</Text>
-        <View style={{ flexDirection: "row", gap: SPACE.sm }}>
-          {COUNTS.map((n) => <Chip key={n} label={String(n)} selected={count === n} onPress={() => setCount(n)} />)}
+        <FormField
+          label=""
+          value={countText}
+          onChangeText={(v) => setCountText(v.replace(/\D/g, "").slice(0, 2))}
+          keyboardType="number-pad"
+          maxLength={2}
+          helper={`1 to ${MAX_QUESTIONS} questions`}
+        />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm }}>
+          {QUICK_COUNTS.map((n) => <Chip key={n} label={String(n)} selected={countText === String(n)} onPress={() => setCountText(String(n))} />)}
         </View>
       </View>
 

@@ -16,6 +16,7 @@ import { Stack } from "expo-router";
 import { MODAL_SHEET, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { RoleGate } from "@/shared/components/ui/role-gate";
+import { screenId } from "@/core/logic/screen-id";
 
 /** Create / upload / synthesize flows come up from the bottom; everything else slides in. */
 const MODAL_ROUTES = [
@@ -24,11 +25,18 @@ const MODAL_ROUTES = [
   "post-announcement",
   "upload-material",
   "create-assignment",
+  "edit-assignment",
   "create-quiz",
+  "edit-quiz",
   "ai-quiz",
 ] as const;
 
 const SUBPAGE_ROUTES = [
+  "account-personal",
+  "account-password",
+  "account-privacy",
+  "account-about",
+  "account-photo",
   "analytics",
   "class-detail",
   "announcement-detail",
@@ -38,6 +46,7 @@ const SUBPAGE_ROUTES = [
   "quiz-detail",
   "grading",
   "grade-submission",
+  "grade-assignment",
   "gradebook",
 ] as const;
 
@@ -52,10 +61,10 @@ export default function InstructorLayout() {
         <Stack screenOptions={subpage}>
           <Stack.Screen name="(tabs)" options={tabs} />
           {SUBPAGE_ROUTES.map((name) => (
-            <Stack.Screen key={name} name={name} options={subpage} />
+            <Stack.Screen key={name} name={name} options={subpage} getId={screenId} />
           ))}
           {MODAL_ROUTES.map((name) => (
-            <Stack.Screen key={name} name={name} options={modal} />
+            <Stack.Screen key={name} name={name} options={modal} getId={screenId} />
           ))}
         </Stack>
       </ErrorBoundary>

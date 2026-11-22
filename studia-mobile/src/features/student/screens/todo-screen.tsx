@@ -1,51 +1,52 @@
-// todo-screen.tsx — auto-generated checklist from assignments + quizzes, with filters/sort.
+// todo-screen.tsx — auto-generated checklist from assignments + quizzes. The tab strip stays on
+// top on its own; sorting/filtering lives in a bottom "Filter & sort" sheet.
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { AppList, Icon, ListState, PageTitle, ProgressBar, SegmentedTabs } from "@/shared/components/ui";
+import {
+  AppList,
+  BottomSheet,
+  Chip,
+  ListState,
+  PageTitle,
+  ProgressBar,
+  SegmentedTabs,
+} from "@/shared/components/ui";
+import { AppButton } from "@/shared/components/ui/app-button";
 import { Screen } from "@/shared/components/ui/screen";
-import { C } from "@/shared/constants/studia-colors";
-import { HIT_SLOP, SPACE } from "@/shared/constants/tokens";
+import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { TaskRow } from "@/features/student/components/task-row";
-import { isOverdue } from "@/features/student/logic/format";
 import { useTasks, useToggleTask } from "@/features/student/hooks/use-tasks";
+import {
+  DEFAULT_TASK_FILTER,
+  TASK_TABS,
+  applyTaskFilter,
+  isFilterActive,
+  type TaskFilter,
+  type TaskTab,
+} from "@/features/student/logic/task-filters";
 import type { Task } from "@/features/student/types/student";
-
-const FILTERS = ["Today", "Upcoming", "Overdue", "Done"] as const;
-type Filter = (typeof FILTERS)[number];
-
-const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
-
-function matches(task: Task, filter: Filter): boolean {
-  if (filter === "Done") return task.done;
-  if (task.done) return false;
-  if (filter === "Overdue") return isOverdue(task.dueAt);
-  if (filter === "Today") return isToday(task.dueAt);
-  return !isOverdue(task.dueAt) && !isToday(task.dueAt);
-}
 
 export default function StudentTodo() {
   const router = useRouter();
   const goBack = useSafeBack("/student/home");
   const { data, loading, error, refetch } = useTasks();
   const toggleTask = useToggleTask();
-  const [filter, setFilter] = useState<Filter>("Today");
-  const [descending, setDescending] = useState(false);
+  const [tab, setTab] = useState<TaskTab>("Today");
+  const [filter, setFilter] = useState<TaskFilter>(DEFAULT_TASK_FILTER);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Memoized so the derived lists below do not recompute (and re-render every row) on a render
-  // that changed nothing but, say, the sort toggle.
   const tasks = useMemo(() => data ?? [], [data]);
   const doneCount = useMemo(() => tasks.filter((t) => t.done).length, [tasks]);
+  const classes = useMemo(() => {
+    const seen = new Map<string, string>();
+    tasks.forEach((t) => seen.set(t.classId, t.classCode));
+    return [...seen.entries()].map(([id, code]) => ({ id, code }));
+  }, [tasks]);
 
-  const filtered = useMemo(
-    () =>
-      tasks
-        .filter((t) => matches(t, filter))
-        .sort((a, b) => (descending ? b.dueAt.localeCompare(a.dueAt) : a.dueAt.localeCompare(b.dueAt))),
-    [tasks, filter, descending],
-  );
+  const filtered = useMemo(() => applyTaskFilter(tasks, tab, filter), [tasks, tab, filter]);
 
   const toggle = useCallback((id: string) => void toggleTask.run(id), [toggleTask]);
 
@@ -68,6 +69,9 @@ export default function StudentTodo() {
     [toggle, openTask],
   );
 
+  const patch = useCallback((p: Partial<TaskFilter>) => setFilter((f) => ({ ...f, ...p })), []);
+  const active = isFilterActive(filter);
+
   return (
     <Screen role="student" scroll={false} scope="student/todo">
       <PageTitle title="To-do" onBack={goBack} />
@@ -75,19 +79,7 @@ export default function StudentTodo() {
         value={tasks.length ? doneCount / tasks.length : 0}
         label={`${doneCount}/${tasks.length} done`}
       />
-      <View style={s.filterRow}>
-        <View style={s.fill}>
-          <SegmentedTabs items={FILTERS} value={filter} onChange={setFilter} />
-        </View>
-        <Pressable
-          onPress={() => setDescending((d) => !d)}
-          hitSlop={HIT_SLOP}
-          accessibilityRole="button"
-          accessibilityLabel={descending ? "Sort soonest first" : "Sort latest first"}
-        >
-          <Icon name={descending ? "arrow-down-outline" : "arrow-up-outline"} size="lg" color={C.primaryDark} />
-        </Pressable>
-      </View>
+      <SegmentedTabs items={TASK_TABS} value={tab} onChange={setTab} label="Task filter" />
 
       <View style={s.fill}>
         <ListState
@@ -102,11 +94,40 @@ export default function StudentTodo() {
           <AppList data={filtered} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
         </ListState>
       </View>
+
+      <AppButton
+        label={active ? "Filter & sort · active" : "Filter & sort"}
+        variant="secondary"
+        onPress={() => setSheetOpen(true)}
+      />
+
+      <BottomSheet visible={sheetOpen} title="Filter & sort" onClose={() => setSheetOpen(false)}>
+        <Text style={TYPE.label}>Sort</Text>
+        <View style={s.chips}>
+          <Chip label="Soonest due" selected={filter.sort === "soonest"} onPress={() => patch({ sort: "soonest" })} />
+          <Chip label="Latest due" selected={filter.sort === "latest"} onPress={() => patch({ sort: "latest" })} />
+        </View>
+        <Text style={TYPE.label}>Show</Text>
+        <View style={s.chips}>
+          <Chip label="All types" selected={filter.kind === "all"} onPress={() => patch({ kind: "all" })} />
+          <Chip label="Assignments" selected={filter.kind === "assignment"} onPress={() => patch({ kind: "assignment" })} />
+          <Chip label="Quizzes" selected={filter.kind === "quiz"} onPress={() => patch({ kind: "quiz" })} />
+        </View>
+        <Text style={TYPE.label}>Class</Text>
+        <View style={s.chips}>
+          <Chip label="All classes" selected={filter.classId === "all"} onPress={() => patch({ classId: "all" })} />
+          {classes.map((c) => (
+            <Chip key={c.id} label={c.code} selected={filter.classId === c.id} onPress={() => patch({ classId: c.id })} />
+          ))}
+        </View>
+        <AppButton label="Reset" variant="secondary" onPress={() => setFilter(DEFAULT_TASK_FILTER)} />
+        <AppButton label="Done" onPress={() => setSheetOpen(false)} />
+      </BottomSheet>
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  filterRow: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   fill: { flex: 1 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
 });

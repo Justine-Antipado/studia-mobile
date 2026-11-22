@@ -4,7 +4,8 @@ import { View } from "react-native";
 
 import { ActionButton, ConfirmDialog, ListRow, SectionHeader } from "@/shared/components/ui";
 import { SPACE } from "@/shared/constants/tokens";
-import { CLASSMATES, classFacts } from "@/features/student/data/class-directory";
+import { ME } from "@/core/data/mock/mock-db";
+import { classFacts, classmatesOf } from "@/features/student/data/class-directory";
 import { useLeaveClass } from "@/features/student/hooks/use-classes";
 
 export function PeopleTab({ classId, onLeft }: { classId: string; onLeft: () => void }) {
@@ -29,7 +30,7 @@ export function PeopleTab({ classId, onLeft }: { classId: string; onLeft: () => 
 
       <View style={{ gap: SPACE.md }}>
         <SectionHeader title="Classmates" />
-        {CLASSMATES.map((person) => (
+        {classmatesOf(classId, ME.student).map((person) => (
           <ListRow key={person.id} icon="person-outline" title={person.name} subtitle="Student" flat />
         ))}
       </View>

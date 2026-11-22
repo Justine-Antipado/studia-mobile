@@ -1,9 +1,9 @@
 // instructor.ts — shared domain types for every instructor feature. Repositories return
 // these; screens never invent their own shape for the same data.
-import type { Attachment, Comment } from "@/core/types/content";
+import type { Attachment, Comment, VideoLink } from "@/core/types/content";
 
 // Attachment and Comment are identical on both sides of the app: declared in core/types.
-export type { Attachment, AttachmentKind, Comment } from "@/core/types/content";
+export type { Attachment, AttachmentKind, Comment, VideoLink } from "@/core/types/content";
 
 export type InstructorClass = {
   id: string;
@@ -43,8 +43,10 @@ export type Material = {
   classId: string;
   title: string;
   kind: "video" | "pdf" | "slide";
+  /** Set for a video lesson (a link, not an upload); `attachment` is then null. */
+  link: VideoLink | null;
   durationLabel: string | null;
-  attachment: Attachment;
+  attachment: Attachment | null;
   processing: ProcessingState;
   transcript: TranscriptLine[];
   /** AI-extracted key learning objectives (mock AI core output). */
@@ -83,7 +85,15 @@ export type QuizQuestion = {
 
 export type QuizStatus = "draft" | "published";
 
-export type Quiz = {
+/** When a quiz is due, whether late attempts are accepted, and until when. */
+export type QuizSchedule = {
+  dueAt: string | null; // ISO
+  allowLate: boolean;
+  closesAt: string | null; // ISO; only used when allowLate
+  timeLimitMin: number | null;
+};
+
+export type Quiz = QuizSchedule & {
   id: string;
   title: string;
   classId: string;
@@ -92,6 +102,8 @@ export type Quiz = {
   status: QuizStatus;
   source: "manual" | "ai";
   createdAt: string; // ISO
+  /** Students who already submitted; once > 0 the questions are locked. */
+  attemptCount: number;
 };
 
 export type QuizDraft = {
@@ -99,6 +111,8 @@ export type QuizDraft = {
   classId: string | null;
   questions: QuizQuestion[];
   source: Quiz["source"];
+  /** Omitted by flows without a schedule UI (AI synthesizer): the repository applies defaults. */
+  schedule?: QuizSchedule;
 };
 
 export type Submission = {
@@ -112,6 +126,8 @@ export type Submission = {
   score: number | null; // null = not graded yet
   gradedAt: string | null;
   feedback: string;
+  /** Turned in after the due date. */
+  late: boolean;
   answers: { prompt: string; response: string }[];
 };
 

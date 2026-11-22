@@ -1,5 +1,6 @@
 // segmented-tabs.tsx — in-screen tab strip (Stream · Lessons · Tasks · Grades · People).
-// Scrolls horizontally when the labels do not fit and keeps the selected item in view: the
+// Stays inside the screen's content width (no negative-margin bleed, which clipped the last chip
+// and overlapped siblings). Scrolls horizontally when the labels do not fit and keeps the selected item in view: the
 // offset comes from each chip's measured position (onLayout), not from an assumed chip width,
 // so it stays correct with long labels and at large font scales.
 import { useCallback, useRef } from "react";
@@ -12,8 +13,8 @@ type Props<T extends string> = {
   items: readonly T[];
   value: T;
   onChange: (value: T) => void;
-  /** Horizontal padding of the parent screen, so the strip can bleed to the edges. */
-  inset?: number;
+  /** Optional display text per item (the item itself stays the key/value). */
+  formatLabel?: (item: T) => string;
   /** Announced to screen readers as the name of this tab set. */
   label?: string;
 };
@@ -22,8 +23,8 @@ export function SegmentedTabs<T extends string>({
   items,
   value,
   onChange,
-  inset = 18,
   label = "Sections",
+  formatLabel,
 }: Props<T>) {
   const ref = useRef<ScrollViewInstance>(null);
   const offsets = useRef<Record<string, number>>({});
@@ -54,8 +55,8 @@ export function SegmentedTabs<T extends string>({
       onLayout={onViewportLayout}
       accessibilityRole="tablist"
       accessibilityLabel={label}
-      style={[s.scroll, { marginHorizontal: -inset }]}
-      contentContainerStyle={[s.content, { paddingHorizontal: inset }]}
+      style={s.scroll}
+      contentContainerStyle={s.content}
     >
       {items.map((item) => (
         <View
@@ -65,7 +66,7 @@ export function SegmentedTabs<T extends string>({
           }}
         >
           <Chip
-            label={item}
+            label={formatLabel ? formatLabel(item) : item}
             selected={item === value}
             role="tab"
             onPress={() => select(item)}
@@ -78,5 +79,5 @@ export function SegmentedTabs<T extends string>({
 
 const s = StyleSheet.create({
   scroll: { flexGrow: 0 },
-  content: { gap: SPACE.sm, alignItems: "center" },
+  content: { gap: SPACE.sm, alignItems: "center", paddingRight: SPACE.lg },
 });

@@ -4,7 +4,6 @@
 import type { ReactNode } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -80,7 +79,7 @@ export function Screen({
 
       <KeyboardAvoidingView
         style={s.body}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior="padding"
       >
         {scroll ? (
           <ScrollView

@@ -1,5 +1,5 @@
 // file.ts — upload validation shared by both roles. One whitelist implementation; each side
-// passes its own policy (instructors may upload 500 MB videos, students 50 MB submissions).
+// passes its own policy (instructors and students may each upload up to 50 MB).
 //
 // SECURITY: this is the client-side gate only. The backend must re-check the extension, the
 // real MIME type (sniff the bytes, do not trust the header), the size and the owner of the
@@ -31,6 +31,9 @@ export const ATTACHMENT_MIME_TYPES = [
   "video/mp4",
   "video/quicktime",
 ] as const;
+
+/** Documents only: lesson VIDEOS are links (shared/utils/video-link.ts), not uploads. */
+export const MATERIAL_MIME_TYPES = ATTACHMENT_MIME_TYPES.filter((m) => !m.startsWith("video/"));
 
 export const IMAGE_MIME_TYPES = ["image/jpeg", "image/png"] as const;
 

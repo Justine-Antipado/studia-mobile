@@ -1,13 +1,12 @@
 // home-screen.tsx — greeting, quick actions, today's tasks, upcoming deadlines, continue learning.
 import { useRouter } from "expo-router";
 import { useCallback, useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
-import { Icon, ListRow, QuickAction, SectionHeader } from "@/shared/components/ui";
+import { Icon, ListRow, PageTitle, QuickAction, SectionHeader } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
-import { HIT_SLOP, SPACE, TYPE } from "@/shared/constants/tokens";
-import { displayName, useRoleUser } from "@/core/data/storage/session-store";
+import { HIT_SLOP, SPACE } from "@/shared/constants/tokens";
 import { ClassCard } from "@/features/student/components/class-card";
 import { TaskRow } from "@/features/student/components/task-row";
 import { dueLabel, isOverdue } from "@/features/student/logic/format";
@@ -18,7 +17,6 @@ import type { Task } from "@/features/student/types/student";
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
 export default function StudentHome() {
-  const user = useRoleUser("student");
   const router = useRouter();
   const classes = useClasses();
   const tasks = useTasks();
@@ -74,22 +72,19 @@ export default function StudentHome() {
       refreshing={tasks.loading && !!tasks.data}
       onRefresh={tasks.refetch}
     >
-      <View style={s.greetRow}>
-        <View style={s.greet}>
-          <Text style={TYPE.muted}>Good day</Text>
-          <Text style={TYPE.h1} numberOfLines={2}>
-            {user ? displayName(user) : "Student"}
-          </Text>
-        </View>
-        <Pressable
-          onPress={openSearch}
-          hitSlop={HIT_SLOP}
-          accessibilityRole="button"
-          accessibilityLabel="Search courses, lessons and tasks"
-        >
-          <Icon name="search-outline" size="lg" color={C.primaryDark} />
-        </Pressable>
-      </View>
+      <PageTitle
+        title="Home"
+        trailing={
+          <Pressable
+            onPress={openSearch}
+            hitSlop={HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel="Search courses, lessons and tasks"
+          >
+            <Icon name="search-outline" size="lg" color={C.primaryDark} />
+          </Pressable>
+        }
+      />
 
       <View style={s.actions}>
         <QuickAction icon="book-outline" label="My Courses" onPress={openCourses} />
@@ -140,8 +135,6 @@ export default function StudentHome() {
 }
 
 const s = StyleSheet.create({
-  greetRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: SPACE.md },
-  greet: { flex: 1 },
   actions: { flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", rowGap: SPACE.sm + 2 },
   section: { gap: SPACE.md },
 });

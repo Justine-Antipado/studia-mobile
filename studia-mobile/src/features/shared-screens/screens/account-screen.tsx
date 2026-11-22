@@ -3,16 +3,19 @@
 // below are placeholders until those routes exist.
 import { useState } from "react";
 import { useRouter } from "expo-router";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import Constants from "expo-constants";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { displayName, tagLabel, useRoleUser } from "@/core/data/storage/session-store";
-import { signOut, switchUser } from "@/core/logic/sign-out";
+import { mockDb } from "@/core/data/mock/mock-db";
+import { clearAllCaches, signOut, switchUser } from "@/core/logic/sign-out";
 import type { Role } from "@/core/types/role";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
 import { ConfirmDialog } from "@/shared/components/ui/confirm-dialog";
 import { Icon } from "@/shared/components/ui/icon";
 import { ListRow } from "@/shared/components/ui/list-row";
+import { PageTitle } from "@/shared/components/ui/page-title";
 import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
 import { RADIUS, SHADOW, SPACE, TYPE } from "@/shared/constants/tokens";
@@ -55,8 +58,9 @@ export function AccountScreen({ role }: { role: Role }) {
 
   return (
     <Screen role={role} scope={`${role}/account`}>
+      <PageTitle title="Account" />
       <View style={s.profileCard}>
-        <Avatar name={displayName(user)} size={60} />
+        <Avatar name={displayName(user)} uri={user.avatarUri} size={60} />
         <View style={{ flex: 1, gap: 4 }}>
           <Text style={TYPE.h1} numberOfLines={2}>
             {displayName(user)}
@@ -74,32 +78,33 @@ export function AccountScreen({ role }: { role: Role }) {
         icon="person-outline"
         title="Personal Information"
         subtitle="Name, section, mobile"
-        onPress={() => Alert.alert("Personal Info", "Edit profile details")}
+        onPress={() => router.push(`/${role}/account-personal`)}
       />
       <ListRow
         icon="lock-closed-outline"
         title="Password"
         subtitle="Change with email OTP"
-        onPress={() => Alert.alert("Password", "Send OTP to email")}
+        onPress={() => router.push(`/${role}/account-password`)}
       />
       <ListRow
         icon="shield-checkmark-outline"
         title="Privacy Policy"
         subtitle="Read how data is used"
-        onPress={() => {}}
+        onPress={() => router.push(`/${role}/account-privacy`)}
       />
       <ListRow
         icon="information-circle-outline"
         title="About Application"
-        subtitle="STUDIA Mobile v1.0.0"
-        onPress={() => {}}
+        subtitle={`STUDIA Mobile v${Constants.expoConfig?.version ?? "1.0.0"}`}
+        onPress={() => router.push(`/${role}/account-about`)}
       />
       <ListRow
         icon="camera-outline"
-        title="Change Profile"
+        title="Change Profile Photo"
         subtitle="Camera, gallery or remove"
-        onPress={() => {}}
+        onPress={() => router.push(`/${role}/account-photo`)}
       />
+      {__DEV__ ? (
       <ListRow
         icon="swap-horizontal-outline"
         title={`Switch to ${role === "instructor" ? "Student" : "Instructor"} View`}
@@ -108,6 +113,18 @@ export function AccountScreen({ role }: { role: Role }) {
         iconColor={C.blue}
         onPress={switchDemoRole}
       />
+      ) : null}
+      {__DEV__ ? (
+        <ListRow
+          icon="refresh-outline"
+          title="Reset mock data"
+          subtitle="Restore the seeded classes, assignments and submissions"
+          onPress={() => {
+            mockDb.reset();
+            void clearAllCaches();
+          }}
+        />
+      ) : null}
 
       <Pressable
         onPress={() => setConfirmingLogout(true)}

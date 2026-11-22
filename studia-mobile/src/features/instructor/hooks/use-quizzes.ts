@@ -34,6 +34,13 @@ export function useCreateQuiz() {
   );
 }
 
+export function useUpdateQuiz(id: string) {
+  return useMutation(
+    ({ draft, publish }: { draft: QuizDraft; publish: boolean }) => quizRepository.update(id, draft, publish),
+    { invalidate: (_args, quiz) => [quizzesKey, classQuizzesKey(quiz.classId), cacheKey("instructor", "quizzes", id)] },
+  );
+}
+
 export function useDeleteQuiz(classId: string) {
   return useMutation((id: string) => quizRepository.remove(id), {
     invalidate: (id) => [quizzesKey, classQuizzesKey(classId), cacheKey("instructor", "quizzes", id)],

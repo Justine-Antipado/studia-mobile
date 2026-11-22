@@ -1,9 +1,16 @@
-// notifications-repository.ts — one feed per role. Mock now, same shape the real API will
-// return per docs/api-contract.md once the backend exists.
+// notifications-repository.ts — one feed per role, as a view over the shared mock DB. Rows are
+// created by events (see core/data/mock/mock-notifications.ts), so an instructor posting an
+// announcement really does produce a notice for each enrolled student. Same shape the real API will
+// return per docs/api-contract.md.
+import { queryCache } from "@/core/data/cache/query-cache";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail } from "@/core/data/errors/app-error";
+import { ME, mockDb, type DbNotification, type NotificationTag } from "@/core/data/mock/mock-db";
 import { mockCall } from "@/core/data/mock/mock-latency";
+import { listFor, markAllRead, markRead } from "@/core/data/mock/mock-notifications";
 import type { Role } from "@/core/types/role";
+import type { IconName } from "@/shared/components/ui/icon";
+import type { Tone } from "@/shared/constants/studia-colors";
 import type { NotificationItem } from "@/features/shared-screens/types/shared-screens";
 
 export interface NotificationRepository {
@@ -12,111 +19,63 @@ export interface NotificationRepository {
   markAllRead(role: Role): Promise<Result<void>>;
 }
 
-const FEEDS: Record<Role, NotificationItem[]> = {
-  student: [
-    {
-      id: "1",
-      icon: "megaphone-outline",
-      title: "Midterm exam schedule",
-      meta: "IT 321 · Nov 10–14, 2026",
-      time: "2h",
-      unread: true,
-      tone: "primary",
-      tag: "Notice",
-    },
-    {
-      id: "2",
-      icon: "document-text-outline",
-      title: "Quiz 2 due today",
-      meta: "IT 321 · 5:00 PM",
-      time: "5h",
-      unread: true,
-      tone: "orange",
-      tag: "Quiz",
-    },
-    {
-      id: "3",
-      icon: "bar-chart-outline",
-      title: "Quiz 1 graded",
-      meta: "You scored 18/20",
-      time: "1d",
-      unread: false,
-      tone: "green",
-      tag: "Grade",
-    },
-    {
-      id: "4",
-      icon: "book-outline",
-      title: "New lesson posted",
-      meta: "Lesson 3: Network Security Basics",
-      time: "2d",
-      unread: false,
-      tone: "blue",
-      tag: "Lesson",
-    },
-  ],
-  instructor: [
-    {
-      id: "1",
-      icon: "document-text-outline",
-      title: "12 submissions need grading",
-      meta: "Quiz 2 · IT 321",
-      time: "1h",
-      unread: true,
-      tone: "orange",
-      tag: "Grade",
-    },
-    {
-      id: "2",
-      icon: "person-add-outline",
-      title: "3 students joined your class",
-      meta: "IT 321 · Section A",
-      time: "4h",
-      unread: true,
-      tone: "blue",
-      tag: "Class",
-    },
-    {
-      id: "3",
-      icon: "sparkles-outline",
-      title: "AI quiz is ready to review",
-      meta: "Generated from Lesson 3",
-      time: "1d",
-      unread: false,
-      tone: "primary",
-      tag: "AI",
-    },
-    {
-      id: "4",
-      icon: "calendar-outline",
-      title: "Midterm exam reminder",
-      meta: "Nov 10–14, 2026",
-      time: "3d",
-      unread: false,
-      tone: "green",
-      tag: "Reminder",
-    },
-  ],
+const LOOK: Record<NotificationTag, { icon: IconName; tone: Tone }> = {
+  Notice: { icon: "megaphone-outline", tone: "primary" },
+  Quiz: { icon: "document-text-outline", tone: "orange" },
+  Grade: { icon: "bar-chart-outline", tone: "green" },
+  Lesson: { icon: "book-outline", tone: "blue" },
+  Class: { icon: "person-add-outline", tone: "blue" },
+  AI: { icon: "sparkles-outline", tone: "primary" },
+  Reminder: { icon: "calendar-outline", tone: "gold" },
 };
+
+/** "now" / "5m" / "2h" / "3d" */
+function shortAge(iso: string): string {
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  return hrs < 24 ? `${hrs}h` : `${Math.floor(hrs / 24)}d`;
+}
+
+const toItem = (n: DbNotification): NotificationItem => ({
+  id: n.id,
+  icon: LOOK[n.tag].icon,
+  tone: LOOK[n.tag].tone,
+  tag: n.tag,
+  title: n.title,
+  meta: n.meta,
+  body: n.body ?? undefined,
+  time: shortAge(n.createdAt),
+  unread: n.readAt === null,
+});
 
 class MockNotificationRepository implements NotificationRepository {
   listByRole(role: Role): Promise<Result<NotificationItem[]>> {
-    return mockCall(() => FEEDS[role]);
+    return mockCall(() => listFor(ME[role]).map(toItem));
   }
 
   markRead(role: Role, id: string): Promise<Result<void>> {
-    const feed = FEEDS[role];
-    if (!feed.some((n) => n.id === id)) {
+    if (!markRead(ME[role], id)) {
       return Promise.resolve(fail(appError("not_found", "This notification no longer exists.")));
     }
-    FEEDS[role] = feed.map((n) => (n.id === id ? { ...n, unread: false } : n));
     return mockCall(() => undefined);
   }
 
   markAllRead(role: Role): Promise<Result<void>> {
-    FEEDS[role] = FEEDS[role].map((n) => ({ ...n, unread: false }));
+    markAllRead(ME[role]);
     return mockCall(() => undefined);
   }
 }
+
+// A new notification (another user acted) must reach the open Alerts tab and the tab badge without
+// waiting for the cache to expire: refresh the feeds whenever the number of rows grows.
+let seenCount = mockDb.notifications.length;
+mockDb.subscribe(() => {
+  if (mockDb.notifications.length !== seenCount) {
+    seenCount = mockDb.notifications.length;
+    queryCache.invalidate("notifications");
+  }
+});
 
 export const notificationRepository: NotificationRepository = new MockNotificationRepository();

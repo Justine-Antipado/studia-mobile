@@ -18,40 +18,16 @@ export function AiAssistantScreen({ role }: { role: Role }) {
   const [messages, setMessages] = useState<ChatMessage[]>(cfg.seed);
   const [input, setInput] = useState("");
   const listRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  const wrapRef = useRef<ComponentRef<typeof View>>(null);
-  const [kbPad, setKbPad] = useState(0);
-  const kbTop = useRef<number | null>(null); // screenY of the keyboard's top edge, null when closed
 
-  // How much of the wrapper the open keyboard actually covers.
-  const recalc = () => {
-    const top = kbTop.current;
-    if (top == null) {
-      setKbPad(0);
-      return;
-    }
-    wrapRef.current?.measureInWindow((_x, y, _w, h) => {
-      setKbPad(Math.max(0, Math.round(y + h - top)));
-    });
-  };
-
+  // Keyboard avoidance now comes from Screen (KeyboardAvoidingView, "padding" on both platforms):
+  // the old manual measureInWindow/screenY padding double-counted or read 0 under Android
+  // edge-to-edge. Here we only keep the newest message in view when the keyboard opens.
   useEffect(() => {
-    const ios = Platform.OS === "ios";
-    const showEvt = ios ? "keyboardWillChangeFrame" : "keyboardDidShow";
-    const hideEvt = ios ? "keyboardWillHide" : "keyboardDidHide";
-
-    const show = Keyboard.addListener(showEvt, (e) => {
-      kbTop.current = e.endCoordinates.screenY;
-      recalc();
+    const evt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const show = Keyboard.addListener(evt, () => {
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     });
-    const hide = Keyboard.addListener(hideEvt, () => {
-      kbTop.current = null;
-      setKbPad(0);
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
+    return () => show.remove();
   }, []);
 
   useEffect(() => {
@@ -70,7 +46,7 @@ export function AiAssistantScreen({ role }: { role: Role }) {
 
   return (
     <Screen role={role} scroll={false} contentStyle={s.fixed} scope={`${role}/ai`}>
-      <View ref={wrapRef} collapsable={false} onLayout={recalc} style={[s.flex, { paddingBottom: kbPad }]}>
+      <View style={s.flex}>
         <View style={s.header}>
           <View style={s.avatar}>
             <Icon name="sparkles" size="md" color={C.white} />

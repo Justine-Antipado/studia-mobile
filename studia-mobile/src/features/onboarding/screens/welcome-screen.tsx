@@ -26,8 +26,7 @@ export default function WelcomeScreen() {
   const mascotSize = Math.min(width * 0.85, height * 0.4, 360);
   const logoSize = compact ? 64 : 80;
 
-  // TODO: palitan ang '/explore' kapag gawa na ang login/role screen
-  // Gamitin ang router.replace kung ayaw mong makabalik sa welcome screen.
+  // push (not replace) so Back returns to the welcome screen.
   const handleGetStarted = () => router.push("/explore");
   const handleLearnMore = () => router.push("/learn-more");
 

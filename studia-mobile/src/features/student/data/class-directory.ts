@@ -1,31 +1,26 @@
-// class-directory.ts — the facts every student repository needs to stamp a class code/title
-// onto its own records, without each repository hand-typing the same literals.
+// class-directory.ts — class facts for the student repositories, read from the shared mock DB
+// (core/data/mock/mock-db.ts) so student and instructor always agree on code/section/teacher.
+import { mockDb } from "@/core/data/mock/mock-db";
 import type { Person } from "@/features/student/types/student";
 
 export type ClassFacts = { id: string; code: string; title: string; section: string; teacher: string };
 
-export const CLASS_DIRECTORY: readonly ClassFacts[] = [
-  { id: "it321", code: "IT 321", title: "Information Assurance and Security", section: "BSIT 3-A", teacher: "Prof. Maria Santos" },
-  { id: "it314", code: "IT 314", title: "Web Systems and Technologies", section: "BSIT 3-A", teacher: "Prof. Ramon Reyes" },
-  { id: "it318", code: "IT 318", title: "Mobile Application Development", section: "BSIT 3-A", teacher: "Prof. Ana Lim" },
-  { id: "ge105", code: "GE 105", title: "Purposive Communication", section: "BSIT 3-A", teacher: "Prof. Jose Cruz" },
-];
-
-export const JOIN_CODES: Record<string, string> = {
-  it321: "K7P9QX",
-  it314: "M2D8LA",
-  it318: "R5T3ZB",
-  ge105: "H4F6WT",
-};
-
 export function classFacts(classId: string): ClassFacts | undefined {
-  return CLASS_DIRECTORY.find((c) => c.id === classId);
+  const c = mockDb.cls(classId);
+  if (!c) return undefined;
+  const owner = mockDb.user(c.ownerId)?.name ?? "Instructor";
+  return { id: c.id, code: c.code, title: c.title, section: c.section, teacher: `Prof. ${owner}` };
 }
 
-export const CLASSMATES: readonly Person[] = [
-  { id: "s1", name: "Ana Villanueva", role: "student" },
-  { id: "s2", name: "Mark Bautista", role: "student" },
-  { id: "s3", name: "Liza Mercado", role: "student" },
-  { id: "s4", name: "Carlo Dizon", role: "student" },
-  { id: "s5", name: "Rica Santiago", role: "student" },
-];
+/** Snapshot of the seeded classes (used by repositories that seed content per class). */
+export const CLASS_DIRECTORY: readonly ClassFacts[] = mockDb.classes
+  .map((c) => classFacts(c.id))
+  .filter((c): c is ClassFacts => !!c);
+
+/** Everyone enrolled in the class except the signed-in student. */
+export function classmatesOf(classId: string, meId: string): Person[] {
+  return mockDb
+    .studentsOf(classId)
+    .filter((u) => u.id !== meId)
+    .map((u) => ({ id: u.id, name: u.name, role: "student" as const }));
+}

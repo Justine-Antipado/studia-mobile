@@ -20,12 +20,19 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": [
-      "expo-video",
       "expo-secure-store",
       [
         "@react-native-google-signin/google-signin",
         {
           "iosUrlScheme": "com.googleusercontent.apps.591672082298-fn2b59aem60h9i87ekv8729ecaf0pged"
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Studia uses your photos so you can choose a profile picture.",
+          "cameraPermission": "Studia uses the camera so you can take a profile picture."
         }
       ]
     ],

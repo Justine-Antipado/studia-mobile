@@ -1,62 +1,35 @@
-// announcements-repository.ts — class stream: post, pin, and moderate comments.
+// announcements-repository.ts — instructor view over the shared mock DB: post, pin, comment and
+// moderate comments. Posts show up in the students' Stream immediately.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { ME } from "@/core/data/mock/mock-db";
+import {
+  addComment,
+  createAnnouncement,
+  deleteComment,
+  getAnnouncement,
+  listAnnouncements,
+  removeAnnouncement,
+} from "@/core/data/mock/mock-announcements";
 import { mockCall } from "@/core/data/mock/mock-latency";
-import { newId } from "@/features/instructor/logic/format";
-import type { Announcement } from "@/features/instructor/types/instructor";
+import type { Announcement, Comment } from "@/features/instructor/types/instructor";
 
 export interface InstructorAnnouncementRepository {
   listByClass(classId: string): Promise<Result<Announcement[]>>;
   get(classId: string, id: string): Promise<Result<Announcement | null>>;
   create(classId: string, input: { title: string; body: string; pinned: boolean }): Promise<Result<Announcement>>;
+  addComment(classId: string, id: string, text: string): Promise<Result<Comment>>;
   deleteComment(classId: string, id: string, commentId: string): Promise<Result<void>>;
   remove(classId: string, id: string): Promise<Result<void>>;
 }
 
-const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
-
-let ANNOUNCEMENTS: Announcement[] = [
-  {
-    id: "ian1",
-    classId: "it321",
-    title: "Midterm exam schedule",
-    body: "Our midterm exam is on Nov 10-14, 2026. Coverage: Lessons 1-5. Bring your own calculator.",
-    postedAt: ago(60 * 6),
-    pinned: true,
-    comments: [
-      { id: "ic1", author: "Ana Villanueva", authorIsMe: false, text: "Is this open book, Prof?", postedAt: ago(60 * 5) },
-      { id: "ic2", author: "You", authorIsMe: true, text: "Closed book, but you may bring one index card of notes.", postedAt: ago(60 * 4) },
-    ],
-  },
-  {
-    id: "ian2",
-    classId: "it321",
-    title: "Lesson 3 slides updated",
-    body: "Fixed a typo on slide 14 (symmetric vs asymmetric encryption). Please re-download before reviewing.",
-    postedAt: ago(60 * 30),
-    pinned: false,
-    comments: [],
-  },
-  {
-    id: "ian3",
-    classId: "it314",
-    title: "Lesson 6: REST APIs is up",
-    body: "Covers resource naming, status codes and the request/response cycle. Quiz 3 will draw from this.",
-    postedAt: ago(90),
-    pinned: false,
-    comments: [{ id: "ic3", author: "Mark Bautista", authorIsMe: false, text: "Will there be a hands-on lab?", postedAt: ago(60) }],
-  },
-];
-
 class MockInstructorAnnouncementRepository implements InstructorAnnouncementRepository {
   listByClass(classId: string): Promise<Result<Announcement[]>> {
-    return mockCall(() =>
-      ANNOUNCEMENTS.filter((a) => a.classId === classId).sort((a, b) => b.postedAt.localeCompare(a.postedAt)),
-    );
+    return mockCall(() => listAnnouncements(classId, ME.instructor));
   }
 
   get(classId: string, id: string): Promise<Result<Announcement | null>> {
-    return mockCall(() => ANNOUNCEMENTS.find((a) => a.classId === classId && a.id === id) ?? null);
+    return mockCall(() => getAnnouncement(classId, id, ME.instructor));
   }
 
   async create(
@@ -64,36 +37,27 @@ class MockInstructorAnnouncementRepository implements InstructorAnnouncementRepo
     input: { title: string; body: string; pinned: boolean },
   ): Promise<Result<Announcement>> {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    const announcement: Announcement = {
-      id: newId("an"),
-      classId,
-      title: input.title.trim(),
-      body: input.body.trim(),
-      postedAt: new Date().toISOString(),
-      pinned: input.pinned,
-      comments: [],
-    };
-    ANNOUNCEMENTS = [announcement, ...ANNOUNCEMENTS];
-    return ok(announcement);
+    const created = createAnnouncement(classId, ME.instructor, input);
+    return created ? ok(created) : fail(appError("not_found", "This class no longer exists."));
+  }
+
+  async addComment(classId: string, id: string, text: string): Promise<Result<Comment>> {
+    await new Promise((resolve) => setTimeout(resolve, 280));
+    const comment = addComment(classId, id, ME.instructor, text);
+    return comment ? ok(comment) : fail(appError("not_found", "This announcement no longer exists."));
   }
 
   async deleteComment(classId: string, id: string, commentId: string): Promise<Result<void>> {
     await new Promise((resolve) => setTimeout(resolve, 250));
-    const target = ANNOUNCEMENTS.find((a) => a.classId === classId && a.id === id);
-    if (!target) return fail(appError("not_found", "This announcement no longer exists."));
-    ANNOUNCEMENTS = ANNOUNCEMENTS.map((a) =>
-      a.id === id ? { ...a, comments: a.comments.filter((c) => c.id !== commentId) } : a,
-    );
-    return ok(undefined);
+    const outcome = deleteComment(classId, id, commentId, ME.instructor);
+    return outcome === "ok" ? ok(undefined) : fail(appError("not_found", "This comment no longer exists."));
   }
 
   async remove(classId: string, id: string): Promise<Result<void>> {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    if (!ANNOUNCEMENTS.some((a) => a.classId === classId && a.id === id)) {
-      return fail(appError("not_found", "This announcement no longer exists."));
-    }
-    ANNOUNCEMENTS = ANNOUNCEMENTS.filter((a) => a.id !== id);
-    return ok(undefined);
+    return removeAnnouncement(classId, id, ME.instructor)
+      ? ok(undefined)
+      : fail(appError("not_found", "This announcement no longer exists."));
   }
 }
 

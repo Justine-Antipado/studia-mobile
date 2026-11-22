@@ -62,6 +62,17 @@ codes). The client-side rules that the server must enforce for real are listed u
 | `completeGoogleProfile(input)` | `POST /auth/google/complete` | Finishes a first-time Google signup with the profile token from the previous step. |
 | `requestPasswordReset(email)` | `POST /auth/password/forgot` | Always answers 200, whether or not the address exists (no account enumeration). |
 | `resetPassword({ token, password })` | `POST /auth/password/reset` | Consumes the reset token from `verifyOtp`. |
+| `profileRepository.requestOtp(purpose)` | `POST /me/otp` | Signed in. `purpose` is `profile_update` or `password_change` (`otp_purpose` enum, migrations 001 + 013). Emails a 6-digit code to the account's own address; same throttle as `/auth/otp/resend`. |
+| `profileRepository.verifyOtp(purpose, code)` | `POST /me/otp/verify` | Single-use, bound to the user **and** the purpose, 5 min TTL, 5 attempts. Returns nothing; it only arms the next write for that purpose. |
+| `profileRepository.updateProfile(patch)` | `PATCH /me` | Only after a verified `profile_update` code, consumed by this call. Editable: `fullName`, `phone`, `course`/`year`/`section` (student) or `department` (instructor). **Email is not editable here**; changing it needs a new code sent to the *new* address. |
+| `profileRepository.setAvatar(user, uri \| null)` | `POST /me/avatar` · `DELETE /me/avatar` | Multipart `image/jpeg` or `image/png`, **≤ 2 MB** (the app already crops it square and re-encodes it to ~512 px JPEG, so real uploads are ~50-150 KB). No OTP: a photo is not a credential. The server must sniff the real content type, strip metadata, store it as `<userId>/<generated name>` in the private `avatars` bucket (migration 015), delete the previous object, and return a **short-lived signed URL** as `avatarUri`. Only the API writes `users.avatar_path`; it is not in the client's column grants. |
+| `profileRepository.changePassword(newPassword)` | `POST /me/password` | Only after a verified `password_change` code. Applies the same five password rules as sign-up. |
+
+**Security note:** migration 001 still grants `authenticated` direct `UPDATE` on `full_name, phone, course, year_level, section, department`. Profile edits are meant to go through the OTP-gated `PATCH /me`, so before the real client is wired, revoke those column grants (or keep them only for fields that need no OTP) or the OTP can be bypassed with a direct table update.
+
+New accounts are **Gmail-only** (`@gmail.com`, migration 010 "Before User Created" hook, which covers
+email signup and Google sign-in). The seeded demo accounts (`@omsc.edu.ph` / `@omsu.edu.ph`) can still
+log in. The client shows the Gmail hint on sign-up and password reset only, never on login.
 
 Session shape the client expects:
 
@@ -110,12 +121,17 @@ column is what screens actually call.
 | `addComment(classId, id, text)` | `POST /student/classes/{classId}/announcements/{id}/comments` | Body `{ text }`, ≤ 500 chars. Store and return it as **plain text**. |
 | `deleteComment(classId, id, commentId)` | `DELETE /.../comments/{commentId}` | Only the comment's author (403 otherwise). |
 
+Comments are returned for **both roles** with `authorIsMe` (computed for the caller) and
+`authorIsInstructor` (true when the author owns the class; the UI shows an "Instructor" badge). Never
+return a `studentId` or email in a comment.
+
 ### `LessonRepository` — `lessons-repository.ts` · `useLessons`, `useLesson`
 
 | Method | Endpoint | Notes |
 |---|---|---|
 | `listByClass(classId)` | `GET /student/classes/{classId}/lessons` | |
-| `get(classId, id)` | `GET /student/classes/{classId}/lessons/{id}` | Returns `videoUrl`, `attachments[]`, `transcript[]` and the AI summary state. Videos are **streamed by URI**, never downloaded whole. |
+| `get(classId, id)` | `GET /student/classes/{classId}/lessons/{id}` | Returns `link` (`{ provider, url, videoId }`, for video lessons) or `attachment` (documents/slides), `transcript[]`, the AI summary and `regensLeft`. A video is a **link**, never a stored file: the app shows a thumbnail and opens the link outside the app. |
+| `regenerateSummary(classId, id)` | `POST /student/classes/{classId}/lessons/{id}/summary/regenerate` | Rate-limited per lesson (3). 409 when the cap is reached or there is no transcript. The cached summary is reused on every normal view. |
 
 ### `AssignmentRepository` — `assignments-repository.ts` · `useAssignments`, `useAssignment`
 
@@ -123,7 +139,7 @@ column is what screens actually call.
 |---|---|---|
 | `listByClass(classId)` | `GET /student/classes/{classId}/assignments` | `status`: `assigned` · `draft` · `submitted` · `late` · `graded`. |
 | `get(classId, id)` | `GET /student/classes/{classId}/assignments/{id}` | |
-| `attach(classId, id, { text, file })` | `POST /student/classes/{classId}/assignments/{id}/submission` | Multipart. **The server decides the outcome**, not the client: past due and late allowed → `late`; past due and late not allowed → keep as `draft`; otherwise `submitted`. Needs `Idempotency-Key`. |
+| `attach(classId, id, { text, file })` | `POST /student/classes/{classId}/assignments/{id}/submission` | Multipart. **The server decides the outcome**, not the client: using **its own clock**: past due and late allowed → `late`; past due and late not allowed → keep as `draft`; otherwise `submitted`. When the assignment has `closesAt` and it has passed, reject (409) instead of keeping a draft. Needs `Idempotency-Key`. |
 | `turnIn(classId, id)` | `POST /.../submission/turn-in` | Only valid from `draft`; 409 otherwise. Needs `Idempotency-Key`. |
 
 ### `QuizRepository` — `quizzes-repository.ts` · `useClassQuizzes`, `useQuiz`
@@ -131,8 +147,8 @@ column is what screens actually call.
 | Method | Endpoint | Notes |
 |---|---|---|
 | `listByClass(classId)` | `GET /student/classes/{classId}/quizzes` | Published quizzes only. |
-| `get(classId, id)` | `GET /student/classes/{classId}/quizzes/{id}` | **Must not include the correct answers** before the attempt is submitted. |
-| `submitAttempt(classId, quizId, answers)` | `POST /student/classes/{classId}/quizzes/{quizId}/attempts` | The server scores it and returns the attempt with per-question rationale. One attempt unless the quiz allows more (409). Needs `Idempotency-Key`. |
+| `get(classId, id)` | `GET /student/classes/{classId}/quizzes/{id}` | **Must not include the correct answers** before the attempt is submitted. Includes `dueAt`, `allowLate`, `timeLimitMin` and a server-computed `closed` flag (the client only displays it). |
+| `submitAttempt(classId, quizId, answers)` | `POST /student/classes/{classId}/quizzes/{quizId}/attempts` | The server scores it and returns the attempt with per-question rationale. One attempt unless the quiz allows more (409). **409 `quiz_closed`** after the due date when late is not allowed, or after `closesAt`; an attempt accepted after the due date is stored with `late = true`. The time limit must also be enforced from a server-side `started_at`, not the client countdown. Needs `Idempotency-Key`. |
 
 ### `TaskRepository` — `tasks-repository.ts` · `useTasks`, `useToggleTask`
 
@@ -145,10 +161,10 @@ column is what screens actually call.
 
 | Method | Endpoint | Notes |
 |---|---|---|
-| `getWeek()` | `GET /student/planner/week` | The AI-generated study schedule plus exam dates. |
+| `getWeek()` | `GET /student/planner/week` | The AI-generated study schedule plus exam dates, for the caller only. The plan is a **rolling 7-day window starting today** (not a calendar week); the server rebuilds it when the day changes and keeps the exams. A block whose task is already turned in is returned as `done`. |
 | `moveBlock(blockId, dayIso, startHour)` | `PATCH /student/planner/blocks/{blockId}` | Body `{ dayIso, startHour }`. |
 | `markBlockDone(blockId, done)` | `PATCH /student/planner/blocks/{blockId}` | Body `{ done }`. |
-| `addExam(title, dateIso)` | `POST /student/planner/exams` | |
+| `addExam(title, dateIso)` | `POST /student/planner/exams` | `dateIso` is a calendar date (`YYYY-MM-DD`, local) and must not be in the past. The plan gains two revision blocks (2 days and 1 day before) when the exam falls inside the window. |
 | `regenerate()` | `POST /student/planner/regenerate` | Re-runs the planner from current deadlines. Expect it to be slow; the client shows its own progress state. |
 
 ## Instructor
@@ -173,6 +189,7 @@ the class before doing anything.
 | `listByClass(classId)` | `GET /instructor/classes/{classId}/announcements` | |
 | `get(classId, id)` | `GET /instructor/classes/{classId}/announcements/{id}` | With `comments[]` for moderation. |
 | `create(classId, { title, body, pinned })` | `POST /instructor/classes/{classId}/announcements` | `title` ≤ 100, `body` ≤ 2000. Plain text. Needs `Idempotency-Key`. |
+| `addComment(classId, id, text)` | `POST /instructor/classes/{classId}/announcements/{id}/comments` | Body `{ text }`, ≤ 500 chars, plain text. The instructor comments as themselves (allowed by `cmt_insert`: class member **or** class owner). |
 | `deleteComment(classId, id, commentId)` | `DELETE /.../comments/{commentId}` | Moderation: the instructor may delete **any** comment in their class. |
 | `remove(classId, id)` | `DELETE /instructor/classes/{classId}/announcements/{id}` | |
 
@@ -182,7 +199,9 @@ the class before doing anything.
 |---|---|---|
 | `listByClass(classId)` | `GET /instructor/classes/{classId}/materials` | |
 | `get(classId, id)` | `GET /instructor/classes/{classId}/materials/{id}` | Includes `state` (`processing`/`ready`/`failed`), `transcript[]` and `objectives[]`. |
-| `upload(classId, { title, attachment })` | `POST /instructor/classes/{classId}/materials` | Multipart, resumable preferred. See "File uploads". Transcription is asynchronous: return `state: "processing"` immediately; the client polls the `get` endpoint. Needs `Idempotency-Key`. |
+| `addVideoLink(classId, { title, url })` | `POST /instructor/classes/{classId}/materials/video-link` | See "Lesson videos" below. Returns `state: "processing"`. Needs `Idempotency-Key`. |
+| `provideTranscript(classId, id, text)` | `PUT /instructor/classes/{classId}/materials/{id}/transcript` | Fallback when no captions could be fetched: ≤ 50,000 chars; the AI then builds the summary and objectives from it. |
+| `upload(classId, { title, attachment })` | `POST /instructor/classes/{classId}/materials` | **Documents and slides only** (pdf, doc(x), ppt(x)); a video file is rejected (422): send a link instead. | Multipart, resumable preferred. See "File uploads". Transcription is asynchronous: return `state: "processing"` immediately; the client polls the `get` endpoint. Needs `Idempotency-Key`. |
 | `remove(classId, id)` | `DELETE /instructor/classes/{classId}/materials/{id}` | Must also delete the stored file. |
 
 ### `InstructorAssignmentRepository` — `assignments-repository.ts` · `useClassAssignments`, `useInstructorAssignment`
@@ -191,8 +210,10 @@ the class before doing anything.
 |---|---|---|
 | `listByClass(classId)` | `GET /instructor/classes/{classId}/assignments` | |
 | `get(classId, id)` | `GET /instructor/classes/{classId}/assignments/{id}` | |
-| `create(classId, draft)` | `POST /instructor/classes/{classId}/assignments` | `{ title, instructions, dueAt, points, allowLate, attachments }`. `allowLate` drives the student submission rule above, so it must be enforced server-side. |
-| `update(classId, id, draft)` | `PATCH /instructor/classes/{classId}/assignments/{id}` | |
+| `create(classId, draft)` | `POST /instructor/classes/{classId}/assignments` | `{ title, instructions, dueAt, points, allowLate, closesAt?, attachments }`. `allowLate` drives the student submission rule above, so it must be enforced server-side. `dueAt` is a UTC ISO string (the UI shows it in the device zone). `closesAt` (optional, needs `allowLate`, ≥ `dueAt`) is the last moment a late turn-in is accepted. |
+| `update(classId, id, draft)` | `PATCH /instructor/classes/{classId}/assignments/{id}` | Same body. **The attachment list in the body replaces the stored list**, so the client must send the existing attachments it wants to keep (the edit form preloads them); removed ones must also be deleted from Storage. Rules: `points` cannot go below a score already given (422); moving `dueAt` re-tags turned-in work `submitted` ↔ `late` and leaves `graded` alone (migration 011 trigger). Past due dates are allowed on edit (to extend a deadline) but not on create. |
+| `listSubmissions(classId, id)` | `GET /instructor/classes/{classId}/assignments/{id}/submissions` | The class roster **left-joined** with submissions: one row per enrolled student with `status` = `missing` · `draft` · `submitted` · `late` · `graded`, `submittedAt`, `text`, `file` (signed URL, short expiry), `score`, `feedback`, `gradedAt`. Class owner only. |
+| `gradeSubmission(classId, id, studentId, { score, feedback })` | `POST /instructor/classes/{classId}/assignments/{id}/submissions/{studentId}/grade` | `0 ≤ score ≤ assignment.points` (also a DB trigger). 409 when the student has not turned it in (`draft`/`missing`). Sets `status = graded`; the grade is then visible to the student. Needs `Idempotency-Key`. |
 | `remove(classId, id)` | `DELETE /instructor/classes/{classId}/assignments/{id}` | |
 
 ### `ClassStudentRepository` — `students-repository.ts` · `useClassStudents`, `useStudent`
@@ -210,7 +231,8 @@ the class before doing anything.
 | `list()` | `GET /instructor/quizzes` | Across all of the instructor's classes. |
 | `listByClass(classId)` | `GET /instructor/classes/{classId}/quizzes` | |
 | `get(id)` | `GET /instructor/quizzes/{id}` | Includes correct answers (instructor view). |
-| `create(draft, publish)` | `POST /instructor/quizzes` | `status` = `draft` or `published` from `publish`. Question kinds: `mc` (one `correctIndex`), `identification`, `essay`. Each question carries a Bloom level and a difficulty. Needs `Idempotency-Key`. |
+| `create(draft, publish)` | `POST /instructor/quizzes` | `status` = `draft` or `published` from `publish`. Question kinds: `mc` (one `correctIndex`), `identification`, `essay`. Each question carries a Bloom level and a difficulty. Schedule: `{ dueAt, allowLate, closesAt?, timeLimitMin? }`; publishing requires a future `dueAt`, and `closesAt` > `dueAt` when `allowLate` (migration 011 constraints). Needs `Idempotency-Key`. |
+| `update(id, draft, publish)` | `PUT /instructor/quizzes/{id}` | Same body. **Once any attempt exists the questions, options and answer keys are frozen** (409; DB trigger in migration 011): only the title and the schedule may change, and the quiz cannot go back to `draft`. On a published quiz the due date may be extended even after it has passed. |
 | `remove(id)` | `DELETE /instructor/quizzes/{id}` | Refuse (409) once attempts exist, or archive instead. |
 
 ### `SubmissionRepository` — `submissions-repository.ts` · `useAllSubmissions`, `useSubmission`, `useGradeSubmission`
@@ -221,6 +243,16 @@ the class before doing anything.
 | `listByQuiz(quizId)` | `GET /instructor/quizzes/{quizId}/submissions` | |
 | `get(id)` | `GET /instructor/submissions/{id}` | |
 | `grade(id, score, feedback)` | `POST /instructor/submissions/{id}/grade` | Validate `0 ≤ score ≤ maxScore` server-side. Returns the submission with `gradedAt`, which also makes the grade visible to the student. Needs `Idempotency-Key`. |
+
+A quiz submission carries `late` (set by the database from its own clock) and its `score` is `null`
+while it contains an ungraded essay ("needs grading"). MC and identification are auto-scored; essay
+points are not counted until the instructor sets the total.
+
+### `GradebookRepository` — `gradebook-repository.ts` · `useGradebook`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| `list(classId or null)` | `GET /instructor/gradebook?classId=` | One row per (student, assignment-or-quiz) for classes the caller owns: `{ classId, kind: assignment/quiz, refId, title, studentId, score, max, status: graded/pending/missing, gradedAt, attemptId }`. Join by **`classId`, never by subject code** (two sections can share a code). Paginate by class/item; the client does the per-student aggregation (overall % = sum(score) / sum(max) over graded items, weighted by points). |
 
 ### `AnalyticsRepository` — `analytics-repository.ts` · `useAnalytics`, `useInstructorStats`
 
@@ -238,6 +270,25 @@ the class before doing anything.
 | `markRead(role, id)` | `PATCH /notifications/{id}` | Body `{ read: true }`. |
 | `markAllRead(role)` | `POST /notifications/read-all` | |
 
+Notification rows are **created by events** (database triggers or the API), never typed by hand, and
+the actor is never notified about their own action. Each item has `tag`, `title`, `meta`, optional
+`body` (shown in the detail sheet; opening the sheet marks it read) and `createdAt`; the client
+formats the age. The mobile mock produces them from these events:
+
+| Event | Recipients | Tag |
+|---|---|---|
+| Announcement posted | enrolled students | Notice |
+| Comment on an announcement | the post's author and earlier commenters | Class |
+| Assignment created / due date changed | enrolled students | Reminder |
+| Student turns in (not a draft) | class owner | Grade |
+| Assignment or quiz graded | that student | Grade |
+| Quiz published (create, or draft → published) | enrolled students | Quiz |
+| Quiz attempt submitted | class owner | Grade |
+| Material or video link added | enrolled students | Lesson |
+| Student joins a class | class owner | Class |
+
+`markRead` is allowed only for the row's owner (RLS). The tab badge is the unread count of this feed.
+
 ### AI
 
 The three AI features (transcription, summary/concept map, quiz synthesis) are mocked inside
@@ -252,11 +303,32 @@ interface yet (see "Known gaps"). The endpoints they need:
 | Chat | `POST /ai/chat` | `{ messages }`, streaming preferred. |
 | Study planner | `POST /student/planner/regenerate` | Same endpoint as the planner above. |
 
+### Lesson videos (links)
+
+A video lesson is a link. Migration `20260101000014_material_video_links.sql` adds
+`materials.video_url`, `video_provider`, `video_id` and the constraints below.
+
+- **Validate on the server** (the client check in `shared/utils/video-link.ts` is only feedback):
+  `https` only, no `user:pass@`, ≤ 2048 chars, no `localhost`, raw IP or single-label host. YouTube
+  forms accepted: `youtube.com/watch?v=`, `/shorts/`, `/embed/`, `/live/`, `m.youtube.com`,
+  `music.youtube.com`, `youtu.be/`. Store the canonical `https://www.youtube.com/watch?v=ID` and the
+  11-character id. Any other https host is stored as `provider: other` and is only ever *opened*.
+- **Never fetch the URL.** The server must not request an arbitrary `video_url` (SSRF). For YouTube it
+  asks the captions API for the `video_id` only; for other hosts there is no transcript, the material
+  goes to `failed` and the instructor pastes one (`provideTranscript`).
+- **The client never renders the URL in a WebView.** It builds the thumbnail
+  (`img.youtube.com/vi/{id}/hqdefault.jpg`) from the validated id and opens the link with the system
+  (`Linking`, falling back to the in-app browser tab).
+- **AI summary from a link:** transcript from captions → summary, cached per material
+  (`material_summaries`). Not every video has captions and the captions API has a quota, so the states
+  are `processing` → `ready` | `failed`, polled by the client. "Regenerate" is capped (`regen_count`
+  ≤ 3) because each call costs money.
+- Uploaded files keep the 50 MB cap (migration 012).
+
 ### File uploads
 
 Used by material upload and assignment submission. The client validates before sending
-(`shared/utils/file.ts`): extension whitelist `pdf, doc, docx, ppt, pptx, mp4, mov, jpg, jpeg,
-png`, ≤ 40 MB for materials and ≤ 50 MB for submissions, and a sanitized file name.
+(`shared/utils/file.ts`): extension whitelist `pdf, doc, docx, ppt, pptx` for materials (videos are links) and, for submissions, `jpg, jpeg, png` as well, ≤ 50 MB for materials (bucket `file_size_limit`, migration 012; the free plan allows no more) and ≤ 50 MB for submissions, and a sanitized file name.
 
 That validation is a convenience, not a control. The server must independently:
 
@@ -314,7 +386,7 @@ area, not by the order they were built.
   SameSite=Strict** refresh cookie and expose `POST /api/admin/auth/refresh`; the client then
   switches to `credentials: 'include'` and nothing else changes.
 - **The client is not the authority.** Every rule in `core/logic/validation.js` (email shape and
-  the `@omsu.edu.ph` domain, the five password rules, 6-digit OTP, length caps) is a copy of
+  the Gmail-only rule for new accounts, the five password rules, 6-digit OTP, length caps) is a copy of
   `studia-mobile/src/features/auth/logic/auth-validation.ts` for the sake of fast feedback. The
   server must re-run all of it, hash passwords with argon2id/bcrypt, store OTPs hashed and
   single-use, rate-limit by account and IP, and check admin role on every request.
@@ -423,6 +495,24 @@ as the rest of this document; nothing here is a special case.
 - Send the security headers from the web server as well as the `index.html` meta tags
   (`Content-Security-Policy`, `Referrer-Policy`, `X-Content-Type-Options`), since `frame-ancestors`
   is ignored in a meta tag.
+
+## Assessment rules (server-enforced)
+
+Migration `20260101000011_assessment_schedule.sql` is the database half of these; the API enforces
+the rest. The mobile mock implements the same rules so the UI can be exercised without a server.
+
+- **Time:** every late/closed decision uses the server's `now()`. Device clocks are never trusted.
+- **Assignments:** `closes_at ≥ due_at` and only with `allow_late`; `points` ≥ the highest score
+  already given; moving `due_at` re-tags `submitted`/`late`; a student can only read their own
+  submission and the class owner reads all of them.
+- **Quizzes:** `due_at`, `allow_late`, `closes_at` (≥ `due_at`, only with `allow_late`),
+  `time_limit_min`. A submit after `due_at` is rejected unless `allow_late`, and always after
+  `closes_at`; accepted late attempts get `late = true`. Questions freeze after the first attempt.
+  Drafts are never visible to students (RLS `status = 'published'`).
+- **Comments:** class members and the class owner may comment; the author or the class owner may
+  delete.
+- **Not built yet:** quiz `opens_at`, a per-attempt server `started_at` for the time limit, and
+  `max_attempts > 1` in the student UI.
 
 ## Known gaps
 

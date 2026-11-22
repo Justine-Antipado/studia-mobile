@@ -7,7 +7,8 @@
 import { REMOTE_ENV } from "@/core/config/data-source";
 import { createEphemeralClient, getSupabase, supabaseConfigured } from "@/core/data/supabase/client";
 import { isEndingSession } from "@/core/data/supabase/end-session";
-import { setUser, type UserProfile } from "@/core/data/storage/session-store";
+import { setUser } from "@/core/data/storage/session-store";
+import { toProfile } from "@/features/auth/logic/user-profile";
 import { post, schemas, type ProfileDto, type SessionDto } from "@/features/auth/data/auth-api";
 import {
   composeSection,
@@ -232,15 +233,6 @@ export const remoteAuthService: AuthService = {
 };
 
 /* ---------- session restore + server-side sign-out ---------- */
-
-const toProfile = (u: User): UserProfile => ({
-  role: u.role,
-  fullName: u.fullName,
-  email: u.email,
-  department: u.department,
-  section: u.section,
-  phone: u.phone,
-});
 
 let started = false;
 

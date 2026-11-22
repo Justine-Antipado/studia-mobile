@@ -1,126 +1,91 @@
-// materials-repository.ts — lesson/material repository + a mock "AI transcript + key
-// objectives" pipeline (docs/UI-BRIEF Lesson & Material Repository / AI core).
+// materials-repository.ts — instructor view over the shared mock DB materials. A material is either
+// an uploaded document/slide deck (<= 50 MB) or a video LINK. After saving, the mock AI pipeline
+// fetches the transcript and key objectives a few seconds later (see core/data/mock/mock-materials.ts
+// for what the real server must do).
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { ME, type DbMaterial } from "@/core/data/mock/mock-db";
 import { mockCall } from "@/core/data/mock/mock-latency";
-import { newId } from "@/features/instructor/logic/format";
+import {
+  addLink,
+  addUpload,
+  materialsOf,
+  ownedMaterial,
+  provideTranscript,
+  removeMaterial,
+} from "@/core/data/mock/mock-materials";
+import { isOwner } from "@/core/data/mock/mock-announcements";
+import { parseVideoLink } from "@/shared/utils/video-link";
 import type { Attachment, Material } from "@/features/instructor/types/instructor";
 
 export interface MaterialRepository {
   listByClass(classId: string): Promise<Result<Material[]>>;
   get(classId: string, id: string): Promise<Result<Material | null>>;
   upload(classId: string, input: { title: string; attachment: Attachment }): Promise<Result<Material>>;
+  addVideoLink(classId: string, input: { title: string; url: string }): Promise<Result<Material>>;
+  /** Fallback when the video has no captions: paste the transcript/notes and the AI summarises them. */
+  provideTranscript(classId: string, id: string, text: string): Promise<Result<Material>>;
   remove(classId: string, id: string): Promise<Result<void>>;
 }
 
-const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
-const KIND_BY_ATTACHMENT: Record<Attachment["kind"], Material["kind"]> = {
-  video: "video",
-  pdf: "pdf",
-  slide: "slide",
-  doc: "pdf",
-  image: "pdf",
-};
+const toMaterial = (m: DbMaterial): Material => ({
+  id: m.id,
+  classId: m.classId,
+  title: m.title,
+  kind: m.kind,
+  link: m.link,
+  durationLabel: m.durationLabel,
+  attachment: m.attachment,
+  processing: m.processing,
+  transcript: m.transcript,
+  objectives: m.objectives,
+  postedAt: m.postedAt,
+});
 
-let MATERIALS: Material[] = [
-  {
-    id: "im1",
-    classId: "it321",
-    title: "Lesson 3: Network Security Basics",
-    kind: "video",
-    durationLabel: "18:24",
-    attachment: { id: "ia1", name: "Lesson3.mp4", kind: "video", sizeLabel: "214 MB" },
-    processing: "ready",
-    transcript: [
-      { id: "t1", startSec: 0, text: "Today we cover network security basics: firewalls, intrusion detection, and the CIA triad." },
-      { id: "t2", startSec: 42, text: "Confidentiality means only authorized people can read the data." },
-      { id: "t3", startSec: 95, text: "Integrity means the data was not changed without permission." },
-    ],
-    objectives: [
-      "Explain the CIA triad and why it guides security decisions.",
-      "Describe how a firewall filters traffic using rules.",
-      "Differentiate an IDS from an IPS.",
-    ],
-    postedAt: ago(60 * 24 * 2),
-  },
-  {
-    id: "im2",
-    classId: "it321",
-    title: "Lesson 4: Cryptography Fundamentals",
-    kind: "slide",
-    durationLabel: null,
-    attachment: { id: "ia2", name: "Lesson4_Slides.pptx", kind: "slide", sizeLabel: "3.1 MB" },
-    processing: "ready",
-    transcript: [],
-    objectives: ["Compare symmetric and asymmetric encryption.", "Identify common uses of hashing."],
-    postedAt: ago(45),
-  },
-  {
-    id: "im3",
-    classId: "it314",
-    title: "Lesson 6: REST APIs",
-    kind: "slide",
-    durationLabel: null,
-    attachment: { id: "ia3", name: "REST_APIs.pptx", kind: "slide", sizeLabel: "1.8 MB" },
-    processing: "ready",
-    transcript: [],
-    objectives: ["Name resources using nouns.", "Map CRUD actions to HTTP verbs and status codes."],
-    postedAt: ago(90),
-  },
-];
+const notFound = () => fail(appError("not_found", "This class no longer exists."));
 
 class MockMaterialRepository implements MaterialRepository {
   listByClass(classId: string): Promise<Result<Material[]>> {
-    return mockCall(() => MATERIALS.filter((m) => m.classId === classId).sort((a, b) => b.postedAt.localeCompare(a.postedAt)));
+    return mockCall(() => (isOwner(classId, ME.instructor) ? materialsOf(classId, ME.instructor).map(toMaterial) : []));
   }
 
   get(classId: string, id: string): Promise<Result<Material | null>> {
-    return mockCall(() => MATERIALS.find((m) => m.classId === classId && m.id === id) ?? null);
+    return mockCall(() => {
+      const m = ownedMaterial(classId, id, ME.instructor);
+      return m ? toMaterial(m) : null;
+    });
   }
 
   async upload(classId: string, input: { title: string; attachment: Attachment }): Promise<Result<Material>> {
     await new Promise((resolve) => setTimeout(resolve, 700));
-    const material: Material = {
-      id: newId("mat"),
-      classId,
-      title: input.title.trim(),
-      kind: KIND_BY_ATTACHMENT[input.attachment.kind],
-      durationLabel: input.attachment.kind === "video" ? "--:--" : null,
-      attachment: input.attachment,
-      processing: "processing",
-      transcript: [],
-      objectives: [],
-      postedAt: new Date().toISOString(),
-    };
-    MATERIALS = [material, ...MATERIALS];
+    if (!isOwner(classId, ME.instructor)) return notFound();
+    if (input.attachment.kind === "video") {
+      return fail(appError("validation", "Videos are shared as links, not uploads. Paste the video link instead.", false));
+    }
+    return ok(toMaterial(addUpload(classId, input.title, input.attachment)));
+  }
 
-    // Mock AI pipeline: transcript + key objectives land a few seconds later.
-    setTimeout(() => {
-      MATERIALS = MATERIALS.map((m) =>
-        m.id === material.id
-          ? {
-              ...m,
-              processing: "ready",
-              durationLabel: m.kind === "video" ? "12:40" : m.durationLabel,
-              transcript:
-                m.kind === "video"
-                  ? [{ id: newId("t"), startSec: 0, text: `Auto-generated transcript for "${m.title}".` }]
-                  : [],
-              objectives: [`Understand the key points of "${m.title}".`, "Apply the concept in the next assessment."],
-            }
-          : m,
-      );
-    }, 4000);
+  async addVideoLink(classId: string, input: { title: string; url: string }): Promise<Result<Material>> {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (!isOwner(classId, ME.instructor)) return notFound();
+    const parsed = parseVideoLink(input.url);
+    if (!parsed.ok) return fail(appError("validation", parsed.error, false));
+    return ok(toMaterial(addLink(classId, input.title, parsed.link)));
+  }
 
-    return ok(material);
+  async provideTranscript(classId: string, id: string, text: string): Promise<Result<Material>> {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const m = ownedMaterial(classId, id, ME.instructor);
+    if (!m) return fail(appError("not_found", "This material no longer exists."));
+    if (text.trim().length < 20) return fail(appError("validation", "Paste at least a few sentences of the transcript.", false));
+    if (text.length > 50_000) return fail(appError("validation", "Keep the transcript under 50,000 characters.", false));
+    return ok(toMaterial(provideTranscript(m, text)));
   }
 
   async remove(classId: string, id: string): Promise<Result<void>> {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    if (!MATERIALS.some((m) => m.classId === classId && m.id === id)) {
-      return fail(appError("not_found", "This material no longer exists."));
-    }
-    MATERIALS = MATERIALS.filter((m) => m.id !== id);
+    if (!ownedMaterial(classId, id, ME.instructor)) return fail(appError("not_found", "This material no longer exists."));
+    removeMaterial(id);
     return ok(undefined);
   }
 }

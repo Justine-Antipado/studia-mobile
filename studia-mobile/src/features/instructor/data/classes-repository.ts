@@ -1,10 +1,9 @@
-// classes-repository.ts — DB-ready interface + in-memory mock. Swapping to the real API means
-// replacing this file only; the hooks in hooks/use-classes.ts never change.
+// classes-repository.ts — instructor view over the shared mock DB. Only classes this instructor
+// owns are listed; studentCount is derived from enrollments.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { ME, dbId, mockDb, type DbClass } from "@/core/data/mock/mock-db";
 import { mockCall } from "@/core/data/mock/mock-latency";
-import { CLASS_DIRECTORY } from "@/features/instructor/data/class-directory";
-import { newId } from "@/features/instructor/logic/format";
 import type { InstructorClass } from "@/features/instructor/types/instructor";
 
 export interface InstructorClassRepository {
@@ -20,51 +19,62 @@ function randomJoinCode(): string {
   return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-let CLASSES: InstructorClass[] = CLASS_DIRECTORY.map((c) => ({
+const owned = (c: DbClass) => c.ownerId === ME.instructor;
+
+const toInstructorClass = (c: DbClass): InstructorClass => ({
   id: c.id,
   code: c.code,
   title: c.title,
   section: c.section,
-  studentCount: c.studentCount,
+  studentCount: mockDb.studentsOf(c.id).length,
   joinCode: c.joinCode,
-  archived: false,
-}));
+  archived: c.archived,
+});
 
 class MockInstructorClassRepository implements InstructorClassRepository {
   list(): Promise<Result<InstructorClass[]>> {
-    return mockCall(() => CLASSES.filter((c) => !c.archived));
+    return mockCall(() => mockDb.classes.filter((c) => owned(c) && !c.archived).map(toInstructorClass));
   }
 
   get(id: string): Promise<Result<InstructorClass | null>> {
-    return mockCall(() => CLASSES.find((c) => c.id === id) ?? null);
+    return mockCall(() => {
+      const c = mockDb.cls(id);
+      return c && owned(c) ? toInstructorClass(c) : null;
+    });
   }
 
   async create(input: { title: string; section: string; code: string }): Promise<Result<InstructorClass>> {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    const cls: InstructorClass = {
-      id: newId("class"),
+    const c: DbClass = {
+      id: dbId("class"),
       code: input.code.trim(),
       title: input.title.trim(),
       section: input.section.trim(),
-      studentCount: 0,
+      ownerId: ME.instructor,
       joinCode: randomJoinCode(),
       archived: false,
     };
-    CLASSES = [cls, ...CLASSES];
-    return ok(cls);
+    mockDb.classes = [c, ...mockDb.classes];
+    mockDb.emit();
+    return ok(toInstructorClass(c));
   }
 
   async archive(id: string, archived: boolean): Promise<Result<void>> {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    if (!CLASSES.some((c) => c.id === id)) return fail(appError("not_found", "This class no longer exists."));
-    CLASSES = CLASSES.map((c) => (c.id === id ? { ...c, archived } : c));
+    const c = mockDb.cls(id);
+    if (!c || !owned(c)) return fail(appError("not_found", "This class no longer exists."));
+    mockDb.classes = mockDb.classes.map((x) => (x.id === id ? { ...x, archived } : x));
+    mockDb.emit();
     return ok(undefined);
   }
 
   async remove(id: string): Promise<Result<void>> {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    if (!CLASSES.some((c) => c.id === id)) return fail(appError("not_found", "This class no longer exists."));
-    CLASSES = CLASSES.filter((c) => c.id !== id);
+    const c = mockDb.cls(id);
+    if (!c || !owned(c)) return fail(appError("not_found", "This class no longer exists."));
+    mockDb.classes = mockDb.classes.filter((x) => x.id !== id);
+    mockDb.enrollments = mockDb.enrollments.filter((e) => e.classId !== id);
+    mockDb.emit();
     return ok(undefined);
   }
 }

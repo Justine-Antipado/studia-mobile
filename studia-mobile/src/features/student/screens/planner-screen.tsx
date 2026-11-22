@@ -6,6 +6,7 @@ import { Text, View } from "react-native";
 import {
   ActionButton,
   BottomSheet,
+  DateTimeField,
   FormField,
   ListRow,
   ListState,
@@ -17,7 +18,7 @@ import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { PlannerBlockCard } from "@/features/student/components/planner-block-card";
-import { dayLabel, weekdayShort } from "@/features/student/logic/format";
+import { addDaysIso, dayChipLabel, dayLabel, toLocalIso, weekdayShort } from "@/features/student/logic/format";
 import {
   useAddExam,
   useMarkBlockDone,
@@ -26,13 +27,14 @@ import {
   useRegeneratePlanner,
 } from "@/features/student/hooks/use-planner";
 
-function weekDays(weekStartIso: string): string[] {
-  const start = new Date(`${weekStartIso}T00:00:00`);
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    return d.toISOString().slice(0, 10);
-  });
+function tomorrow(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d;
+}
+
+function weekDays(startIso: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => addDaysIso(startIso, i));
 }
 
 export default function StudentPlanner() {
@@ -49,22 +51,37 @@ export default function StudentPlanner() {
   const [movingBlockId, setMovingBlockId] = useState<string | null>(null);
   const [addingExam, setAddingExam] = useState(false);
   const [examTitle, setExamTitle] = useState("");
-  const [examDate, setExamDate] = useState("");
+  const [examDate, setExamDate] = useState(() => tomorrow());
 
-  const day = selectedDay || days[0] || "";
+  const today = toLocalIso(new Date());
+  const day = days.includes(selectedDay) ? selectedDay : days.includes(today) ? today : days[0] || "";
   const blocksForDay = (week?.blocks ?? []).filter((b) => b.dayIso === day).sort((a, b) => a.startHour - b.startHour);
 
+  // Every planner write reports failure (offline, missing block) instead of failing silently.
+  const run = async (pending: Promise<{ ok: boolean; error?: { message: string } }>, success?: string) => {
+    const r = await pending;
+    if (!r.ok) toast.show(r.error?.message ?? "Something went wrong.", { tone: "red" });
+    else if (success) toast.show(success, { tone: "green" });
+  };
+
   const submitExam = async () => {
-    if (!examTitle.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(examDate)) {
-      toast.show("Enter a title and a date like 2026-12-01.", { tone: "red" });
+    if (!examTitle.trim()) {
+      toast.show("Enter the exam title.", { tone: "red" });
       return;
     }
-    const result = await addExam.run({ title: examTitle.trim(), dateIso: examDate });
+    const dateIso = toLocalIso(examDate);
+    if (dateIso < today) {
+      toast.show("The exam date can't be in the past.", { tone: "red" });
+      return;
+    }
+    const result = await addExam.run({ title: examTitle.trim(), dateIso });
     if (result.ok) {
       setAddingExam(false);
       setExamTitle("");
-      setExamDate("");
-      toast.show("Exam added", { tone: "green" });
+      setExamDate(tomorrow());
+      toast.show("Exam added. Revision blocks were scheduled.", { tone: "green" });
+    } else {
+      toast.show(result.error.message, { tone: "red" });
     }
   };
 
@@ -74,7 +91,7 @@ export default function StudentPlanner() {
       <ListState loading={loading} error={error} empty={!loading && !week} onRetry={refetch} emptyIcon="calendar-outline" emptyTitle="No plan yet">
         {week ? (
           <View style={{ gap: SPACE.lg }}>
-            <SegmentedTabs items={days} value={day} onChange={setSelectedDay} />
+            <SegmentedTabs items={days} value={day} onChange={setSelectedDay} formatLabel={dayChipLabel} label="Days" />
             <Text style={TYPE.h2}>{dayLabel(day)}</Text>
 
             {blocksForDay.length === 0 ? (
@@ -85,7 +102,7 @@ export default function StudentPlanner() {
                   <PlannerBlockCard
                     key={b.id}
                     block={b}
-                    onToggleDone={() => void markDone.run({ id: b.id, done: !b.done })}
+                    onToggleDone={() => void run(markDone.run({ id: b.id, done: !b.done }))}
                     onMove={() => setMovingBlockId(b.id)}
                   />
                 ))}
@@ -107,7 +124,7 @@ export default function StudentPlanner() {
               icon="sparkles-outline"
               variant="secondary"
               loading={regenerate.loading}
-              onPress={() => void regenerate.run(undefined)}
+              onPress={() => void run(regenerate.run(undefined), "Schedule regenerated")}
             />
           </View>
         ) : null}
@@ -122,7 +139,10 @@ export default function StudentPlanner() {
               title={dayLabel(d)}
               subtitle={weekdayShort(d)}
               onPress={() => {
-                if (movingBlockId) void moveBlock.run({ id: movingBlockId, dayIso: d, startHour: 16 });
+                if (movingBlockId) {
+                  const block = week?.blocks.find((x) => x.id === movingBlockId);
+                  void run(moveBlock.run({ id: movingBlockId, dayIso: d, startHour: block?.startHour ?? 16 }));
+                }
                 setMovingBlockId(null);
               }}
             />
@@ -132,7 +152,7 @@ export default function StudentPlanner() {
 
       <BottomSheet visible={addingExam} title="Add exam date" onClose={() => setAddingExam(false)}>
         <FormField label="Exam title" value={examTitle} onChangeText={setExamTitle} placeholder="e.g. Midterm Exam" />
-        <FormField label="Date" value={examDate} onChangeText={setExamDate} placeholder="2026-12-01" helper="Format: YYYY-MM-DD" />
+        <DateTimeField label="Exam date" mode="date" value={examDate} onChange={setExamDate} minimumDate={new Date()} />
         <ActionButton label="Add exam" icon="checkmark" loading={addExam.loading} onPress={submitExam} />
       </BottomSheet>
     </Screen>
