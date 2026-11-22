@@ -7,7 +7,7 @@
 import { ApiError } from "./http.js";
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai";
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.8-flash";
 const TIMEOUT_MS = 24_000; // Vercel functions here are capped at 30 s (vercel.json)
 
 export type ChatMsg = { role: "system" | "user" | "assistant"; content: string };

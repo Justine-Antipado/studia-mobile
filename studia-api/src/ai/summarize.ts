@@ -8,13 +8,13 @@
 // Allowed for the class owner and for students enrolled in a READY material. Nothing the client sends
 // is trusted beyond the material id: access is re-checked here with the service role.
 import { z } from "zod";
-import { complete, parseJson, type Completion } from "../../src/lib/ai.js";
-import { completeNative, type NativePart } from "../../src/lib/ai-native.js";
-import { assertAiQuota, logAi } from "../../src/lib/ai-guard.js";
-import { adminClient } from "../../src/lib/clients.js";
-import { ApiError, endpoint } from "../../src/lib/http.js";
-import { extractOfficeText } from "../../src/lib/material-text.js";
-import { requireMe } from "../../src/lib/me.js";
+import { complete, parseJson, type Completion } from "../lib/ai.js";
+import { completeNative, type NativePart } from "../lib/ai-native.js";
+import { assertAiQuota, logAi } from "../lib/ai-guard.js";
+import { adminClient } from "../lib/clients.js";
+import { ApiError, endpoint } from "../lib/http.js";
+import { extractOfficeText } from "../lib/material-text.js";
+import { requireMe } from "../lib/me.js";
 
 const MAX_REGENS = 3;
 const MAX_CHARS = 24_000;

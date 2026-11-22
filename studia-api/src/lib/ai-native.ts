@@ -5,7 +5,7 @@ import type { Completion } from "./ai.js";
 import { ApiError } from "./http.js";
 
 const GEMINI_HOST = "generativelanguage.googleapis.com";
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.8-flash";
 
 export type NativePart =
   | { text: string }

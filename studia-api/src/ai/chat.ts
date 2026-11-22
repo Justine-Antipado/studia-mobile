@@ -3,11 +3,11 @@
 // read their own thread through RLS) and logged in ai_requests.
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { complete, type ChatMsg } from "../../src/lib/ai.js";
-import { assertAiQuota, logAi } from "../../src/lib/ai-guard.js";
-import { adminClient } from "../../src/lib/clients.js";
-import { ApiError, endpoint } from "../../src/lib/http.js";
-import { requireMe } from "../../src/lib/me.js";
+import { complete, type ChatMsg } from "../lib/ai.js";
+import { assertAiQuota, logAi } from "../lib/ai-guard.js";
+import { adminClient } from "../lib/clients.js";
+import { ApiError, endpoint } from "../lib/http.js";
+import { requireMe } from "../lib/me.js";
 
 const Body = z.object({
   threadId: z.string().min(8).max(64).optional(),

@@ -1,11 +1,11 @@
 // Bloom's-taxonomy quiz synthesizer for instructors. Returns multiple-choice questions only; the app
 // shows them for review and saves them through the normal save_quiz path (nothing is stored here).
 import { z } from "zod";
-import { complete, parseJson, type Completion } from "../../src/lib/ai.js";
-import { assertAiQuota, logAi } from "../../src/lib/ai-guard.js";
-import { adminClient } from "../../src/lib/clients.js";
-import { ApiError, endpoint } from "../../src/lib/http.js";
-import { requireMe } from "../../src/lib/me.js";
+import { complete, parseJson, type Completion } from "../lib/ai.js";
+import { assertAiQuota, logAi } from "../lib/ai-guard.js";
+import { adminClient } from "../lib/clients.js";
+import { ApiError, endpoint } from "../lib/http.js";
+import { requireMe } from "../lib/me.js";
 
 const BLOOM = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"] as const;
 
