@@ -8,5 +8,5 @@ autosave/restore/clear), `use-file-picker` (pick + validate against a `FilePolic
 student and instructor hooks are one-line bindings of it).
 
 `use-safe-router` (drop-in `useRouter()` whose `push` is navigation-locked: ignored until the
-pushing screen is focused again, 1.8 s safety unlock; pair with `getId` on the Stack screens).
+pushing screen is focused again, 1.8 s safety unlock; pair with `dangerouslySingular` on the Stack screens).
 Use it instead of `useRouter()` in any screen that pushes a sub page.

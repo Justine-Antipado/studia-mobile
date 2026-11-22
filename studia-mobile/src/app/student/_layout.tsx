@@ -16,7 +16,7 @@ import { Stack } from "expo-router";
 import { MODAL_SHEET, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { RoleGate } from "@/shared/components/ui/role-gate";
-import { screenId } from "@/core/logic/screen-id";
+import { singularScreenId } from "@/core/logic/screen-id";
 
 /** Create / join / take-quiz flows come up from the bottom; everything else slides in. */
 const MODAL_ROUTES = ["join-class", "quiz-take"] as const;
@@ -47,10 +47,10 @@ export default function StudentLayout() {
         <Stack screenOptions={subpage}>
           <Stack.Screen name="(tabs)" options={tabs} />
           {SUBPAGE_ROUTES.map((name) => (
-            <Stack.Screen key={name} name={name} options={subpage} getId={screenId} />
+            <Stack.Screen key={name} name={name} options={subpage} dangerouslySingular={singularScreenId} />
           ))}
           {MODAL_ROUTES.map((name) => (
-            <Stack.Screen key={name} name={name} options={modal} getId={screenId} />
+            <Stack.Screen key={name} name={name} options={modal} dangerouslySingular={singularScreenId} />
           ))}
         </Stack>
       </ErrorBoundary>
