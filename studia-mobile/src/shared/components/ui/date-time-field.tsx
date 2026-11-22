@@ -3,8 +3,8 @@
 // no native picker module is involved (the iOS spinner rendered blank inside the sheet).
 // The value is a real Date, so there is no "2026-13-45" to validate; range rules (e.g. not in the
 // past) belong to the caller via `error`.
-import { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from "react-native";
 
 import { ActionButton } from "@/shared/components/ui/action-button";
 import { BottomSheet } from "@/shared/components/ui/bottom-sheet";
@@ -25,18 +25,51 @@ export const formatDate = (d: Date) =>
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const sameDay = (a: Date, b: Date) => startOfDay(a).getTime() === startOfDay(b).getTime();
 
-function Stepper({ label, text, onUp, onDown }: { label: string; text: string; onUp: () => void; onDown: () => void }) {
+const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
+const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
+const PERIODS = ["AM", "PM"];
+const ITEM_H = 40;
+const VISIBLE_ROWS = 5;
+
+/** Snapping scroll wheel: scroll (or tap a row) to choose; the centred row is the value. */
+function Wheel({ label, items, index, onSelect }: { label: string; items: string[]; index: number; onSelect: (i: number) => void }) {
+  const ref = useRef<ScrollViewInstance>(null);
+
+  const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+    const clamped = Math.min(items.length - 1, Math.max(0, i));
+    if (clamped !== index) onSelect(clamped);
+  };
+
   return (
-    <View style={s.stepper}>
-      <Pressable onPress={onUp} accessibilityRole="button" accessibilityLabel={`Increase ${label}`} style={s.stepBtn}>
-        <Icon name="chevron-up" size="md" color={C.primaryDark} />
-      </Pressable>
-      <Text style={s.stepValue} accessibilityLabel={`${label} ${text}`}>
-        {text}
-      </Text>
-      <Pressable onPress={onDown} accessibilityRole="button" accessibilityLabel={`Decrease ${label}`} style={s.stepBtn}>
-        <Icon name="chevron-down" size="md" color={C.primaryDark} />
-      </Pressable>
+    <View style={s.wheel} accessibilityLabel={`${label} ${items[index]}`}>
+      <View pointerEvents="none" style={s.wheelBand} />
+      <ScrollView
+        ref={ref}
+        nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ITEM_H}
+        decelerationRate="fast"
+        onLayout={() => ref.current?.scrollTo({ y: index * ITEM_H, animated: false })}
+        onMomentumScrollEnd={settle}
+        onScrollEndDrag={settle}
+        contentContainerStyle={s.wheelContent}
+      >
+        {items.map((t, i) => (
+          <Pressable
+            key={t}
+            onPress={() => {
+              ref.current?.scrollTo({ y: i * ITEM_H, animated: true });
+              onSelect(i);
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: i === index }}
+            style={s.wheelItem}
+          >
+            <Text style={[s.wheelText, i === index && s.wheelTextActive]}>{t}</Text>
+          </Pressable>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -163,35 +196,20 @@ export function DateTimeField({
 
         {mode === "datetime" ? (
           <View style={s.timeRow}>
-            <Stepper
+            <Wheel
               label="hour"
-              text={String(hour12)}
-              onUp={() => setTime(((hours24 + 1) % 12) + (isPm ? 12 : 0), draft.getMinutes())}
-              onDown={() => setTime(((hours24 + 11) % 12) + (isPm ? 12 : 0), draft.getMinutes())}
+              items={HOURS}
+              index={hour12 - 1}
+              onSelect={(i) => setTime(((i + 1) % 12) + (isPm ? 12 : 0), draft.getMinutes())}
             />
             <Text style={s.colon}>:</Text>
-            <Stepper
-              label="minute"
-              text={String(draft.getMinutes()).padStart(2, "0")}
-              onUp={() => setTime(hours24, (draft.getMinutes() + 5) % 60)}
-              onDown={() => setTime(hours24, (draft.getMinutes() + 55) % 60)}
+            <Wheel label="minute" items={MINUTES} index={draft.getMinutes()} onSelect={(i) => setTime(hours24, i)} />
+            <Wheel
+              label="period"
+              items={PERIODS}
+              index={isPm ? 1 : 0}
+              onSelect={(i) => setTime((hours24 % 12) + (i === 1 ? 12 : 0), draft.getMinutes())}
             />
-            <View style={s.ampm}>
-              {(["AM", "PM"] as const).map((p) => {
-                const active = (p === "PM") === isPm;
-                return (
-                  <Pressable
-                    key={p}
-                    onPress={() => setTime((hours24 % 12) + (p === "PM" ? 12 : 0), draft.getMinutes())}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    style={[s.ampmBtn, active && s.ampmActive]}
-                  >
-                    <Text style={[s.ampmText, active && s.ampmTextActive]}>{p}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
           </View>
         ) : null}
 
@@ -244,28 +262,20 @@ const s = StyleSheet.create({
   dayText: { color: C.text, fontSize: 14, fontFamily: FONT.regular },
   dayTextSelected: { color: C.white, fontFamily: FONT.bold },
   timeRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: SPACE.md },
-  stepper: { alignItems: "center", gap: SPACE.xs },
-  stepBtn: {
-    width: MIN_TOUCH,
-    height: 32,
+  wheel: { width: 72, height: ITEM_H * VISIBLE_ROWS, justifyContent: "center" },
+  wheelBand: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: ITEM_H * Math.floor(VISIBLE_ROWS / 2),
+    height: ITEM_H,
     borderRadius: RADIUS.md,
     backgroundColor: C.lavenderSoft,
-    alignItems: "center",
-    justifyContent: "center",
   },
-  stepValue: { minWidth: 56, textAlign: "center", color: C.text, fontSize: 26, lineHeight: 34, fontFamily: FONT.bold },
+  wheelContent: { paddingVertical: ITEM_H * Math.floor(VISIBLE_ROWS / 2) },
+  wheelItem: { height: ITEM_H, alignItems: "center", justifyContent: "center" },
+  wheelText: { color: C.muted, fontSize: 18, fontFamily: FONT.regular },
+  wheelTextActive: { color: C.primaryDark, fontSize: 22, fontFamily: FONT.bold },
   colon: { color: C.text, fontSize: 26, fontFamily: FONT.bold },
-  ampm: { gap: SPACE.xs, marginLeft: SPACE.sm },
-  ampmBtn: {
-    minWidth: 56,
-    minHeight: MIN_TOUCH - 6,
-    borderRadius: RADIUS.md,
-    backgroundColor: C.lavenderSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ampmActive: { backgroundColor: C.primary },
-  ampmText: { color: C.primaryDark, fontSize: 14, fontFamily: FONT.semibold },
-  ampmTextActive: { color: C.white },
   summary: { textAlign: "center" },
 });
