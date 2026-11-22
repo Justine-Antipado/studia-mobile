@@ -594,3 +594,21 @@ Idagdag sa **Batch A (quick wins)**: **E.4 #1 (`getId`) + #3 (press guard sa sha
 **Dagdag na desisyon na kailangan ko:**
 15. Mock-mode: sang-ayon ka bang sa mock mode ay **demo identity lahat** (Juan/Maria) kahit nag-login ka ng Google, at sa remote mode ay pangalan mo ang gagamitin? (Tingnan D)
 16. Press guard: OK ba ang ~700 ms na lock sa shared pressables (`ListRow`/`Card`/`QuickAction`/`StatCard`/`ActionButton`)?
+
+---
+
+# ADDENDUM 3 (2026-11-22) — Press lock na naka-base sa navigation (hindi sa oras)
+
+Kahilingan: kapag napindot ang button, **mag-lock hanggang magbukas ang sub page**, at **mag-unlock lang paglabas/pagbalik** mula sa sub page. → **Pwede**, at mas tama ito kaysa sa ~700 ms na timer ng E.4 #2 (hindi nakadepende sa bilis ng phone).
+
+**Disenyo (`shared/hooks/use-safe-push.ts` + maliit na `nav-lock` store):**
+1. `useSafePush()` ay nagbabalik ng `go(href)`. Kapag tinawag: kung `locked` → ignore; kung hindi → `locked = true`, saka `router.push(href)`.
+2. **Unlock** kapag nag-**focus** muli ang screen na nag-push (`useFocusEffect`/navigation `focus` event) — ibig sabihin, nakabalik na ang user mula sa sub page. Ito ang eksaktong "paglabas ng subpage, saka lang mapipindot ulit."
+3. **Safety unlock** (para hindi ma-stuck ang buttons kung hindi nag-navigate ang push, hal. dedupe ng `getId`, error, o deep-link guard): awtomatikong unlock pagkatapos ng ~1.5–2 s *kung hindi pa nagbago ang focus*.
+4. Isang **global** lock (hindi per-button) para hindi rin makapindot ng *ibang* button habang nagta-transition (hal. pindot sa Card A tapos agad sa Card B).
+5. Kapalit ng `router.push` sa 45 call site (E.3) → `go(...)`; o ilagay ang lock sa shared pressables (`ListRow`, `Card`, `QuickAction`, `StatCard`, `ActionButton`) para isang lugar lang ang ibabago — pero kailangan nilang malaman kung navigation ang `onPress`; kaya mas malinis ang `go()` hook.
+6. Panatilihin pa rin ang **`getId`** sa `Stack.Screen` (E.4 #1) bilang pangalawang proteksyon (kapag may ibang pinanggalingan ng push, hal. notification/deep link).
+
+**Hindi sakop ng nav-lock (iba ang solusyon):** mga mutation (Create/Post/Publish/Turn in/Delete) — gagamitin ang single-flight sa `useMutation` (E.4 #4) at ang `loading` lock ng `ActionButton`; ang Confirm dialog ay lalagyan ng lock habang `busy`.
+
+**Mga dapat bantayan:** (a) tab screens ay naka-`freezeOnBlur` — i-verify na nagfi-fire ang focus event pagbalik; (b) modal routes (`join-class`, `search`, `quiz-take`) ay pareho ang flow; (c) `router.replace` ay hindi kailangan ng lock; (d) i-test sa mabagal na device at may triple-tap.
