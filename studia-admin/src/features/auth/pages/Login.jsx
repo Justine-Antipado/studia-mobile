@@ -1,9 +1,8 @@
 // Phase 2: glassmorphism login — frosted card over the campus photo, animated
 // entrance, caps-lock hint, attempt counter, lockout countdown, accessible
-// errors. The demo box comes from core/config/demo.js and only on the mock data source.
+// errors.
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { getDemoCredentials } from '../../../core/config/demo';
 import { env } from '../../../core/config/env';
 import { ROUTES } from '../../../core/config/routes';
 import { formatCountdown } from '../../../core/logic/format';
@@ -16,10 +15,6 @@ import campus from '../../../assets/omsu-campus.jpg';
 import mascot from '../../../assets/studia-mascot.png';
 import studiaLogo from '../../../assets/studia-logo.png';
 import omsuLogo from '../../../assets/omsu-logo.png';
-
-// Remote auth = real Supabase accounts only, so the demo box is hidden even though the rest of
-// the portal still reads mock data (VITE_USE_MOCK). Pure-mock builds keep it.
-const demo = env.dataSource === 'remote' ? null : getDemoCredentials();
 
 export default function Login() {
   const { isAuthed, login, verifyOtp, resendOtp } = useAuth();
@@ -157,7 +152,7 @@ export default function Login() {
                 autoFocus
                 name="identifier"
                 autoComplete="username"
-                placeholder="admin@omsu.edu.ph"
+                placeholder="Admin email"
                 value={identifier}
                 disabled={isLocked}
                 aria-invalid={!!error || undefined}
@@ -237,15 +232,6 @@ export default function Login() {
             Admin accounts can't be created here. Contact the system owner if you've lost access.
           </p>
 
-          {/* Only for the mock data source; the credentials live in
-              core/config/demoCredentials.js and nowhere else. */}
-          {demo && (
-            <details className="demo-creds">
-              <summary>{demo.label}</summary>
-              <code>{demo.identifier}</code> or <code>{demo.altIdentifier}</code> /{' '}
-              <code>{demo.password}</code>
-            </details>
-          )}
         </form>
         )}
 

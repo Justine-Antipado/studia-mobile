@@ -23,9 +23,9 @@ const backend = import.meta.env.VITE_USE_MOCK !== 'false' ? mockBackend : httpBa
 export const isMockBackend = env.useMock;
 
 /* --- auth ---
- * VITE_DATA_SOURCE=remote routes ONLY login/logout to Supabase Auth + studia-api (role=admin only,
- * audit-logged server side). Everything else still follows VITE_USE_MOCK until its phase lands. */
-const authBackend = import.meta.env.VITE_DATA_SOURCE === 'remote' ? remoteAuth : backend;
+ * Admin sign-in is always real: Supabase Auth through studia-api (role=admin, audit-logged server
+ * side). There is no mock sign-in. The rest of the portal still follows VITE_USE_MOCK. */
+const authBackend = remoteAuth;
 export const login = (identifier, password) => authBackend.login(identifier, password);
 /** Second step of every admin login: the emailed 6-digit code. */
 export const verifyLoginOtp = (pendingToken, code) => authBackend.verifyLoginOtp(pendingToken, code);

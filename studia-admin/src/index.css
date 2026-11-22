@@ -987,8 +987,6 @@ body:has(.login-page)::-webkit-scrollbar,
 .btn-spinner { display: inline-flex; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .login-note { font-size: var(--type-tiny); color: var(--muted); text-align: center; margin: 0; }
-.demo-creds { font-size: var(--type-tiny); color: var(--muted); background: var(--surface); border-radius: var(--radius-sm); padding: var(--space-2) 10px; }
-.demo-creds code { background: var(--lavender-soft); padding: 1px 5px; border-radius: 4px; color: var(--primary-dark); }
 .login-footer { position: relative; z-index: 1; color: var(--lavender-soft); font-size: var(--type-tiny); text-align: center; margin: 0; }
 
 /* ============================ Responsive ==================================

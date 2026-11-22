@@ -13,9 +13,8 @@
  * the first call — so a VITE_USE_MOCK=false build tree-shakes the whole file,
  * admin password included.
  */
-import { env } from '../../config/env';
 import { applyListParams } from '../../logic/mappers';
-import { isStrongPassword, LOGIN_LOCK_MS, LOGIN_MAX_FAILS } from '../../logic/validation';
+import { isStrongPassword } from '../../logic/validation';
 import { fail } from '../http/errors';
 import {
   mockUsers,
@@ -107,8 +106,7 @@ const ADMIN_ACCOUNT = {
   id: 'admin-1',
   name: 'OMSU Administrator',
   username: 'admin',
-  email: 'admin@omsu.edu.ph',
-  password: 'Studia@2026',
+  email: 'studia.noreply2026@gmail.com',
 };
 
 /** Human label per top-level settings key, for the audit log's one-line summary. */
@@ -133,11 +131,7 @@ const db = () => {
     users: structuredClone(mockUsers),
     settings: structuredClone(mockSettings),
     navCounts: structuredClone(mockNavCounts),
-    adminPassword: ADMIN_ACCOUNT.password,
     otp: null, // { code, expiresAt } — the password-change OTP
-    // The login OTP: { token, identifier, codeHash, expiresAt, attempts, resends, lastSentAt }
-    pendingLogin: null,
-    loginLock: { fails: 0, lockedUntil: 0 }, // mirrors mobile's LOGIN_MAX_FAILS / LOGIN_LOCK_MS
     classes: structuredClone(mockClasses),
     materials: structuredClone(mockMaterials),
     assignments: structuredClone(mockAssignments),
@@ -153,8 +147,6 @@ const db = () => {
   return database;
 };
 
-const secondsUntil = (ts) => Math.max(1, Math.ceil((ts - Date.now()) / 1000));
-
 /** Every write and delete this admin performs is logged here — section 7's "every delete shows up in the audit log", generalized to every mutation. */
 function logAudit(store, action, summary) {
   store.auditLog = [
@@ -163,269 +155,7 @@ function logAudit(store, action, summary) {
   ];
 }
 
-/** Wrong OTP codes allowed before the pending login is burned and the account is locked. */
-const OTP_MAX_ATTEMPTS = 5;
-/** How long that lock lasts (the brief's ~15 minutes). */
-const OTP_LOCK_MS = 15 * 60 * 1000;
-/** Resends allowed per pending login, on top of the per-resend cooldown. */
-const OTP_MAX_RESENDS = 3;
-
-/** Cryptographically random 6-digit code — never Math.random for a credential. */
-function randomOtp() {
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  return String(buf[0] % 1_000_000).padStart(6, '0');
-}
-
-/**
- * Only the hash of a code is stored, exactly as the server must do it. This is
- * a plain SHA-256 of the code and the pending token; the real backend salts and
- * hashes with argon2id/bcrypt (see docs/api-contract.md).
- */
-async function hashOtp(code, salt) {
-  const bytes = new TextEncoder().encode(`${salt}:${code}`);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-/** a••••@omsu.edu.ph — enough for the admin to recognise, not enough to leak. */
-function maskEmail(email) {
-  const [user = '', domain = ''] = String(email).split('@');
-  const head = user.slice(0, 1);
-  return `${head}${'•'.repeat(Math.max(1, Math.min(6, user.length - 1)))}@${domain}`;
-}
-
-/** The browser/OS string stored with every attempt, so a strange device stands out. */
-function deviceLabel() {
-  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
-  if (!ua) return 'Unknown device';
-  const browser =
-    /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /Firefox\//.test(ua) ? 'Firefox' : 'Browser';
-  const os = /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : 'Unknown OS';
-  return `${browser} · ${os}`;
-}
-
-/** One row per login event — password, OTP sent, OTP wrong, OTP right, lockout. */
-function recordLoginAttempt(store, { identifier, success, locked, stage, note }) {
-  store.loginAttempts = [
-    {
-      id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      identifier: String(identifier ?? '').trim(),
-      success,
-      locked,
-      stage,
-      note,
-      device: deviceLabel(),
-      userAgent: typeof navigator === 'undefined' ? '' : navigator.userAgent,
-      ip: '127.0.0.1 (this device)',
-      at: new Date().toISOString(),
-    },
-    ...store.loginAttempts,
-  ];
-}
-
-/**
- * The branded mail the admin receives. In mock/dev there is no SMTP, so the
- * message — and the code — go to the console instead (the brief's dev rule).
- */
-function sendOtpEmail(store, { to, code, expiryMinutes }) {
-  const from = store.settings.email?.senderEmail ?? env.mailFrom;
-  const body = [
-    'STUDIA — Administrator sign-in',
-    `Your Studia admin login code is ${code}. It expires in ${expiryMinutes} minutes.`,
-    'If you did not try to sign in, change the admin password immediately.',
-  ].join('\n');
-  console.info(`[mock mail] from ${from} to ${to}\n${body}`);
-}
-
 export const mockBackend = {
-  async login(identifier, password) {
-    await delay();
-    const store = db();
-    const { loginLock } = store;
-    // /settings/security-policy edits these live, so changing them here actually changes lockout behavior — not just a UI label.
-    const maxFails = store.settings.securityPolicy?.maxLoginAttempts ?? LOGIN_MAX_FAILS;
-    const lockMs = (store.settings.securityPolicy?.lockoutMinutes ?? LOGIN_LOCK_MS / 60_000) * 60_000;
-    const recordAttempt = (success, locked, note) =>
-      recordLoginAttempt(store, { identifier, success, locked, stage: 'password', note });
-
-    if (loginLock.lockedUntil > Date.now()) {
-      const retryAfterSec = secondsUntil(loginLock.lockedUntil);
-      recordAttempt(false, true);
-      throw fail(429, 'Too many failed attempts. Please wait before trying again.', {
-        meta: { retryAfterSec },
-      });
-    }
-
-    const id = String(identifier).trim().toLowerCase();
-    const match = id === ADMIN_ACCOUNT.email.toLowerCase() || id === ADMIN_ACCOUNT.username.toLowerCase();
-    // One generic message for both cases: never reveal whether the account exists.
-    if (!match || password !== store.adminPassword) {
-      loginLock.fails += 1;
-      if (loginLock.fails >= maxFails) {
-        loginLock.lockedUntil = Date.now() + lockMs;
-        loginLock.fails = 0;
-        recordAttempt(false, true);
-        throw fail(429, 'Too many failed attempts. Please wait before trying again.', {
-          meta: { retryAfterSec: secondsUntil(loginLock.lockedUntil) },
-        });
-      }
-      recordAttempt(false, false);
-      throw fail(401, 'Those credentials do not match an administrator account.', {
-        meta: { attemptsLeft: maxFails - loginLock.fails },
-      });
-    }
-
-    // The password was right — but the session waits for the emailed code.
-    loginLock.fails = 0;
-    loginLock.lockedUntil = 0;
-    recordAttempt(true, false, 'Password accepted, OTP sent');
-
-    const expiryMinutes = store.settings.email?.otpExpiryMinutes ?? 5;
-    const resendSeconds = store.settings.email?.resendSeconds ?? 60;
-    const pendingToken = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const code = randomOtp();
-
-    store.pendingLogin = {
-      token: pendingToken,
-      identifier: String(identifier).trim(),
-      // Only the hash is kept, with the expiry and the attempt count.
-      codeHash: await hashOtp(code, pendingToken),
-      expiresAt: Date.now() + expiryMinutes * 60 * 1000,
-      attempts: 0,
-      resends: 0,
-      lastSentAt: Date.now(),
-    };
-
-    sendOtpEmail(store, { to: ADMIN_ACCOUNT.email, code, expiryMinutes });
-    logAudit(store, 'security', 'Sent an admin login code.');
-
-    return {
-      otpRequired: true,
-      pendingToken,
-      maskedEmail: maskEmail(ADMIN_ACCOUNT.email),
-      expiresInSec: Math.ceil(expiryMinutes * 60),
-      resendInSec: resendSeconds,
-      attemptsAllowed: OTP_MAX_ATTEMPTS,
-    };
-  },
-
-  /**
-   * Second step of every admin login. The code is single-use: whether it is
-   * right or runs out of attempts, the pending login is gone afterwards.
-   */
-  async verifyLoginOtp(pendingToken, code) {
-    await delay();
-    const store = db();
-    const pending = store.pendingLogin;
-    const { loginLock } = store;
-
-    if (loginLock.lockedUntil > Date.now()) {
-      throw fail(429, 'Too many failed attempts. Please wait before trying again.', {
-        meta: { retryAfterSec: secondsUntil(loginLock.lockedUntil) },
-      });
-    }
-
-    // One generic message for a missing, stale, expired or wrong code.
-    const generic = 'Invalid or expired code.';
-    if (!pending || pending.token !== pendingToken || Date.now() > pending.expiresAt) {
-      store.pendingLogin = null;
-      recordLoginAttempt(store, {
-        identifier: pending?.identifier ?? '',
-        success: false,
-        locked: false,
-        stage: 'otp',
-        note: 'Code missing or expired',
-      });
-      throw fail(401, generic);
-    }
-
-    const matches = (await hashOtp(String(code).trim(), pending.token)) === pending.codeHash;
-    if (!matches) {
-      pending.attempts += 1;
-      const attemptsLeft = OTP_MAX_ATTEMPTS - pending.attempts;
-
-      if (attemptsLeft <= 0) {
-        store.pendingLogin = null;
-        loginLock.lockedUntil = Date.now() + OTP_LOCK_MS;
-        loginLock.fails = 0;
-        recordLoginAttempt(store, {
-          identifier: pending.identifier,
-          success: false,
-          locked: true,
-          stage: 'otp',
-          note: 'Code failed 5 times — login locked',
-        });
-        logAudit(store, 'security', 'Locked admin login after five wrong codes.');
-        throw fail(429, 'Too many failed attempts. Please wait before trying again.', {
-          meta: { retryAfterSec: secondsUntil(loginLock.lockedUntil) },
-        });
-      }
-
-      recordLoginAttempt(store, {
-        identifier: pending.identifier,
-        success: false,
-        locked: false,
-        stage: 'otp',
-        note: 'Wrong code',
-      });
-      throw fail(401, generic, { meta: { attemptsLeft } });
-    }
-
-    store.pendingLogin = null;
-    recordLoginAttempt(store, {
-      identifier: pending.identifier,
-      success: true,
-      locked: false,
-      stage: 'otp',
-      note: 'Code accepted',
-    });
-    logAudit(store, 'security', 'Signed in with a login code.');
-
-    const { password: _pw, ...admin } = ADMIN_ACCOUNT;
-    return { token: `mock-token-${Date.now()}`, admin: { ...admin, role: 'Admin' } };
-  },
-
-  /** A fresh code for the same pending login, rate-limited both ways. */
-  async resendLoginOtp(pendingToken) {
-    await delay(250);
-    const store = db();
-    const pending = store.pendingLogin;
-    if (!pending || pending.token !== pendingToken) {
-      throw fail(410, 'That sign-in attempt has expired. Please start again.');
-    }
-
-    const resendSeconds = store.settings.email?.resendSeconds ?? 60;
-    const waited = (Date.now() - pending.lastSentAt) / 1000;
-    if (waited < resendSeconds) {
-      throw fail(429, 'Please wait before asking for another code.', {
-        meta: { retryAfterSec: Math.ceil(resendSeconds - waited) },
-      });
-    }
-    if (pending.resends >= OTP_MAX_RESENDS) {
-      store.pendingLogin = null;
-      throw fail(429, 'Too many codes requested. Please start again.');
-    }
-
-    const expiryMinutes = store.settings.email?.otpExpiryMinutes ?? 5;
-    const code = randomOtp();
-    pending.codeHash = await hashOtp(code, pending.token);
-    pending.expiresAt = Date.now() + expiryMinutes * 60 * 1000;
-    pending.attempts = 0;
-    pending.resends += 1;
-    pending.lastSentAt = Date.now();
-
-    sendOtpEmail(store, { to: ADMIN_ACCOUNT.email, code, expiryMinutes });
-    logAudit(store, 'security', 'Re-sent an admin login code.');
-
-    return { expiresInSec: Math.ceil(expiryMinutes * 60), resendInSec: resendSeconds };
-  },
-
-  async logout() {
-    await delay(120);
-    return true;
-  },
-
   async getNavCounts() {
     await delay(150);
     const store = db();
@@ -732,7 +462,6 @@ export const mockBackend = {
     }
     // Re-run the same five rules the UI checks — the client is never the only gate (docs/api-contract.md).
     if (!isStrongPassword(newPassword)) throw fail(422, 'Password does not meet all requirements.');
-    store.adminPassword = newPassword;
     store.otp = null;
     logAudit(store, 'security', 'Changed the admin password.');
     return true;
