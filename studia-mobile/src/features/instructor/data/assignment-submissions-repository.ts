@@ -1,6 +1,8 @@
 // assignment-submissions-repository.ts — instructor's view of who turned in an assignment.
 // The list is the class roster LEFT-joined with submissions, so students who never started show
 // up as "missing". Server rule (docs/api-contract.md): only the class owner may list or grade.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteAssignmentSubmissionRepository } from "@/features/instructor/data/assignment-submissions-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, mockDb, type DbSubmission } from "@/core/data/mock/mock-db";
@@ -111,4 +113,6 @@ class MockAssignmentSubmissionRepository implements AssignmentSubmissionReposito
   }
 }
 
-export const assignmentSubmissionRepository: AssignmentSubmissionRepository = new MockAssignmentSubmissionRepository();
+export const assignmentSubmissionRepository: AssignmentSubmissionRepository = isRemote
+  ? new RemoteAssignmentSubmissionRepository()
+  : new MockAssignmentSubmissionRepository();

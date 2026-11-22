@@ -3,6 +3,8 @@
 // (due / late window / time limit) are validated here as the server must: closes-at after due,
 // and once any student has submitted the questions are locked (editing correct answers or points
 // would silently invalidate scores that were already given).
+import { isRemote } from "@/core/config/data-source";
+import { RemoteInstructorQuizRepository } from "@/features/instructor/data/quizzes-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, dbId, mockDb, type DbQuestion, type DbQuiz } from "@/core/data/mock/mock-db";
@@ -177,4 +179,4 @@ class MockQuizRepository implements QuizRepository {
   }
 }
 
-export const quizRepository: QuizRepository = new MockQuizRepository();
+export const quizRepository: QuizRepository = isRemote ? new RemoteInstructorQuizRepository() : new MockQuizRepository();

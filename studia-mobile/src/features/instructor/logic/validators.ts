@@ -16,6 +16,7 @@ export function validateClassSection(raw: string): string | null {
   const text = raw.trim();
   if (!text) return "Enter a section.";
   if (text.length > 30) return "Keep the section under 30 characters.";
+  if (!/^(BSIT|BEED|BSBA-FM|BSBA-OM)\s+[1-4]\s*-\s*[A-E]$/i.test(text)) return "Use the format BSIT 3-A (course, year 1-4, section A-E).";
   return null;
 }
 

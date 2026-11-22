@@ -7,10 +7,9 @@ export const DATA_SOURCE: DataSource =
 
 export const isRemote = DATA_SOURCE === "remote";
 
-/** Only auth follows DATA_SOURCE today; every other domain repository still reads the in-memory
- *  mock DB, even when signed in for real. The header shows a "Demo data" pill while this is true.
- *  Flip to false once the domain repositories have remote implementations. */
-export const DOMAIN_DATA_IS_MOCK = true;
+/** True while any domain data still comes from the in-memory mock DB (shows the "Demo data" pill).
+ *  In remote mode every repository reads Supabase, except the AI chat assistant. */
+export const DOMAIN_DATA_IS_MOCK = !isRemote;
 
 export const REMOTE_ENV = {
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? "",

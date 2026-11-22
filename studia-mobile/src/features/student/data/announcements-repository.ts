@@ -4,6 +4,8 @@
 // docs/api-contract.md.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { isRemote } from "@/core/config/data-source";
+import * as remote from "@/core/data/supabase/announcements-remote";
 import { ME } from "@/core/data/mock/mock-db";
 import {
   addComment,
@@ -45,4 +47,13 @@ class MockAnnouncementRepository implements AnnouncementRepository {
   }
 }
 
-export const announcementRepository: AnnouncementRepository = new MockAnnouncementRepository();
+class RemoteAnnouncementRepository implements AnnouncementRepository {
+  listByClass = (classId: string) => remote.listAnnouncements(classId);
+  get = (classId: string, id: string) => remote.getAnnouncement(classId, id);
+  addComment = (classId: string, id: string, text: string) => remote.addComment(classId, id, text);
+  deleteComment = (_classId: string, _id: string, commentId: string) => remote.deleteComment(commentId);
+}
+
+export const announcementRepository: AnnouncementRepository = isRemote
+  ? new RemoteAnnouncementRepository()
+  : new MockAnnouncementRepository();

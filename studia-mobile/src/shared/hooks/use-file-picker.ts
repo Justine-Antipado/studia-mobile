@@ -6,6 +6,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import { useCallback, useState } from "react";
 
+import { registerPickedFile } from "@/core/data/supabase/file-upload";
 import type { Attachment } from "@/core/types/content";
 import { newId } from "@/shared/utils/id";
 import { toAttachment, validateFile, type FilePolicy } from "@/shared/utils/file";
@@ -40,7 +41,9 @@ export function useFilePicker(policy: FilePolicy): FilePickerState {
         setError(rejection ?? "That file could not be used.");
         return null;
       }
-      return toAttachment(candidate, kind, newId("file"));
+      const attachment = toAttachment(candidate, kind, newId("file"));
+      registerPickedFile(attachment.id, { uri: asset.uri, mimeType: asset.mimeType ?? "", sizeBytes: candidate.sizeBytes });
+      return attachment;
     } catch {
       // Never surface the picker's own message: it can contain a device file path.
       setError("Could not open the file picker. Please try again.");

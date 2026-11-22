@@ -1,6 +1,8 @@
 // profile-repository.ts — OTP-protected profile edits (mock). The real API must: send a single-use
 // OTP bound to the user + purpose, expire it after 5 minutes, allow 5 attempts, and only apply the
 // change after a successful verify (docs/api-contract.md, purposes "profile_update" / "password_change").
+import { isRemote } from "@/core/config/data-source";
+import { RemoteProfileRepository } from "@/features/shared-screens/data/profile-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail } from "@/core/data/errors/app-error";
 import { mockCall } from "@/core/data/mock/mock-latency";
@@ -80,5 +82,5 @@ class MockProfileRepository implements ProfileRepository {
   }
 }
 
-export const profileRepository: ProfileRepository = new MockProfileRepository();
+export const profileRepository: ProfileRepository = isRemote ? new RemoteProfileRepository() : new MockProfileRepository();
 

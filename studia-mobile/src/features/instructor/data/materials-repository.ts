@@ -2,6 +2,8 @@
 // an uploaded document/slide deck (<= 50 MB) or a video LINK. After saving, the mock AI pipeline
 // fetches the transcript and key objectives a few seconds later (see core/data/mock/mock-materials.ts
 // for what the real server must do).
+import { isRemote } from "@/core/config/data-source";
+import { RemoteMaterialRepository } from "@/features/instructor/data/materials-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, type DbMaterial } from "@/core/data/mock/mock-db";
@@ -90,4 +92,4 @@ class MockMaterialRepository implements MaterialRepository {
   }
 }
 
-export const materialRepository: MaterialRepository = new MockMaterialRepository();
+export const materialRepository: MaterialRepository = isRemote ? new RemoteMaterialRepository() : new MockMaterialRepository();

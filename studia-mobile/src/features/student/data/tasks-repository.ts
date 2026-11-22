@@ -1,6 +1,8 @@
 // tasks-repository.ts — the student's auto-generated to-do, derived from every joined class's
 // assignments and quizzes (never a separate hand-maintained list). A manual check-off is kept
 // for items that are not yet backed by a real submission.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteTaskRepository } from "@/features/student/data/tasks-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { assignmentRepository } from "@/features/student/data/assignments-repository";
@@ -80,4 +82,4 @@ class MockTaskRepository implements TaskRepository {
   }
 }
 
-export const taskRepository: TaskRepository = new MockTaskRepository();
+export const taskRepository: TaskRepository = isRemote ? new RemoteTaskRepository() : new MockTaskRepository();

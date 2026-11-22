@@ -2,6 +2,8 @@
 // (published only, enrolled classes only); an attempt submitted here is the row the instructor
 // grades. Multiple choice and identification auto-grade on submit; essay points stay uncounted
 // until the instructor grades the attempt, matching docs/UI-BRIEF grading rules.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteQuizRepository } from "@/features/student/data/quizzes-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, type DbAttempt, type DbQuiz } from "@/core/data/mock/mock-db";
@@ -67,4 +69,4 @@ class MockQuizRepository implements QuizRepository {
   }
 }
 
-export const quizRepository: QuizRepository = new MockQuizRepository();
+export const quizRepository: QuizRepository = isRemote ? new RemoteQuizRepository() : new MockQuizRepository();

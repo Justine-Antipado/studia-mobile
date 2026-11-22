@@ -2,6 +2,8 @@
 // moderate comments. Posts show up in the students' Stream immediately.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { isRemote } from "@/core/config/data-source";
+import * as remote from "@/core/data/supabase/announcements-remote";
 import { ME } from "@/core/data/mock/mock-db";
 import {
   addComment,
@@ -61,5 +63,15 @@ class MockInstructorAnnouncementRepository implements InstructorAnnouncementRepo
   }
 }
 
-export const instructorAnnouncementRepository: InstructorAnnouncementRepository =
-  new MockInstructorAnnouncementRepository();
+class RemoteInstructorAnnouncementRepository implements InstructorAnnouncementRepository {
+  listByClass = (classId: string) => remote.listAnnouncements(classId);
+  get = (classId: string, id: string) => remote.getAnnouncement(classId, id);
+  create = (classId: string, input: { title: string; body: string; pinned: boolean }) => remote.createAnnouncement(classId, input);
+  addComment = (classId: string, id: string, text: string) => remote.addComment(classId, id, text);
+  deleteComment = (_classId: string, _id: string, commentId: string) => remote.deleteComment(commentId);
+  remove = (classId: string, id: string) => remote.removeAnnouncement(classId, id);
+}
+
+export const instructorAnnouncementRepository: InstructorAnnouncementRepository = isRemote
+  ? new RemoteInstructorAnnouncementRepository()
+  : new MockInstructorAnnouncementRepository();

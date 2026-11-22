@@ -2,6 +2,8 @@
 // created by events (see core/data/mock/mock-notifications.ts), so an instructor posting an
 // announcement really does produce a notice for each enrolled student. Same shape the real API will
 // return per docs/api-contract.md.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteNotificationRepository } from "@/features/shared-screens/data/notifications-remote";
 import { queryCache } from "@/core/data/cache/query-cache";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail } from "@/core/data/errors/app-error";
@@ -79,4 +81,4 @@ mockDb.subscribe(() => {
   }
 });
 
-export const notificationRepository: NotificationRepository = new MockNotificationRepository();
+export const notificationRepository: NotificationRepository = isRemote ? new RemoteNotificationRepository() : new MockNotificationRepository();

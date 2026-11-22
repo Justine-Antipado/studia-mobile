@@ -3,16 +3,21 @@
 // too. Progress is derived from the assignments this student has turned in.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { isRemote } from "@/core/config/data-source";
+import { RemoteClassRepository } from "@/features/student/data/classes-remote";
 import { ME, mockDb, type DbClass } from "@/core/data/mock/mock-db";
 import { nameOf, notify } from "@/core/data/mock/mock-notifications";
 import { mockCall } from "@/core/data/mock/mock-latency";
-import type { StudentClass } from "@/features/student/types/student";
+import { classmatesOf } from "@/features/student/data/class-directory";
+import type { Person, StudentClass } from "@/features/student/types/student";
 
 export interface ClassRepository {
   list(): Promise<Result<StudentClass[]>>;
   get(id: string): Promise<Result<StudentClass | null>>;
   joinByCode(code: string): Promise<Result<StudentClass>>;
   leave(id: string): Promise<Result<void>>;
+  /** Everyone else enrolled in the class (People tab). */
+  classmates(id: string): Promise<Result<Person[]>>;
 }
 
 function toStudentClass(c: DbClass): StudentClass {
@@ -49,6 +54,10 @@ class MockClassRepository implements ClassRepository {
     return ok(toStudentClass(c));
   }
 
+  classmates(id: string): Promise<Result<Person[]>> {
+    return mockCall(() => classmatesOf(id, ME.student));
+  }
+
   async leave(id: string): Promise<Result<void>> {
     await new Promise((resolve) => setTimeout(resolve, 300));
     if (!mockDb.isEnrolled(id, ME.student)) return fail(appError("not_found", "You are not in this class."));
@@ -58,4 +67,4 @@ class MockClassRepository implements ClassRepository {
   }
 }
 
-export const classRepository: ClassRepository = new MockClassRepository();
+export const classRepository: ClassRepository = isRemote ? new RemoteClassRepository() : new MockClassRepository();

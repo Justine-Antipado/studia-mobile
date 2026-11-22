@@ -2,6 +2,8 @@
 // owns are listed; studentCount is derived from enrollments.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { isRemote } from "@/core/config/data-source";
+import { RemoteInstructorClassRepository } from "@/features/instructor/data/classes-remote";
 import { ME, dbId, mockDb, type DbClass } from "@/core/data/mock/mock-db";
 import { mockCall } from "@/core/data/mock/mock-latency";
 import type { InstructorClass } from "@/features/instructor/types/instructor";
@@ -79,4 +81,6 @@ class MockInstructorClassRepository implements InstructorClassRepository {
   }
 }
 
-export const instructorClassRepository: InstructorClassRepository = new MockInstructorClassRepository();
+export const instructorClassRepository: InstructorClassRepository = isRemote
+  ? new RemoteInstructorClassRepository()
+  : new MockInstructorClassRepository();

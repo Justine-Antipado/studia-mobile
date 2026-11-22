@@ -4,6 +4,8 @@
 // Late rule: allowLate=true -> submitting after dueAt is tagged "late". allowLate=false and
 // already overdue -> a picked file is saved as a draft only. "Turn in" works once the instructor
 // has extended the due date (submitted) or allowed late work (late); until then it is refused.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteAssignmentRepository } from "@/features/student/data/assignments-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { mockNow, mockNowIso } from "@/core/data/mock/mock-clock";
@@ -124,4 +126,4 @@ class MockAssignmentRepository implements AssignmentRepository {
   }
 }
 
-export const assignmentRepository: AssignmentRepository = new MockAssignmentRepository();
+export const assignmentRepository: AssignmentRepository = isRemote ? new RemoteAssignmentRepository() : new MockAssignmentRepository();

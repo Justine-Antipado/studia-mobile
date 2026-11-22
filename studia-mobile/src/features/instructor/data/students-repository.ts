@@ -1,5 +1,7 @@
 // students-repository.ts — roster per class, derived from the shared mock DB's enrollments and
 // assignment submissions (submitted / pending / progress are computed, not typed).
+import { isRemote } from "@/core/config/data-source";
+import { RemoteClassStudentRepository } from "@/features/instructor/data/students-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { mockDb, type DbUser } from "@/core/data/mock/mock-db";
@@ -49,4 +51,4 @@ class MockClassStudentRepository implements ClassStudentRepository {
   }
 }
 
-export const classStudentRepository: ClassStudentRepository = new MockClassStudentRepository();
+export const classStudentRepository: ClassStudentRepository = isRemote ? new RemoteClassStudentRepository() : new MockClassStudentRepository();

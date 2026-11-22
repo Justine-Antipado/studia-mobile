@@ -1,6 +1,8 @@
 // submissions-repository.ts — quiz attempts as the instructor sees them: grade, feedback, and the
 // gradebook's source of truth. A view over the shared mock DB; `score` is null while an attempt
 // still has an ungraded essay ("needs grading").
+import { isRemote } from "@/core/config/data-source";
+import { RemoteSubmissionRepository } from "@/features/instructor/data/submissions-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, mockDb, type DbAttempt, type DbQuiz } from "@/core/data/mock/mock-db";
@@ -94,4 +96,4 @@ class MockSubmissionRepository implements SubmissionRepository {
   }
 }
 
-export const submissionRepository: SubmissionRepository = new MockSubmissionRepository();
+export const submissionRepository: SubmissionRepository = isRemote ? new RemoteSubmissionRepository() : new MockSubmissionRepository();

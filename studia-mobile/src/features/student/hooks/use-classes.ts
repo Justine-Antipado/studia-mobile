@@ -29,3 +29,7 @@ export function useLeaveClass() {
     invalidate: (id) => [classesKey, cacheKey("classes", id)],
   });
 }
+
+export function useClassmates(id: string) {
+  return useQuery(cacheKey("classes", id, "classmates"), () => classRepository.classmates(id), { ttlMs: TTL.static });
+}

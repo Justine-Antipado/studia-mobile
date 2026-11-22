@@ -1,5 +1,7 @@
 // analytics-repository.ts — Smart Analytics: engagement, content consumption, struggling
 // concepts (docs/UI-BRIEF). Mock numbers now; same shape a real analytics endpoint would return.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteAnalyticsRepository } from "@/features/instructor/data/analytics-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { mockCall } from "@/core/data/mock/mock-latency";
 import type { AnalyticsData } from "@/features/instructor/types/instructor";
@@ -33,4 +35,4 @@ class MockAnalyticsRepository implements AnalyticsRepository {
   }
 }
 
-export const analyticsRepository: AnalyticsRepository = new MockAnalyticsRepository();
+export const analyticsRepository: AnalyticsRepository = isRemote ? new RemoteAnalyticsRepository() : new MockAnalyticsRepository();

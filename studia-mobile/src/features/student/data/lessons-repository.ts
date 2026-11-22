@@ -1,6 +1,8 @@
 // lessons-repository.ts — student view over the shared mock DB materials: lesson list, transcript
 // and the AI summary. Videos are LINKS (YouTube thumbnail + "Watch on YouTube"); the summary is
 // produced from the transcript on the server and cached, and Regenerate is rate-limited.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteLessonRepository } from "@/features/student/data/lessons-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, type DbMaterial } from "@/core/data/mock/mock-db";
@@ -58,4 +60,4 @@ class MockLessonRepository implements LessonRepository {
   }
 }
 
-export const lessonRepository: LessonRepository = new MockLessonRepository();
+export const lessonRepository: LessonRepository = isRemote ? new RemoteLessonRepository() : new MockLessonRepository();

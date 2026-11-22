@@ -1,5 +1,7 @@
 // assignments-repository.ts — instructor-authored assignments: create, edit, delete. A view over
 // the shared mock DB, so what is created here is what students see in their To-do.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteInstructorAssignmentRepository } from "@/features/instructor/data/assignments-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, dbId, mockDb, type DbAssignment } from "@/core/data/mock/mock-db";
@@ -116,4 +118,6 @@ class MockInstructorAssignmentRepository implements InstructorAssignmentReposito
   }
 }
 
-export const instructorAssignmentRepository: InstructorAssignmentRepository = new MockInstructorAssignmentRepository();
+export const instructorAssignmentRepository: InstructorAssignmentRepository = isRemote
+  ? new RemoteInstructorAssignmentRepository()
+  : new MockInstructorAssignmentRepository();

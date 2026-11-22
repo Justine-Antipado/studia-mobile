@@ -2,6 +2,8 @@
 // student, `mockDb.planners`) instead of a module variable, so "Reset mock data" clears it and a
 // second student would get their own. The plan is a rolling 7-day window built from the student's
 // own pending tasks plus their exam dates.
+import { isRemote } from "@/core/config/data-source";
+import { RemotePlannerRepository } from "@/features/student/data/planner-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
 import { ME, dbId, mockDb, type DbPlanner, type DbPlannerBlock } from "@/core/data/mock/mock-db";
@@ -140,4 +142,4 @@ class MockPlannerRepository implements PlannerRepository {
   }
 }
 
-export const plannerRepository: PlannerRepository = new MockPlannerRepository();
+export const plannerRepository: PlannerRepository = isRemote ? new RemotePlannerRepository() : new MockPlannerRepository();

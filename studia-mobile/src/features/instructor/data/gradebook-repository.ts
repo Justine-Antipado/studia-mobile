@@ -1,6 +1,8 @@
 // gradebook-repository.ts — one row per (student, assignment-or-quiz) for the classes this
 // instructor owns, computed from the shared mock DB. The gradebook screen filters and aggregates
 // these rows; it never joins by class code (two sections can share a code), only by classId.
+import { isRemote } from "@/core/config/data-source";
+import { RemoteGradebookRepository } from "@/features/instructor/data/gradebook-remote";
 import type { Result } from "@/core/data/errors/app-error";
 import { ME, mockDb } from "@/core/data/mock/mock-db";
 import { mockCall } from "@/core/data/mock/mock-latency";
@@ -92,4 +94,4 @@ class MockGradebookRepository implements GradebookRepository {
   }
 }
 
-export const gradebookRepository: GradebookRepository = new MockGradebookRepository();
+export const gradebookRepository: GradebookRepository = isRemote ? new RemoteGradebookRepository() : new MockGradebookRepository();
