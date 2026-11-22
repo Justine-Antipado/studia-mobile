@@ -1,23 +1,26 @@
 // format.ts — date, score and label formatting used by both roles.
 // The student and instructor feature `logic/format.ts` files re-export from here and add only
 // what is specific to their side, so there is one implementation of each helper.
+import { mockNow } from "@/core/data/mock/mock-clock";
 import type { Tone } from "@/shared/constants/studia-colors";
 
 /** OMSU passing mark (%). */
 export const PASSING_PERCENT = 75;
 
 /** PH locale everywhere: the app is for one campus and dates must not shift per device. */
-const LOCALE = "en-PH";
-const DATE_OPTS: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" };
+export const LOCALE = "en-PH";
+/** Pinned so a due date reads the same on every device (a phone set to another zone must not shift it). */
+export const TIME_ZONE = "Asia/Manila";
+const DATE_OPTS: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", timeZone: TIME_ZONE };
+const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", timeZone: TIME_ZONE };
 
-export function isOverdue(iso: string, now = Date.now()): boolean {
+export function isOverdue(iso: string, now = mockNow()): boolean {
   const t = new Date(iso).getTime();
   return Number.isFinite(t) && t < now;
 }
 
 /** "just now" / "12m ago" / "3h ago" / "2d ago". Empty string for an unparsable date. */
-export function timeAgo(iso: string, now = Date.now()): string {
+export function timeAgo(iso: string, now = mockNow()): string {
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return "";
   const mins = Math.floor(Math.max(0, now - t) / 60_000);
@@ -29,7 +32,7 @@ export function timeAgo(iso: string, now = Date.now()): string {
 }
 
 /** "Due Nov 21, 5:00 PM" or "Overdue · was due …". */
-export function dueLabel(iso: string, now = Date.now()): string {
+export function dueLabel(iso: string, now = mockNow()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   const when = `${date.toLocaleDateString(LOCALE, DATE_OPTS)}, ${date.toLocaleTimeString(LOCALE, TIME_OPTS)}`;

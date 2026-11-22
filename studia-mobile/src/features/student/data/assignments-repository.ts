@@ -6,6 +6,7 @@
 // without a late tag, per docs/UI-BRIEF business rules.
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail, ok } from "@/core/data/errors/app-error";
+import { mockNow } from "@/core/data/mock/mock-clock";
 import { ME, dbId, mockDb, type DbAssignment, type DbSubmission } from "@/core/data/mock/mock-db";
 import { classCodeOf, nameOf, notify, ownerOf } from "@/core/data/mock/mock-notifications";
 import { mockCall } from "@/core/data/mock/mock-latency";
@@ -87,7 +88,7 @@ class MockAssignmentRepository implements AssignmentRepository {
       return fail(appError("conflict", "This was already turned in.", false));
     }
 
-    const overdue = Date.now() > new Date(a.dueAt).getTime();
+    const overdue = mockNow() > new Date(a.dueAt).getTime();
     const willSubmitNow = a.allowLate || !overdue;
 
     save({

@@ -10,7 +10,7 @@
     ],
     "icon": "./assets/images/studia-mobile-logo.png",
     "scheme": "studiamobile",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/images/studia-mobile-logo.png",
       "bundleIdentifier": "com.group4.studiamobile"

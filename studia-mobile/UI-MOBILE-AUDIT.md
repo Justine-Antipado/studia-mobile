@@ -31,46 +31,27 @@
 
 ---
 
-## 1. Mga hindi pa tapos / dapat i-verify
+## 1. Status ng dating "hindi pa tapos" (na-update pagkatapos ng implementation)
 
-### 1.1 ⚠️ Keyboard (#6) — nagbago ang approach, hindi pa napapatunayan
-- **Ginawa:** `Screen` at `BottomSheet` ay `KeyboardAvoidingView behavior="padding"` na ngayon sa **parehong platform** (dati `undefined` sa Android); inalis ang manual `kbPad` sa AI screen (may komento na nagpapaliwanag).
-- **Hindi ginawa:** hindi sinunod ang inirekomendang `react-native-keyboard-controller` (wala sa `package.json`), at walang `android.softwareKeyboardLayoutMode` sa `app.json`.
-- **Panganib:** ang RN `KeyboardAvoidingView` sa Android edge-to-edge ay **minsan** gumagana, minsan hindi (device-skin dependent — ang mismong sanhi ng orihinal na bug). Walang paraan para malaman sa code lang.
-- **Gawin:** i-test sa Oppo/Realme (ColorOS) na may AI chat, "Add exam" sheet, auth forms, grade feedback. Kung natatakpan pa rin → `npx expo install react-native-keyboard-controller` (dev build).
-- Maliit na kaugnay: `ai-chat-composer.tsx` — i-verify na wala nang `onSubmitEditing`/`returnKeyType` na conflict sa `multiline` (hindi lumabas sa grep, kaya malamang OK).
+| Item | Status | Ginawa |
+|---|---|---|
+| Timezone (3.4) | ✅ | `TIME_ZONE = "Asia/Manila"` sa `shared/utils/format.ts` (`dueLabel`) at sa dalawang notification body ng instructor repos. *Hindi* ginalaw ang picker display (`date-time-field.tsx`): device-local ang native picker, kaya sa device na PH ang oras magkapareho; sa ibang zone mag-iiba. |
+| `mockNow()` / simulate time (A.4) | ✅ | `core/data/mock/mock-clock.ts`; gamit na sa `isOverdue/timeAgo/dueLabel`, `submitWindow` (quiz), assignment late rule, notification "time ago", at "Today" ng To-do. DEV lang ang offset. |
+| Failure rate (A.4) | ✅ | Runtime na (`setFailureRate`) at/o `EXPO_PUBLIC_MOCK_FAILURE`; wala nang hardcoded `const`. |
+| DEV tools (A.4) | ✅ | `features/shared-screens/components/dev-tools.tsx` sa Account (`__DEV__`): +1 day, +1 week, Reset clock, Failure rate, Reset mock data (matagal nang may reset; ngayon kasama na ang clock). |
+| Unsaved-changes guard (B.3) | ✅ | Shared `useUnsavedGuard` (`shared/hooks/use-unsaved-guard.tsx`); idinagdag sa `ai-quiz`, `upload-material`, `create-class`, at gamit ng `post-announcement`. (Mayroon na dati sa assignment-form, quiz-form, student assignment-detail.) |
+| Draft autosave (B.3) | ✅ (isang screen) | `post-announcement` ay gumagamit na ng `useDraftAutosave` (per class; nabubura kapag na-post o na-discard). Hindi pa ikinakabit sa assignment/quiz form (mas malaki ang state). |
+| Testing (B.7) | ✅ | `jest-expo` + 15 tests (format/timezone/overdue, assignment due rules, task filters, mock clock); scripts `npm test`, `npm run typecheck`, `npm run check` (= lint + tsc + jest). |
+| "Demo data" badge (D) | ✅ | Pill sa `AppHeader`, kontrolado ng `DOMAIN_DATA_IS_MOCK` sa `core/config/data-source.ts` (i-flip sa `false` kapag remote na ang domain repos). |
+| Dark mode | ✅ | `userInterfaceStyle: "light"` sa `app.json` (light-only ang `C` colors). Kailangan ng bagong native build/`expo start -c` para mag-apply. |
+| Tab label vs title | ✅ (hindi pala problema) | Parehong "Alerts" ang tab label at page title; mali ang naunang audit. |
+| Student quiz late/close | ✅ | Na-verify na (tingnan 1.7 sa dating bersyon: `submitWindow` check). |
+| Docs | ✅ | `docs/ROUTE-MAP.md` at `docs/api-contract.md` ay may na ang bagong routes at endpoints (edit-assignment, grade-assignment, account-*, edit-quiz, instructor comments, profile OTP). |
+| **Keyboard (#6)** | ⚠️ **Hindi ginalaw** | Device-dependent at ang inirekomendang `react-native-keyboard-controller` ay native module (hindi gagana sa Expo Go; kailangan ng dev build). Hindi ko ito idinagdag nang walang device test. Kung natatakpan pa rin sa Oppo/Realme → `npx expo install react-native-keyboard-controller` at palitan ang `KeyboardAvoidingView` sa `Screen` at `BottomSheet`. |
 
-### 1.2 ❌ Time zone (3.4) — hindi pa
-- `shared/utils/*.ts` ay walang `timeZone: "Asia/Manila"` (grep: wala). Ang display ng due dates ay sumusunod pa rin sa zone ng device.
-- Walang `mockNow()` / "simulate time" (Addendum A.4) kaya ang `Date.now()` pa rin ang gamit sa overdue/late rules.
+Natitirang maliit na pagkakaiba: ang `useDraftAutosave` ay hindi pa nasa assignment/quiz forms; ang picker ay device-local.
 
-### 1.3 ❌ DEV tools panel (Addendum A.4) — hindi pa
-- Walang `resetMockDb()`, simulate time, o runtime failure-rate. `MOCK_FAILURE_RATE = 0` ay hardcoded `const` pa rin (`mock-latency.ts:6`).
-- Desisyon #12 sa orihinal na doc ay hindi ko alam kung na-approve; kung oo, hindi pa ito nagagawa.
-
-### 1.4 ❌ Draft autosave at unsaved-changes guard (B.3) — hindi pa
-- `use-draft-autosave.ts` ay **wala pa ring gumagamit**; walang `useUnsavedGuard` na nakita. Walang autosave sa create assignment/quiz/announcement.
-
-### 1.5 ❌ Testing tooling (B.7) — hindi pa
-- Walang `jest-expo`, walang `npm run check` script (`package.json`). Pure-logic bugs (timezone, late rule, task filters, gradebook summary) ay walang test.
-
-### 1.6 ⚠️ Mock vs remote (Addendum D)
-- Domain repos ay lahat nasa `mock-db`; auth lang ang sumusunod sa `DATA_SOURCE=remote`. Kaya pagkahalo ng totoong Google/Supabase login at mock data (hal. "Justine Antipado" kasama ang class ni "Maria") ay **nandiyan pa rin** ayon sa disenyo. Walang nakita akong "Demo data" badge sa screens.
-- Hindi ko na-verify kung naayos ang `onAuthenticated → setUser` na hindi kumukopya ng `course/year` (D, maliit na bug).
-
-### 1.7 ⚠️ Student quiz late/close enforcement (11) — hindi ko na-verify
-- Student `quizzes-repository.ts` ay nagma-map na ng `dueAt/allowLate` (lines 37–39), pero hindi ko binasa kung ang `submitAttempt` ay **nagre-reject/nagta-tag ng Late** at kung may `closesAt` check. Ang timer ay may mock `startedAt` map para hindi ma-reset ang oras (mock-only; server dapat ang may `started_at`).
-- **Gawin:** buksan ang `submitAttempt` at i-test: lampas due + `allowLate=false`, lampas `closesAt`.
-
-### 1.8 ⚠️ Maliliit na natitira
-| Item | Detalye |
-|---|---|
-| Tab label vs title | Student tab label ay "Alerts" (`app/student/(tabs)/_layout.tsx:17`) pero ang page ay "Notifications" — hindi pa napag-isa (desisyon #10 sa orihinal na doc). |
-| `joinCode` sa student | Student `classes-repository` ay gumagamit pa rin ng `joinCode` sa mock join (`:43`) — OK para sa mock; i-verify na hindi ito nasa `StudentClass` type na nakikita ng UI (B.1/B.8). |
-| Lumang TODO | `auth-screen.tsx:1` (`TODO(refactor)`), `ai-assistant-screen.tsx:3` (AI via service layer), `mock-auth-service.ts` (backend TODOs) — kilala; hindi blocker. Hindi ko ni-check kung nalinis ang mga lumang "TODO persist accessToken" at stale TODO sa onboarding. |
-| Dead code (3.5) | Hindi ko inulit ang export scan; `useDraftAutosave` ay confirmed na walang gumagamit. |
-| Docs | May `docs/api-contract.md`, `ROUTE-MAP.md`, `database.md` pa rin; hindi ko na-verify kung na-update para sa bagong routes (edit-assignment, grade-assignment, account-*, edit-quiz) at endpoints. |
-| Dark mode | `app.json` ay `"userInterfaceStyle": "automatic"` pa rin habang light-only ang `C` colors — hindi pa pinipili (§2 ng orihinal na doc). |
+**Pagsusuri pagkatapos ng pagbabago:** `npx tsc --noEmit` ✅ · `npx expo lint` ✅ · `npx jest` ✅ (4 suites, 15 tests).
 
 ---
 

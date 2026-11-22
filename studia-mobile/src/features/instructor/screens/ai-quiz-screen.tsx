@@ -7,7 +7,7 @@ import { TONES } from "@/shared/constants/studia-colors";
 import { Screen } from "@/shared/components/ui/screen";
 import { FONT, SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteId } from "@/core/logic/route-params";
-import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { useUnsavedGuard } from "@/shared/hooks/use-unsaved-guard";
 import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
 import { useCreateQuiz } from "@/features/instructor/hooks/use-quizzes";
 import { generateQuiz } from "@/features/instructor/logic/ai-quiz-generator";
@@ -19,7 +19,6 @@ const QUICK_COUNTS = [5, 10, 15, 20] as const;
 const LEVELS: Difficulty[] = ["Easy", "Medium", "Hard"];
 
 export default function AiQuizScreen() {
-  const goBack = useSafeBack("/instructor/assessments");
   const toast = useToast();
   const presetClassId = useRouteId("classId");
   const classes = useInstructorClasses();
@@ -32,6 +31,13 @@ export default function AiQuizScreen() {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { goBack, discardDialog } = useUnsavedGuard(
+    "/instructor/assessments",
+    topic.trim().length > 0 || questions.length > 0,
+    "Discard this quiz?",
+    "The generated questions have not been saved.",
+  );
 
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
@@ -140,6 +146,7 @@ export default function AiQuizScreen() {
           </View>
         </>
       ) : null}
+      {discardDialog}
     </Screen>
   );
 }

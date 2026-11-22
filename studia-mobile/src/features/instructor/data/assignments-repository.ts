@@ -97,7 +97,7 @@ class MockInstructorAssignmentRepository implements InstructorAssignmentReposito
         tag: "Reminder",
         title: `Due date changed: ${next.title}`,
         meta: classCodeOf(classId),
-        body: `The new due date is ${new Date(next.dueAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}.`,
+        body: `The new due date is ${new Date(next.dueAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" })}.`,
       });
     }
     return ok(next);

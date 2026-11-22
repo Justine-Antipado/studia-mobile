@@ -4,6 +4,7 @@
 //   - An attempt "needs grading" while it has an essay question and no gradedScore.
 //   - Students only ever see published quizzes of classes they are enrolled in.
 //   - Only the class owner lists attempts or grades them.
+import { mockNow } from "@/core/data/mock/mock-clock";
 import { dbId, mockDb, type DbAttempt, type DbQuiz } from "@/core/data/mock/mock-db";
 import { isOwner } from "@/core/data/mock/mock-announcements";
 import { classCodeOf, nameOf, notify, ownerOf } from "@/core/data/mock/mock-notifications";
@@ -49,7 +50,7 @@ export type SubmitWindow = "open" | "late" | "closed";
  * closed = after due and late not allowed, or after `closesAt`
  * The server decides this from ITS clock; the client only displays it.
  */
-export function submitWindow(quiz: DbQuiz, now = Date.now()): SubmitWindow {
+export function submitWindow(quiz: DbQuiz, now = mockNow()): SubmitWindow {
   if (!quiz.dueAt || now <= new Date(quiz.dueAt).getTime()) return "open";
   if (!quiz.allowLate) return "closed";
   if (quiz.closesAt && now > new Date(quiz.closesAt).getTime()) return "closed";

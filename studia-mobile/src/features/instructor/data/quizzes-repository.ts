@@ -71,7 +71,7 @@ function announceQuiz(q: DbQuiz) {
     tag: "Quiz",
     title: `New quiz: ${q.title}`,
     meta: classCodeOf(q.classId),
-    body: q.dueAt ? `Due ${new Date(q.dueAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}.` : undefined,
+    body: q.dueAt ? `Due ${new Date(q.dueAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" })}.` : undefined,
   });
 }
 

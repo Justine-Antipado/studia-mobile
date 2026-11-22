@@ -5,6 +5,7 @@
 import { queryCache } from "@/core/data/cache/query-cache";
 import type { Result } from "@/core/data/errors/app-error";
 import { appError, fail } from "@/core/data/errors/app-error";
+import { mockNow } from "@/core/data/mock/mock-clock";
 import { ME, mockDb, type DbNotification, type NotificationTag } from "@/core/data/mock/mock-db";
 import { mockCall } from "@/core/data/mock/mock-latency";
 import { listFor, markAllRead, markRead } from "@/core/data/mock/mock-notifications";
@@ -31,7 +32,7 @@ const LOOK: Record<NotificationTag, { icon: IconName; tone: Tone }> = {
 
 /** "now" / "5m" / "2h" / "3d" */
 function shortAge(iso: string): string {
-  const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60_000));
+  const mins = Math.max(0, Math.floor((mockNow() - new Date(iso).getTime()) / 60_000));
   if (mins < 1) return "now";
   if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);

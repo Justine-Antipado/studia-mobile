@@ -6,9 +6,9 @@ import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import Constants from "expo-constants";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { DevTools } from "@/features/shared-screens/components/dev-tools";
 import { displayName, tagLabel, useRoleUser } from "@/core/data/storage/session-store";
-import { mockDb } from "@/core/data/mock/mock-db";
-import { clearAllCaches, signOut, switchUser } from "@/core/logic/sign-out";
+import { signOut, switchUser } from "@/core/logic/sign-out";
 import type { Role } from "@/core/types/role";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
@@ -114,17 +114,7 @@ export function AccountScreen({ role }: { role: Role }) {
         onPress={switchDemoRole}
       />
       ) : null}
-      {__DEV__ ? (
-        <ListRow
-          icon="refresh-outline"
-          title="Reset mock data"
-          subtitle="Restore the seeded classes, assignments and submissions"
-          onPress={() => {
-            mockDb.reset();
-            void clearAllCaches();
-          }}
-        />
-      ) : null}
+      {__DEV__ ? <DevTools /> : null}
 
       <Pressable
         onPress={() => setConfirmingLogout(true)}

@@ -11,7 +11,7 @@ import { ActionButton, Chip, FormField, PageTitle, VideoLinkCard, useToast } fro
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteId } from "@/core/logic/route-params";
-import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { useUnsavedGuard } from "@/shared/hooks/use-unsaved-guard";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
 import { useFilePicker } from "@/features/instructor/hooks/use-file-picker";
 import { useAddVideoLink, useUploadMaterial } from "@/features/instructor/hooks/use-materials";
@@ -25,7 +25,6 @@ export default function UploadMaterialScreen() {
   const classId = useRouteId("classId");
   const router = useRouter();
   const toast = useToast();
-  const goBack = useSafeBack(classId ? { pathname: "/instructor/class-detail", params: { id: classId } } : "/instructor/classes");
   const filePicker = useFilePicker();
   const upload = useUploadMaterial(classId ?? "");
   const addLink = useAddVideoLink(classId ?? "");
@@ -36,6 +35,13 @@ export default function UploadMaterialScreen() {
   const [file, setFile] = useState<Attachment | null>(null);
   const [titleError, setTitleError] = useState<string | null>(null);
   const [urlError, setUrlError] = useState<string | null>(null);
+
+  const { goBack, discardDialog } = useUnsavedGuard(
+    classId ? { pathname: "/instructor/class-detail", params: { id: classId } } : "/instructor/classes",
+    title.trim().length > 0 || url.trim().length > 0 || !!file,
+    "Discard this material?",
+    "It has not been added to the class yet.",
+  );
 
   // Live parse so a bad link is explained as soon as it is pasted, and a YouTube link previews.
   const parsed = useMemo(() => (url.trim() ? parseVideoLink(url) : null), [url]);
@@ -126,6 +132,7 @@ export default function UploadMaterialScreen() {
         loading={upload.loading || addLink.loading}
         onPress={submit}
       />
+      {discardDialog}
     </Screen>
   );
 }
