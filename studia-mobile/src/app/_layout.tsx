@@ -16,6 +16,7 @@ import { queryCache } from "@/core/data/cache/query-cache";
 import { STACK_ROOT, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
 import { sessionReady } from "@/features/auth/data/auth-service";
 import { useLiveUpdates } from "@/core/logic/live-updates";
+import { usePushNotifications } from "@/core/logic/push-notifications";
 import { reportError } from "@/core/logic/report-error";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { ToastProvider } from "@/shared/components/ui/toast";
@@ -38,6 +39,7 @@ export default function RootLayout() {
   }, []);
 
   useLiveUpdates();
+  usePushNotifications();
 
   const ready = (fontsLoaded || !!fontError) && sessionLoaded;
 
