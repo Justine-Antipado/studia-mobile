@@ -16,11 +16,25 @@ export const isYoutubeId = (id: string | null | undefined): id is string => !!id
 const EMBED_HOST = "https://www.youtube.com";
 
 function html(videoId: string, startSec: number, autoplay: boolean): string {
-  const params = `playsinline=1&rel=0&modestbranding=1&fs=1&start=${Math.max(0, Math.floor(startSec))}&autoplay=${autoplay ? 1 : 0}`;
+  const params =
+    `playsinline=1&rel=0&modestbranding=1&fs=1&enablejsapi=1&origin=${encodeURIComponent(EMBED_HOST)}` +
+    `&start=${Math.max(0, Math.floor(startSec))}&autoplay=${autoplay ? 1 : 0}`;
+  // The script asks the player to report errors (video not embeddable, private, removed) so the app can
+  // fall back to "Watch on YouTube" instead of showing a dead black box.
   return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%}</style></head>
-<body><iframe src="${EMBED_HOST}/embed/${videoId}?${params}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></body></html>`;
+<body><iframe id="p" src="${EMBED_HOST}/embed/${videoId}?${params}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+<script>
+var f=document.getElementById("p");
+function listen(){try{f.contentWindow.postMessage(JSON.stringify({event:"listening",id:1}),"*")}catch(e){}}
+f.addEventListener("load",listen);setTimeout(listen,1200);
+window.addEventListener("message",function(e){try{var d=typeof e.data==="string"?JSON.parse(e.data):e.data;
+if(d&&d.event==="onError"){window.ReactNativeWebView.postMessage(JSON.stringify({error:d.info}))}}catch(x){}});
+</script></body></html>`;
 }
+
+/** YouTube player error codes that mean "this video cannot play here" (invalid id, not embeddable, removed, referrer). */
+const BLOCKING_ERRORS = new Set([2, 5, 100, 101, 150, 153]);
 
 function YoutubePlayerBase({
   videoId,
@@ -41,16 +55,27 @@ function YoutubePlayerBase({
         key={`${videoId}:${startSec}`}
         source={source}
         style={s.web}
-        originWhitelist={[EMBED_HOST, "about:*"]}
+        originWhitelist={["*"]}
         javaScriptEnabled
         allowsInlineMediaPlayback
         allowsFullscreenVideo
         mediaPlaybackRequiresUserAction={!autoplay}
         setSupportMultipleWindows={false}
-        // Only the YouTube embed (and the first about:blank/base load) may load; links inside the player do not navigate the app.
-        onShouldStartLoadWithRequest={(req) => req.url.startsWith(`${EMBED_HOST}/embed/`) || req.url.startsWith("about:")}
+        // The page itself is our fixed HTML (its base is youtube.com); nothing else may replace it. Frames
+        // inside the YouTube player are YouTube's own and load normally.
+        onShouldStartLoadWithRequest={(req) => {
+          if (req.isTopFrame === false) return true;
+          return req.url.startsWith("about:") || req.url === EMBED_HOST || req.url.startsWith(`${EMBED_HOST}/`);
+        }}
+        onMessage={(e) => {
+          try {
+            const { error } = JSON.parse(e.nativeEvent.data) as { error?: number };
+            if (typeof error === "number" && BLOCKING_ERRORS.has(error)) onError?.();
+          } catch {
+            /* not our message */
+          }
+        }}
         onError={onError}
-        onHttpError={onError}
         accessibilityLabel="Lesson video"
       />
     </View>
