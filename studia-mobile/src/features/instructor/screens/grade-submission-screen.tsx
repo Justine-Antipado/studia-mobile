@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
-import { ActionButton, Badge, Chip, EmptyState, FormField, ListState, PageTitle } from "@/shared/components/ui";
+import { ActionButton, Badge, EmptyState, FormField, ListState, PageTitle } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteId } from "@/core/logic/route-params";
@@ -98,12 +98,6 @@ function GradeForm({ submission }: { submission: Submission }) {
         error={error}
         maxLength={6}
       />
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm }}>
-        {[1, 0.9, 0.75, 0.5, 0].map((p) => {
-          const value = String(Math.round(max * p));
-          return <Chip key={p} label={value} selected={score.trim() === value} onPress={() => { setScore(value); setError(null); }} />;
-        })}
-      </View>
       <FormField label="Feedback (optional)" value={feedback} onChangeText={setFeedback} placeholder="Short note for the student" multiline maxLength={500} />
 
       <ActionButton label="Save grade" loading={grade.loading} onPress={() => save(false)} />

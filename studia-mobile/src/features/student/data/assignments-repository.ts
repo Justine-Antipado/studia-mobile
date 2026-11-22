@@ -86,11 +86,14 @@ class MockAssignmentRepository implements AssignmentRepository {
     const a = mockDb.assignments.find((x) => x.id === id);
     if (!a || !visible(a, classId)) return fail(appError("not_found", "This assignment no longer exists."));
     const current = mockDb.submissionOf(id, ME.student);
-    if (current && current.status !== "draft") {
-      return fail(appError("conflict", "This was already turned in.", false));
+    if (current && (current.status === "graded" || current.score !== null)) {
+      return fail(appError("conflict", "This was already graded, so it can't be edited.", false));
     }
 
     const overdue = mockNow() > new Date(a.dueAt).getTime();
+    if (current && current.status !== "draft" && overdue && !a.allowLate) {
+      return fail(appError("conflict", "The deadline has passed, so this can't be edited.", false));
+    }
     const willSubmitNow = a.allowLate || !overdue;
 
     save({
@@ -99,7 +102,7 @@ class MockAssignmentRepository implements AssignmentRepository {
       studentId: ME.student,
       status: willSubmitNow ? (overdue ? "late" : "submitted") : "draft",
       submittedAt: willSubmitNow ? mockNowIso() : null,
-      text: input.text || current?.text || null,
+      text: input.text || (current?.status === "draft" ? current.text : null) || null,
       file: input.file ?? current?.file ?? null,
       score: null,
       feedback: null,

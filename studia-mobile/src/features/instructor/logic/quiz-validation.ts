@@ -3,6 +3,8 @@ import { newId } from "./format";
 
 export const OPTION_LABELS = ["A", "B", "C", "D"] as const;
 
+export const ESSAY_DEFAULT_POINTS = 5;
+
 export const blankQuestion = (): QuizQuestion => ({
   id: newId("q"),
   type: "multiple_choice",
@@ -25,6 +27,7 @@ export function validateQuizDraft(d: QuizDraft, publish: boolean): string | null
     const q = d.questions[i]!;
     const n = i + 1;
     if (!q.text.trim()) return `Question ${n} needs text.`;
+    if (!Number.isInteger(q.points) || q.points < 1 || q.points > 100) return `Question ${n}: points must be between 1 and 100.`;
     if (q.type === "multiple_choice") {
       const filled = (q.options ?? []).filter((o) => o.trim()).length;
       if (filled < 2) return `Question ${n} needs at least 2 answer options.`;

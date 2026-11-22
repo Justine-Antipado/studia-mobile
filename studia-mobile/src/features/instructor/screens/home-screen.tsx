@@ -53,8 +53,8 @@ export default function InstructorHomeScreen() {
           {stats.data ? (
             <View style={s.block}>
               <View style={s.statRow}>
-                <StatCard label="Classes" value={stats.data.classCount} onPress={openClasses} />
-                <StatCard label="Students" value={stats.data.studentCount} onPress={openClasses} />
+                <StatCard label="Classes" value={stats.data.classCount} />
+                <StatCard label="Students" value={stats.data.studentCount} />
                 <StatCard
                   label="To Grade"
                   value={stats.data.pendingCount}
