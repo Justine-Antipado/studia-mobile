@@ -19,7 +19,7 @@ import { RoleGate } from "@/shared/components/ui/role-gate";
 import { screenId } from "@/core/logic/screen-id";
 
 /** Create / join / take-quiz flows come up from the bottom; everything else slides in. */
-const MODAL_ROUTES = ["join-class", "search", "quiz-take"] as const;
+const MODAL_ROUTES = ["join-class", "quiz-take"] as const;
 
 const SUBPAGE_ROUTES = [
   "account-personal",

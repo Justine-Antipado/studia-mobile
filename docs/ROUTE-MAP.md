@@ -80,7 +80,6 @@ Stack sub pages                                     back fallback
   account-photo                                     → /student/account   (camera / gallery / remove; cropped + resized on device)
   todo                                              → /student/home
   planner                                           → /student/home
-  search                              (modal)       → /student/home
   join-class                          (modal)       → /student/courses
   course-detail?id&tab                              → /student/courses
       tabs: Stream · Lessons · Tasks · Grades · People  (tab kept in the URL)
@@ -121,7 +120,6 @@ Stack sub pages                                     back fallback
   account-personal / account-password / account-privacy / account-about
                                                     → /instructor/account (same screens as the student group)
   analytics                                         → /instructor/home
-  search                              (modal)       → /instructor/home
   create-class                        (modal)       → /instructor/classes
   class-detail?id&tab                               → /instructor/classes
       tabs: Stream · Materials · Assessments · People · Grades  (tab kept in the URL)

@@ -20,7 +20,6 @@ import { screenId } from "@/core/logic/screen-id";
 
 /** Create / upload / synthesize flows come up from the bottom; everything else slides in. */
 const MODAL_ROUTES = [
-  "search",
   "create-class",
   "post-announcement",
   "upload-material",

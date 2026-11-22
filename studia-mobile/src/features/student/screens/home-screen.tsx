@@ -1,12 +1,11 @@
 // home-screen.tsx — greeting, quick actions, today's tasks, upcoming deadlines, continue learning.
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { Icon, ListRow, PageTitle, QuickAction, SectionHeader } from "@/shared/components/ui";
+import { ListRow, PageTitle, QuickAction, SectionHeader } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
-import { C } from "@/shared/constants/studia-colors";
-import { HIT_SLOP, SPACE } from "@/shared/constants/tokens";
+import { SPACE } from "@/shared/constants/tokens";
 import { ClassCard } from "@/features/student/components/class-card";
 import { TaskRow } from "@/features/student/components/task-row";
 import { dueLabel, isOverdue } from "@/features/student/logic/format";
@@ -39,10 +38,9 @@ export default function StudentHome() {
     [classes.data],
   );
 
-  const go = useCallback((path: "search" | "courses" | "todo" | "planner" | "ai") =>
+  const go = useCallback((path: "courses" | "todo" | "planner" | "ai") =>
     router.push(`/student/${path}`), [router]);
 
-  const openSearch = useCallback(() => go("search"), [go]);
   const openCourses = useCallback(() => go("courses"), [go]);
   const openTodo = useCallback(() => go("todo"), [go]);
   const openPlanner = useCallback(() => go("planner"), [go]);
@@ -72,19 +70,7 @@ export default function StudentHome() {
       refreshing={tasks.loading && !!tasks.data}
       onRefresh={tasks.refetch}
     >
-      <PageTitle
-        title="Home"
-        trailing={
-          <Pressable
-            onPress={openSearch}
-            hitSlop={HIT_SLOP}
-            accessibilityRole="button"
-            accessibilityLabel="Search courses, lessons and tasks"
-          >
-            <Icon name="search-outline" size="lg" color={C.primaryDark} />
-          </Pressable>
-        }
-      />
+      <PageTitle title="Home" />
 
       <View style={s.actions}>
         <QuickAction icon="book-outline" label="My Courses" onPress={openCourses} />

@@ -6,7 +6,6 @@ import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import Constants from "expo-constants";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DevTools } from "@/features/shared-screens/components/dev-tools";
 import { displayName, tagLabel, useRoleUser } from "@/core/data/storage/session-store";
 import { signOut, switchUser } from "@/core/logic/sign-out";
 import type { Role } from "@/core/types/role";
@@ -114,7 +113,6 @@ export function AccountScreen({ role }: { role: Role }) {
         onPress={switchDemoRole}
       />
       ) : null}
-      {__DEV__ ? <DevTools /> : null}
 
       <Pressable
         onPress={() => setConfirmingLogout(true)}
