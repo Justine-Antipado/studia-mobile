@@ -15,6 +15,8 @@ export type ErrorCode =
   | "OTP_LOCKED"
   | "RATE_LIMITED"
   | "UNAUTHORIZED"
+  | "CONFLICT"
+  | "AI_UNAVAILABLE"
   | "UNKNOWN";
 
 const STATUS: Record<ErrorCode, number> = {
@@ -30,6 +32,8 @@ const STATUS: Record<ErrorCode, number> = {
   OTP_LOCKED: 429,
   RATE_LIMITED: 429,
   UNAUTHORIZED: 401,
+  CONFLICT: 409,
+  AI_UNAVAILABLE: 503,
   UNKNOWN: 500,
 };
 

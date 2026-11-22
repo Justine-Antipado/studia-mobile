@@ -1,5 +1,6 @@
 // lesson-viewer-screen.tsx — video LINK (YouTube thumbnail + Watch on YouTube) / PDF / slide viewer, transcript (timestamps),
 // and an inline AI summary (TL;DR + bullets) with a cache-bypassing Regenerate action.
+import { useEffect, useRef } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -36,8 +37,17 @@ export default function StudentLessonViewer() {
   const regenerate = async () => {
     const result = await regenerateSummary.run(undefined);
     if (!result.ok) toast.show(result.error.message, { tone: "red" });
-    else toast.show("Summary regenerated", { tone: "green" });
+    else toast.show(lesson?.aiSummary ? "Summary regenerated" : "Summary ready", { tone: "green" });
   };
+
+  // A ready lesson with no summary yet is summarised automatically the first time it is opened
+  // (the server caches it, so later students just read it). A failure leaves the manual button.
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (autoTried.current || !lesson || lesson.aiSummary || lesson.processing !== "ready") return;
+    autoTried.current = true;
+    void regenerateSummary.run(undefined);
+  }, [lesson, regenerateSummary]);
 
   // YouTube lines can jump to their timestamp; other sources have no player to seek.
   const seek = (sec: number) => {
@@ -105,7 +115,19 @@ export default function StudentLessonViewer() {
                 </View>
               </Card>
             ) : (
-              lesson.processing === "ready" ? <Badge label="AI summary not available for this lesson yet" tone="gold" /> : null
+              lesson.processing === "ready" ? (
+                <Card>
+                  <AiTag text="AI-generated summary" />
+                  <Text style={[TYPE.muted, { marginTop: SPACE.sm }]}>
+                    {regenerateSummary.loading
+                      ? "The AI is reading this lesson. This can take up to a minute."
+                      : "No summary yet. Generate one with AI."}
+                  </Text>
+                  <View style={{ marginTop: SPACE.md }}>
+                    <ActionButton label="Generate summary" icon="sparkles-outline" loading={regenerateSummary.loading} onPress={regenerate} />
+                  </View>
+                </Card>
+              ) : null
             )}
 
             {lesson.transcript.length > 0 ? (

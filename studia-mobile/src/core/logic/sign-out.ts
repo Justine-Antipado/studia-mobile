@@ -19,7 +19,7 @@ export async function clearAllCaches(): Promise<void> {
 /** Clears the session and every cache. Navigation is the caller's job. */
 export async function signOut(): Promise<void> {
   await unregisterPushToken(); // needs the live session, so it runs before the session is revoked
-  await endRemoteSession(); // revoke the server session first; a no-op in mock mode
+  await endRemoteSession(); // revoke the server session first
   setUser(null);
   await clearAllCaches();
 }

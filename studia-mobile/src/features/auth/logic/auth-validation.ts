@@ -1,5 +1,5 @@
 // auth-validation.ts
-// Pure functions, no React. The mock service re-runs these so that "client-side only"
+// Pure functions, no React. The server re-runs these so that "client-side only"
 // validation never becomes the only line of defence. Port the same rules to the backend.
 
 import type { Role } from "@/core/types/role";

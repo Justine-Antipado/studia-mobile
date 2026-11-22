@@ -13,7 +13,7 @@ import { useQuiz, useSubmitQuizAttempt } from "@/features/student/hooks/use-quiz
 import type { QuizAnswer } from "@/features/student/types/student";
 
 // When each quiz's countdown began. Module-level so leaving the screen and coming back resumes the
-// SAME clock instead of handing out a fresh full timer. Mock-only: the real server owns started_at.
+// SAME clock instead of handing out a fresh full timer.
 const startedAt = new Map<string, number>();
 
 function remainingSeconds(quizId: string, limitMin: number): number {

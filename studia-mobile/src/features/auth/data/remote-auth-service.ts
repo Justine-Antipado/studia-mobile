@@ -84,7 +84,7 @@ function take(token: string): SessionDto {
   return entry.session;
 }
 
-/* ---------- input validation (same rules as the mock; the server re-checks everything) ---------- */
+/* ---------- input validation (the server re-checks everything) ---------- */
 
 function assertValid(keys: readonly FieldKey[], values: Partial<Record<FieldKey, string>>, role: Role, strict: boolean) {
   const fields = validateAll(keys, values, { role, strict });

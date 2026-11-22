@@ -2,9 +2,8 @@
 // by database triggers (new announcement, assignment, quiz, grade, ...); the owner may only mark them read.
 import type { Result } from "@/core/data/errors/app-error";
 import { db, guard, must, myId } from "@/core/data/supabase/remote";
-import type { NotificationTag } from "@/core/data/mock/mock-db";
 import type { NotificationRepository } from "@/features/shared-screens/data/notifications-repository";
-import type { NotificationItem } from "@/features/shared-screens/types/shared-screens";
+import type { NotificationItem, NotificationTag } from "@/features/shared-screens/types/shared-screens";
 import type { IconName } from "@/shared/components/ui/icon";
 import type { Tone } from "@/shared/constants/studia-colors";
 

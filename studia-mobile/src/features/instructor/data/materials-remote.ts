@@ -1,14 +1,31 @@
 // materials-remote.ts: instructor lessons in Supabase. Documents/slides are uploaded to the private
-// "materials" bucket (+ a `files` row); videos are LINKS only. There is no AI worker yet, so a new
-// material is readable straight away; a pasted transcript is stored by set_material_transcript.
+// "materials" bucket (+ a `files` row); videos are LINKS only. A new material is readable
+// straight away; a pasted transcript is stored by set_material_transcript, then studia-api
+// (api/ai/summarize) writes the AI summary and key objectives from it.
+import { z } from "zod";
+
 import { appError, fail, ok, type Result } from "@/core/data/errors/app-error";
+import { callAi } from "@/core/data/supabase/ai-api";
 import { toAttachment, uploadPicked, type StoredFile } from "@/core/data/supabase/file-upload";
 import { db, guard, must, mustOk, myId } from "@/core/data/supabase/remote";
-import { durationLabel } from "@/features/student/data/lessons-remote";
+import { cacheKey } from "@/core/data/cache/cache-keys";
+import { queryCache } from "@/core/data/cache/query-cache";
+import { SUMMARY_TIMEOUT_MS, durationLabel } from "@/features/student/data/lessons-remote";
 import type { MaterialRepository } from "@/features/instructor/data/materials-repository";
 import type { Attachment, Material } from "@/features/instructor/types/instructor";
 import { newId } from "@/shared/utils/id";
 import { parseVideoLink } from "@/shared/utils/video-link";
+
+const SummaryReply = z.object({}).passthrough();
+
+/** The AI reads the new file or watches the video link, then fills the summary and key objectives.
+ *  Not awaited: the instructor should not wait up to a minute. A failure is fine, because students
+ *  (or the instructor) can generate it later from the lesson. */
+function summariseInBackground(classId: string, materialId: string): void {
+  void callAi("summarize", { materialId, regenerate: false }, SummaryReply, SUMMARY_TIMEOUT_MS).then((r) => {
+    if (r.ok) queryCache.invalidate(cacheKey("instructor", "classes", classId, "materials"));
+  });
+}
 
 const SELECT =
   "id, class_id, title, kind, duration_sec, processing, posted_at, video_url, video_provider, video_id, file:files(id, original_name, kind, size_bytes), transcript:material_transcript_lines(id, start_sec, body), objectives:material_objectives(position, body)";
@@ -75,6 +92,7 @@ export class RemoteMaterialRepository implements MaterialRepository {
       );
       const made = await fetchOne(classId, id);
       if (!made) throw appError("not_found", "This class no longer exists.");
+      summariseInBackground(classId, id);
       return made;
     }, "This class no longer exists.");
   }
@@ -101,6 +119,7 @@ export class RemoteMaterialRepository implements MaterialRepository {
       );
       const made = await fetchOne(classId, id);
       if (!made) throw appError("not_found", "This class no longer exists.");
+      summariseInBackground(classId, id);
       return made;
     }, "This class no longer exists.");
   }
@@ -110,6 +129,9 @@ export class RemoteMaterialRepository implements MaterialRepository {
     if (text.length > 50_000) return fail(appError("validation", "Keep the transcript under 50,000 characters.", false));
     return guard(async () => {
       must(await db().rpc("set_material_transcript", { p_material_id: id, p_text: text }));
+      // The AI writes the summary and the key objectives from the new transcript. Best effort: the
+      // transcript is already saved, and the summary can be generated later from the lesson.
+      await callAi("summarize", { materialId: id, regenerate: true }, SummaryReply, SUMMARY_TIMEOUT_MS);
       const next = await fetchOne(classId, id);
       if (!next) throw appError("not_found", "This material no longer exists.");
       return next;

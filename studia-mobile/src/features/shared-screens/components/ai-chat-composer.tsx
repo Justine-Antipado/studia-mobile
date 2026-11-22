@@ -11,11 +11,14 @@ export function AiChatComposer({
   input,
   onChangeInput,
   onSend,
+  disabled = false,
 }: {
   suggestions: readonly string[];
   input: string;
   onChangeInput: (text: string) => void;
   onSend: (textToSend?: string) => void;
+  /** True while a reply is on its way: blocks a second send. */
+  disabled?: boolean;
 }) {
   // Chips would eat the little room the keyboard leaves, so they hide while typing.
   const [focused, setFocused] = useState(false);
@@ -34,7 +37,7 @@ export function AiChatComposer({
         {suggestions.map((sug) => (
           <Pressable
             key={sug}
-            onPress={() => onSend(sug)}
+            onPress={() => !disabled && onSend(sug)}
             style={s.sugChip}
             accessibilityRole="button"
             accessibilityLabel={sug}
@@ -63,8 +66,9 @@ export function AiChatComposer({
           />
         </View>
         <Pressable
-          onPress={() => onSend()}
-          style={[s.sendBtn, !input.trim() && { backgroundColor: C.lavender }]}
+          onPress={() => !disabled && onSend()}
+          disabled={disabled}
+          style={[s.sendBtn, (!input.trim() || disabled) && { backgroundColor: C.lavender }]}
           accessibilityRole="button"
           accessibilityLabel="Send"
         >

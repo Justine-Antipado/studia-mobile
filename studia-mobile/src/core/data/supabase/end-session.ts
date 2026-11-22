@@ -1,5 +1,4 @@
 // end-session.ts: revoke the current device's Supabase session. Called by core/logic/sign-out.ts.
-import { isRemote } from "@/core/config/data-source";
 import { getSupabase, supabaseConfigured } from "@/core/data/supabase/client";
 
 let ending = false;
@@ -8,7 +7,7 @@ export const isEndingSession = () => ending;
 
 /** Revokes this device's refresh token on the server and wipes the secure-store copy. Never throws. */
 export async function endRemoteSession(): Promise<void> {
-  if (!isRemote || !supabaseConfigured) return;
+  if (!supabaseConfigured) return;
   ending = true;
   try {
     await getSupabase().auth.signOut({ scope: "local" });

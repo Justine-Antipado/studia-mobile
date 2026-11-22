@@ -2,11 +2,10 @@
 //   - returning to the app after a while reloads every query
 //   - a new row in `notifications` (created by database triggers for new announcements, lessons,
 //     assignments, quizzes, grades, ...) arrives over Supabase Realtime and reloads every query
-// Mounted once in the root layout. A no-op in mock mode.
+// Mounted once in the root layout.
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
-import { isRemote } from "@/core/config/data-source";
 import { queryCache } from "@/core/data/cache/query-cache";
 import { useUser } from "@/core/data/storage/session-store";
 import { getSupabase, supabaseConfigured } from "@/core/data/supabase/client";
@@ -33,7 +32,7 @@ export function useLiveUpdates(): void {
   }, [signedIn]);
 
   useEffect(() => {
-    if (!isRemote || !signedIn || !supabaseConfigured) return;
+    if (!signedIn || !supabaseConfigured) return;
     const client = getSupabase();
     let cancelled = false;
     let cleanup: (() => void) | null = null;

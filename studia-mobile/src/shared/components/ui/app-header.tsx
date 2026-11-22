@@ -8,7 +8,6 @@ import { Avatar } from "@/shared/components/ui/avatar";
 import { Icon } from "@/shared/components/ui/icon";
 import { C, OVERLAY } from "@/shared/constants/studia-colors";
 import { FONT, RADIUS, SPACE } from "@/shared/constants/tokens";
-import { DOMAIN_DATA_IS_MOCK } from "@/core/config/data-source";
 import { displayName, tagLabel, type UserProfile } from "@/core/data/storage/session-store";
 
 const OMSC_LOGO = require("@/assets/images/omsc.logo.png");
@@ -28,11 +27,6 @@ export function AppHeader({ user }: { user: UserProfile }) {
           <AppImage source={OMSC_LOGO} style={s.logo} contentFit="contain" accessibilityLabel="OMSC logo" />
           <View style={s.sep} />
           <AppImage source={STUDIA_LOGO} style={s.logo} contentFit="contain" accessibilityLabel="Studia logo" />
-          {DOMAIN_DATA_IS_MOCK ? (
-            <View style={s.demo} accessibilityLabel="Demo data">
-              <Text style={s.demoText}>Demo data</Text>
-            </View>
-          ) : null}
         </View>
 
         <View style={s.who} accessible accessibilityLabel={`Logged in as ${name}, ${tag}`}>
@@ -55,14 +49,6 @@ export function AppHeader({ user }: { user: UserProfile }) {
 }
 
 const s = StyleSheet.create({
-  demo: {
-    backgroundColor: `${C.gold}33`,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACE.sm,
-    paddingVertical: 2,
-    marginLeft: SPACE.sm,
-  },
-  demoText: { color: C.gold, fontSize: 10, fontFamily: FONT.bold },
   wrap: {
     backgroundColor: C.primaryDark,
     paddingHorizontal: SPACE.lg + 2,

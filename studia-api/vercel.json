@@ -1,4 +1,7 @@
 {
   "regions": ["sin1"],
-  "functions": { "api/**/*.ts": { "maxDuration": 30 } }
+  "functions": {
+    "api/**/*.ts": { "maxDuration": 30 },
+    "api/ai/summarize.ts": { "maxDuration": 60 }
+  }
 }

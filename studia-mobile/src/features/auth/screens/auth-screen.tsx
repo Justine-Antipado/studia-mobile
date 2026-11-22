@@ -840,7 +840,7 @@ export default function Auth() {
                 {__DEV__ && devCode ? (
                   <View style={s.devBox}>
                     <Text style={s.devText}>
-                      DEV ONLY (mock): your code is {devCode}
+                      DEV ONLY: your code is {devCode}
                     </Text>
                   </View>
                 ) : null}

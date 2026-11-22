@@ -14,7 +14,7 @@ import { generateQuiz } from "@/features/instructor/logic/ai-quiz-generator";
 import { OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
 import type { Difficulty, QuizQuestion } from "@/features/instructor/types/instructor";
 
-const MAX_QUESTIONS = 50;
+const MAX_QUESTIONS = 30;
 const QUICK_COUNTS = [5, 10, 15, 20] as const;
 const LEVELS: Difficulty[] = ["Easy", "Medium", "Hard"];
 
@@ -53,8 +53,8 @@ export default function AiQuizScreen() {
     try {
       const result = await generateQuiz({ topic: topic.trim(), count, difficulty: level });
       if (alive.current) setQuestions(result);
-    } catch {
-      if (alive.current) setError("Couldn't generate the quiz. Check your connection and try again.");
+    } catch (e) {
+      if (alive.current) setError(e instanceof Error ? e.message : "Couldn't generate the quiz. Check your connection and try again.");
     } finally {
       if (alive.current) setLoading(false);
     }

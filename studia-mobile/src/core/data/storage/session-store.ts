@@ -4,7 +4,6 @@
 // this store only holds the profile for the current run.
 import { useSyncExternalStore } from "react";
 
-import { isRemote } from "@/core/config/data-source";
 import type { Role } from "@/core/types/role";
 
 export type UserProfile = {
@@ -16,7 +15,7 @@ export type UserProfile = {
   year?: string; // student
   section?: string; // student
   phone?: string;
-  /** Local file URI of the profile photo (mock). Remote: a short-lived signed URL. */
+  /** Local file URI of the profile photo (read from this device). */
   avatarUri?: string;
 };
 
@@ -43,28 +42,9 @@ export function useUser(): UserProfile | null {
   return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
-/** DEV only: lets you open /student/home or /instructor/home directly (e.g. after a hot reload) without logging in again. */
-const DEMO: Record<Role, UserProfile> = {
-  student: {
-    role: "student",
-    fullName: "Juan Dela Cruz",
-    email: "juan.delacruz@omsu.edu.ph",
-    course: "BSIT",
-    year: "3",
-    section: "A",
-  },
-  instructor: {
-    role: "instructor",
-    fullName: "Maria Santos",
-    email: "maria.santos@omsu.edu.ph",
-    department: "IT Department",
-  },
-};
-
-export function useRoleUser(role: Role): UserProfile | null {
-  const u = useUser();
-  if (u) return u;
-  return __DEV__ && !isRemote ? DEMO[role] : null;
+/** The signed-in user for a role screen, or null when signed out (the role guard then redirects). */
+export function useRoleUser(_role: Role): UserProfile | null {
+  return useUser();
 }
 
 /* ---------- display helpers ---------- */

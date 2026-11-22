@@ -1,6 +1,6 @@
 // planner-remote.ts: the student's rolling 7-day study plan, stored in planner_weeks / planner_blocks /
 // planner_exams. The plan is generated on the device from the student's pending tasks and exams
-// (same rules as the mock), then persisted; it is rebuilt when the window moves to a new day.
+//, then persisted; it is rebuilt when the window moves to a new day.
 import { appError, type Result } from "@/core/data/errors/app-error";
 import { db, guard, must, mustOk, myId } from "@/core/data/supabase/remote";
 import { taskId } from "@/features/student/data/tasks-remote";

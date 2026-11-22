@@ -1,6 +1,5 @@
 // task-filters.ts — pure filtering/sorting for the To-do list (and the Home "today" bucket), so
 // both screens agree on what "Today" means: due today OR already overdue and not done.
-import { mockNow } from "@/core/data/mock/mock-clock";
 import { isOverdue } from "@/features/student/logic/format";
 import type { Task } from "@/features/student/types/student";
 
@@ -19,7 +18,7 @@ export type TaskFilter = {
 
 export const DEFAULT_TASK_FILTER: TaskFilter = { sort: "soonest", kind: "all", classId: "all" };
 
-export const isDueToday = (iso: string) => new Date(iso).toDateString() === new Date(mockNow()).toDateString();
+export const isDueToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
 export function matchesTab(task: Task, tab: TaskTab): boolean {
   if (tab === "Done") return task.done;

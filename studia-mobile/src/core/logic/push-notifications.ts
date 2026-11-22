@@ -4,7 +4,7 @@
 //   - the server (send-push Edge Function) pushes every new `notifications` row to that token
 //   - tapping a push opens the Alerts tab
 //   - signOut() calls unregisterPushToken() so the next account on this phone does not get the push
-// Mounted once in the root layout. A no-op in mock mode, in Expo Go and on simulators.
+// Mounted once in the root layout. A no-op in Expo Go and on simulators.
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
@@ -13,7 +13,6 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
-import { isRemote } from "@/core/config/data-source";
 import { getUser, useUser } from "@/core/data/storage/session-store";
 import { supabaseConfigured } from "@/core/data/supabase/client";
 import { db, mustOk } from "@/core/data/supabase/remote";
@@ -61,7 +60,7 @@ async function registerPushToken(): Promise<void> {
 export async function unregisterPushToken(): Promise<void> {
   const token = registeredToken;
   registeredToken = null;
-  if (!token || !isRemote) return;
+  if (!token) return;
   try {
     mustOk(await db().rpc("unregister_push_token", { p_token: token }));
   } catch (e) {
@@ -73,7 +72,7 @@ export function usePushNotifications(): void {
   const router = useRouter();
   const user = useUser();
   const role = user?.role;
-  const enabled = isRemote && supabaseConfigured && !!role;
+  const enabled = supabaseConfigured && !!role;
 
   useEffect(() => {
     if (!enabled) return;

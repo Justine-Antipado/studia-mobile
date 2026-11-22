@@ -70,10 +70,11 @@ export async function post<T>(
   body: unknown,
   schema: z.ZodType<T>,
   accessToken?: string,
+  timeoutMs: number = TIMEOUT_MS,
 ): Promise<T> {
   if (!REMOTE_ENV.apiUrl) throw new AuthError("UNKNOWN", "The server address is not configured.");
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(`${REMOTE_ENV.apiUrl}/api/${path.includes("/") ? path : `auth/${path}`}`, {
