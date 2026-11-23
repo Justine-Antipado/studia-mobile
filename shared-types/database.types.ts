@@ -541,9 +541,7 @@ export type Database = {
           id: string
           instructor_id: string
           join_code: string
-          school_year: string | null
           section: Database["public"]["Enums"]["section_code"]
-          semester: string | null
           subject_code: string
           title: string
           updated_at: string
@@ -557,9 +555,7 @@ export type Database = {
           id?: string
           instructor_id: string
           join_code?: string
-          school_year?: string | null
           section: Database["public"]["Enums"]["section_code"]
-          semester?: string | null
           subject_code: string
           title: string
           updated_at?: string
@@ -573,9 +569,7 @@ export type Database = {
           id?: string
           instructor_id?: string
           join_code?: string
-          school_year?: string | null
           section?: Database["public"]["Enums"]["section_code"]
-          semester?: string | null
           subject_code?: string
           title?: string
           updated_at?: string
@@ -1137,50 +1131,29 @@ export type Database = {
           },
         ]
       }
-      platform_announcements: {
+      push_tokens: {
         Row: {
-          audience: Database["public"]["Enums"]["announcement_audience"]
-          author_id: string | null
-          body: string
-          course: Database["public"]["Enums"]["course_code"] | null
-          created_at: string
-          deleted_at: string | null
-          id: string
-          published_at: string | null
-          scheduled_at: string | null
-          status: Database["public"]["Enums"]["announcement_status"]
-          title: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
         }
         Insert: {
-          audience?: Database["public"]["Enums"]["announcement_audience"]
-          author_id?: string | null
-          body: string
-          course?: Database["public"]["Enums"]["course_code"] | null
-          created_at?: string
-          deleted_at?: string | null
-          id?: string
-          published_at?: string | null
-          scheduled_at?: string | null
-          status?: Database["public"]["Enums"]["announcement_status"]
-          title: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
         }
         Update: {
-          audience?: Database["public"]["Enums"]["announcement_audience"]
-          author_id?: string | null
-          body?: string
-          course?: Database["public"]["Enums"]["course_code"] | null
-          created_at?: string
-          deleted_at?: string | null
-          id?: string
-          published_at?: string | null
-          scheduled_at?: string | null
-          status?: Database["public"]["Enums"]["announcement_status"]
-          title?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "platform_announcements_author_id_fkey"
-            columns: ["author_id"]
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1480,39 +1453,6 @@ export type Database = {
           },
         ]
       }
-      security_findings: {
-        Row: {
-          category: string
-          description: string
-          detected_at: string
-          id: string
-          recommendation: string
-          resolved_at: string | null
-          severity: Database["public"]["Enums"]["severity_level"]
-          title: string
-        }
-        Insert: {
-          category: string
-          description: string
-          detected_at?: string
-          id?: string
-          recommendation: string
-          resolved_at?: string | null
-          severity: Database["public"]["Enums"]["severity_level"]
-          title: string
-        }
-        Update: {
-          category?: string
-          description?: string
-          detected_at?: string
-          id?: string
-          recommendation?: string
-          resolved_at?: string | null
-          severity?: Database["public"]["Enums"]["severity_level"]
-          title?: string
-        }
-        Relationships: []
-      }
       sessions: {
         Row: {
           browser: string | null
@@ -1767,6 +1707,10 @@ export type Database = {
       instructor_analytics: { Args: never; Returns: Json }
       join_class: { Args: { p_code: string }; Returns: string }
       leave_class: { Args: { p_class_id: string }; Returns: undefined }
+      register_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: undefined
+      }
       save_quiz: {
         Args: { p_quiz: Json; p_replace_questions?: boolean }
         Returns: string
@@ -1788,6 +1732,7 @@ export type Database = {
         Args: { p_answers: Json; p_quiz_id: string; p_started_at?: string }
         Returns: string
       }
+      unregister_push_token: { Args: { p_token: string }; Returns: undefined }
     }
     Enums: {
       account_status: "active" | "inactive" | "pending_approval"
@@ -1799,8 +1744,6 @@ export type Database = {
         | "transcription"
       ai_source_type: "material" | "class" | "quiz" | "chat" | "planner"
       ai_status: "ok" | "error" | "timeout"
-      announcement_audience: "all" | "students" | "instructors" | "course"
-      announcement_status: "scheduled" | "published"
       audit_action: "create" | "update" | "delete" | "settings" | "security"
       auth_provider: "password" | "google"
       auth_token_kind: "reset" | "google_profile"
@@ -1851,7 +1794,6 @@ export type Database = {
         | "backup"
         | "legal"
         | "ai"
-      severity_level: "critical" | "high" | "medium" | "low"
       submission_status: "draft" | "submitted" | "late" | "graded"
       summary_mode: "tldr" | "bullets" | "mindmap"
       task_kind: "assignment" | "quiz"
@@ -1994,8 +1936,6 @@ export const Constants = {
       ],
       ai_source_type: ["material", "class", "quiz", "chat", "planner"],
       ai_status: ["ok", "error", "timeout"],
-      announcement_audience: ["all", "students", "instructors", "course"],
-      announcement_status: ["scheduled", "published"],
       audit_action: ["create", "update", "delete", "settings", "security"],
       auth_provider: ["password", "google"],
       auth_token_kind: ["reset", "google_profile"],
@@ -2050,7 +1990,6 @@ export const Constants = {
         "legal",
         "ai",
       ],
-      severity_level: ["critical", "high", "medium", "low"],
       submission_status: ["draft", "submitted", "late", "graded"],
       summary_mode: ["tldr", "bullets", "mindmap"],
       task_kind: ["assignment", "quiz"],

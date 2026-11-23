@@ -95,7 +95,7 @@ Sa mobile, nasa **loob ng class** ang announcements (stream: title, body, pinned
 
 ## 4. Mga table sa Supabase
 
-### Buburahin (nasa `supabase/migrations/20260101000021_admin_mobile_sync.sql`, **hindi pa naka-apply**)
+### Buburahin (`supabase/migrations/20260101000021_admin_mobile_sync.sql`, **naka-apply na sa `studia-dev`**; wala pa sa `studia-prod`)
 
 | Item | Dahilan | Datos na mawawala (dev) |
 |---|---|---|
@@ -106,7 +106,7 @@ Sa mobile, nasa **loob ng class** ang announcements (stream: title, body, pinned
 
 Sinuri sa live DB na walang policy, view o function na umaasa sa mga ito. Tala: mananatili ang enum labels na `term` at `uploads` sa `settings_section`, dahil hindi nakakapag-drop ng enum value ang Postgres nang hindi ni-rebuild ang type. Wala itong epekto.
 
-Kapag in-apply: i-update din ang `shared-types/database.types.ts` (generated) at ang `platform_announcements` entry sa `scripts/src/lib/plan.ts`.
+Na-regenerate na ang `shared-types/database.types.ts` mula sa dev DB, at inalis ang dalawang entry sa `scripts/src/lib/plan.ts`.
 
 ### Idadagdag
 
