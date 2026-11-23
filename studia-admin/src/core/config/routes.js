@@ -22,18 +22,11 @@ export const ROUTES = {
 
   security: '/security',
   securityAuditLog: '/security/audit-log',
-  securitySessions: '/security/sessions',
   securityLoginAttempts: '/security/login-attempts',
-  securityVulnerabilities: '/security/vulnerabilities',
 
   settings: '/settings',
-  settingsTerm: '/settings/term',
-  settingsEmailOtp: '/settings/email-otp',
-  settingsSecurityPolicy: '/settings/security-policy',
-  settingsUploads: '/settings/uploads',
   settingsAi: '/settings/ai',
   settingsSystem: '/settings/system',
-  settingsBackup: '/settings/backup',
   settingsLegal: '/settings/legal',
   settingsAccount: '/settings/account',
 

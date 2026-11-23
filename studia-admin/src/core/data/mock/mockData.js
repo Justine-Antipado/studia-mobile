@@ -187,17 +187,37 @@ function buildQuizzes() {
 
 export const mockQuizzes = buildQuizzes();
 
+/** Class stream posts, same shape as studia-mobile's announcements-remote.ts (title, body, pinned, comments). */
+const STREAM_POSTS = [
+  { title: 'Midterm schedule', body: 'Midterm exams start next week. Check the course calendar for your slot.' },
+  { title: 'Assignment reminder', body: 'The next assignment is due Friday. Submit it in the Assignments tab before the deadline.' },
+  { title: 'Class moved to Room 3', body: 'Tomorrow’s session is moved to Room 3. Same time.' },
+];
+const STREAM_COMMENTS = ['Noted, ma’am.', 'Thank you for the reminder!', 'Will this be covered in the quiz?'];
+
 function buildClassAnnouncements() {
   const items = [];
   let seq = 1;
   for (const cls of mockClasses) {
+    const post = STREAM_POSTS[seq % STREAM_POSTS.length];
+    const instructor = mockUsers.find((u) => u.id === cls.instructorId);
     items.push({
       id: `cann-${seq}`,
       classId: cls.id,
-      title: 'Midterm schedule',
-      body: 'Midterm exams start next week. Check the course calendar for your slot.',
+      className: cls.title,
+      sectionLabel: cls.sectionLabel,
+      authorName: instructor?.name ?? 'Instructor',
+      title: post.title,
+      body: post.body,
       postedAt: isoDaysAgo(5 + seq),
       pinned: seq % 4 === 0,
+      comments: STREAM_COMMENTS.slice(0, seq % 4).map((text, i) => ({
+        id: `cann-${seq}-c${i + 1}`,
+        author: cls.studentIds.length ? (mockUsers.find((u) => u.id === cls.studentIds[i % cls.studentIds.length])?.name ?? 'Classmate') : 'Classmate',
+        authorIsInstructor: false,
+        text,
+        postedAt: isoDaysAgo(4 + seq),
+      })),
     });
     seq += 1;
   }
@@ -205,43 +225,6 @@ function buildClassAnnouncements() {
 }
 
 export const mockClassAnnouncements = buildClassAnnouncements();
-
-/** System-wide notices the admin posts from /announcements — the one area admin may create content. */
-export const mockSystemAnnouncements = [
-  {
-    id: 'sysann-1',
-    title: 'Midterm examination schedule',
-    body: 'Midterm exams run November 24–28. Check your class announcements for room assignments.',
-    audience: 'all',
-    course: null,
-    status: 'Published',
-    scheduledAt: null,
-    publishedAt: isoDaysAgo(2, 8),
-    createdAt: isoDaysAgo(2, 8),
-  },
-  {
-    id: 'sysann-2',
-    title: 'Server maintenance window',
-    body: 'STUDIA will be briefly unavailable on Nov 23, 1:00–2:00 AM for scheduled maintenance.',
-    audience: 'all',
-    course: null,
-    status: 'Scheduled',
-    scheduledAt: isoDaysAgo(-3, 1),
-    publishedAt: null,
-    createdAt: isoDaysAgo(0, 10),
-  },
-  {
-    id: 'sysann-3',
-    title: 'BSIT curriculum update',
-    body: 'BSIT students: the updated prospectus for AY 2026–2027 is now available from your adviser.',
-    audience: 'course',
-    course: 'BSIT',
-    status: 'Published',
-    scheduledAt: null,
-    publishedAt: isoDaysAgo(6, 9),
-    createdAt: isoDaysAgo(6, 9),
-  },
-];
 
 export const mockStats = {
   totalUsers: 1284,
@@ -297,34 +280,18 @@ export const mockActivity = [
   { id: 'a2', type: 'ai', message: 'AI quiz synthesizer generated 12 questions for BSIT 3-A.', at: isoDaysAgo(0, 6) },
   { id: 'a3', type: 'content', message: 'Prof. Maria Santos uploaded a new lesson video.', at: isoDaysAgo(1, 15) },
   { id: 'a4', type: 'security', message: 'Admin login from a new device.', at: isoDaysAgo(1, 9) },
-  { id: 'a5', type: 'announcement', message: 'System-wide announcement published: "Midterm schedule".', at: isoDaysAgo(2, 11) },
+  { id: 'a5', type: 'announcement', message: 'Prof. Teresa Ocampo posted "Midterm schedule" in BSIT 1-A.', at: isoDaysAgo(2, 11) },
   { id: 'a6', type: 'registration', message: 'Ella Fernandez registered as a Student.', at: isoDaysAgo(3, 14) },
 ];
 
 export const mockSettings = {
-  term: { schoolYear: '2026–2027', semester: '1st Semester', startDate: '2026-08-11', endDate: '2026-12-18' },
   email: { senderEmail: env.mailFrom, otpExpiryMinutes: 5, requireOtpForReset: true, resendSeconds: 60 },
-  // Mirrors studia-mobile's auth-service.ts defaults (LOGIN_MAX_FAILS 5, LOGIN_LOCK_MS 60s = 1 min);
-  // mockBackend.login reads these live, so changing them here actually changes lockout behavior.
-  securityPolicy: { minPasswordLength: 8, requireUppercase: true, requireNumber: true, requireSymbol: true, sessionTimeoutMinutes: 20, maxLoginAttempts: 5, lockoutMinutes: 1 },
-  uploads: { allowedTypes: ['mp4', 'mov', 'pdf', 'pptx', 'docx'], maxVideoSizeMb: 500, maxDocumentSizeMb: 25, storageQuotaGb: 50 },
   system: {
     maintenanceMode: false,
     // See core/logic/maintenance.js for the shape and the isUnderMaintenance gate.
     maintenance: { enabled: false, scope: 'all', roles: [], features: [], message: '', startsAt: '', endsAt: '' },
     appVersion: 'v1.0.0',
     upToDate: true,
-  },
-  backup: {
-    lastBackupAt: isoDaysAgo(4, 2),
-    lastBackupSizeLabel: '1.8 GB',
-    ok: true,
-    restorePoints: [
-      { id: 'bkp-1', at: isoDaysAgo(4, 2), sizeLabel: '1.8 GB' },
-      { id: 'bkp-2', at: isoDaysAgo(11, 2), sizeLabel: '1.7 GB' },
-      { id: 'bkp-3', at: isoDaysAgo(18, 2), sizeLabel: '1.6 GB' },
-      { id: 'bkp-4', at: isoDaysAgo(25, 2), sizeLabel: '1.6 GB' },
-    ],
   },
   legal: {
     terms: '1. Using STUDIA — provided by OMSU Mamburao Campus for learning and academic activities.',
@@ -338,29 +305,21 @@ export const mockSettings = {
 /** Who did what, when — every delete and write this admin performs is logged here. Newest first. */
 export const mockAuditLog = [
   { id: 'log-1', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 1 user account.', at: isoDaysAgo(0, 9) },
-  { id: 'log-2', actor: 'OMSU Administrator', action: 'create', summary: 'Published announcement "Midterm schedule".', at: isoDaysAgo(1, 11) },
-  { id: 'log-3', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated Email & OTP settings.', at: isoDaysAgo(2, 15) },
+  { id: 'log-2', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 1 class announcement.', at: isoDaysAgo(1, 11) },
+  { id: 'log-3', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated the AI settings.', at: isoDaysAgo(2, 15) },
   { id: 'log-4', actor: 'OMSU Administrator', action: 'security', summary: 'Changed the admin password.', at: isoDaysAgo(3, 10) },
   { id: 'log-5', actor: 'OMSU Administrator', action: 'update', summary: 'Disabled the AI chat feature.', at: isoDaysAgo(4, 13) },
   { id: 'log-6', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 3 content items from BSIT 2-A.', at: isoDaysAgo(5, 8) },
-  { id: 'log-7', actor: 'OMSU Administrator', action: 'settings', summary: 'Ran a manual backup.', at: isoDaysAgo(6, 2) },
+  { id: 'log-7', actor: 'OMSU Administrator', action: 'settings', summary: 'Disabled the AI chat feature.', at: isoDaysAgo(6, 2) },
   { id: 'log-8', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted the class "BEED 1-C".', at: isoDaysAgo(7, 16) },
-  { id: 'log-9', actor: 'OMSU Administrator', action: 'security', summary: 'Revoked a session on Chrome · Windows.', at: isoDaysAgo(8, 9) },
-  { id: 'log-10', actor: 'OMSU Administrator', action: 'create', summary: 'Scheduled announcement "Enrollment period".', at: isoDaysAgo(9, 14) },
+  { id: 'log-9', actor: 'OMSU Administrator', action: 'security', summary: 'Changed the admin password.', at: isoDaysAgo(8, 9) },
+  { id: 'log-10', actor: 'OMSU Administrator', action: 'update', summary: 'Disabled the AI planner feature.', at: isoDaysAgo(9, 14) },
   { id: 'log-11', actor: 'OMSU Administrator', action: 'update', summary: 'Re-enabled the AI quiz synthesizer.', at: isoDaysAgo(10, 10) },
-  { id: 'log-12', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated the academic term dates.', at: isoDaysAgo(12, 9) },
+  { id: 'log-12', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated the legal text.', at: isoDaysAgo(12, 9) },
   { id: 'log-13', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 2 user accounts.', at: isoDaysAgo(14, 11) },
-  { id: 'log-14', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated upload limits.', at: isoDaysAgo(16, 15) },
-  { id: 'log-15', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 1 announcement.', at: isoDaysAgo(19, 8) },
-  { id: 'log-16', actor: 'OMSU Administrator', action: 'security', summary: 'Updated the security policy.', at: isoDaysAgo(22, 13) },
-];
-
-/** Active admin sessions — there is one admin account, but it can be signed in from several devices. */
-export const mockSessions = [
-  { id: 'sess-1', device: 'Windows PC', browser: 'Chrome 131', ip: '203.177.42.10', location: 'Mamburao, Occidental Mindoro', startedAt: isoDaysAgo(0, 8), lastActiveAt: isoDaysAgo(0, 8), current: true },
-  { id: 'sess-2', device: 'iPhone', browser: 'Safari 18', ip: '110.54.128.77', location: 'San Jose, Occidental Mindoro', startedAt: isoDaysAgo(2, 19), lastActiveAt: isoDaysAgo(1, 7), current: false },
-  { id: 'sess-3', device: 'MacBook', browser: 'Chrome 130', ip: '112.198.90.4', location: 'Manila, NCR', startedAt: isoDaysAgo(6, 21), lastActiveAt: isoDaysAgo(5, 12), current: false },
-  { id: 'sess-4', device: 'Android phone', browser: 'Chrome Mobile 130', ip: '49.145.12.233', location: 'Mamburao, Occidental Mindoro', startedAt: isoDaysAgo(9, 10), lastActiveAt: isoDaysAgo(9, 10), current: false },
+  { id: 'log-14', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated the AI settings.', at: isoDaysAgo(16, 15) },
+  { id: 'log-15', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 2 class announcements.', at: isoDaysAgo(19, 8) },
+  { id: 'log-16', actor: 'OMSU Administrator', action: 'security', summary: 'Updated the legal text.', at: isoDaysAgo(22, 13) },
 ];
 
 /** Seed history for /security/login-attempts; the mock backend appends a real row on every login call. */
@@ -379,18 +338,6 @@ export const mockLoginAttempts = [
   { id: 'att-12', identifier: 'root', success: false, locked: false, ip: '41.223.9.88', at: isoDaysAgo(8, 3) },
   { id: 'att-13', identifier: 'admin@omsu.edu.ph', success: true, locked: false, ip: '49.145.12.233', at: isoDaysAgo(9, 10) },
   { id: 'att-14', identifier: 'admin@omsu.edu.ph', success: true, locked: false, ip: '203.177.42.10', at: isoDaysAgo(12, 8) },
-];
-
-/** Security posture checklist for /security/vulnerabilities — "scanner-style" findings, from the API once it exists. */
-export const mockVulnerabilities = [
-  { id: 'vuln-1', title: 'Dependencies are out of date', category: 'Dependencies', severity: 'Medium', description: 'One or more packages have a newer release with a security fix.', recommendation: 'Run `npm outdated` and upgrade flagged packages, then re-run `npm run build`.' },
-  { id: 'vuln-2', title: 'Password policy meets the mobile standard', category: 'Password policy', severity: 'Low', description: 'The admin password must satisfy all five rules shared with studia-mobile (length, case, number, symbol).', recommendation: 'No action — re-check after any change to core/logic/validation.js.' },
-  { id: 'vuln-3', title: 'OTP codes are 6 digits with a 5-minute expiry', category: 'OTP policy', severity: 'Low', description: 'Codes are single-use and rate-limited by the resend interval.', recommendation: 'Confirm the production backend hashes OTPs at rest and never logs the plain code.' },
-  { id: 'vuln-4', title: 'Login rate limiting is active', category: 'Rate limiting', severity: 'Low', description: 'Failed admin logins lock the account for a cooldown period after too many attempts.', recommendation: 'Keep the lockout enforced server-side as well — a client-only counter is not a real control.' },
-  { id: 'vuln-5', title: 'HTTPS is not yet enforced for the real API', category: 'Transport security', severity: 'High', description: 'No backend exists yet; once deployed, HTTP must redirect to HTTPS and use HSTS.', recommendation: 'Terminate TLS at the load balancer and send `Strict-Transport-Security`.' },
-  { id: 'vuln-6', title: 'Content-Security-Policy is a meta tag only', category: 'CSP', severity: 'Medium', description: 'A `<meta http-equiv="Content-Security-Policy">` tag is set, but `frame-ancestors` is ignored in a meta tag.', recommendation: 'Send the same policy as a response header from the web server once this is deployed.' },
-  { id: 'vuln-7', title: 'Last backup is recent', category: 'Backup age', severity: 'Low', description: 'The most recent backup completed within the expected window.', recommendation: 'Alert if a backup is more than 48 hours old.' },
-  { id: 'vuln-8', title: 'Upload content-type is not sniffed server-side yet', category: 'File uploads', severity: 'High', description: 'There is no backend yet to verify an uploaded file’s real content type against its extension.', recommendation: 'Have the PHP API check magic bytes, not just the filename extension, before storing an upload.' },
 ];
 
 /** Total matches mockStats.aiRequests, so the dashboard tile and this trend agree. */

@@ -30,18 +30,11 @@ const Reports = lazy(() => import('./features/reports/pages/Reports'));
 const Notifications = lazy(() => import('./features/notifications/pages/Notifications'));
 const SecurityCenter = lazy(() => import('./features/security/pages/SecurityCenter'));
 const AuditLog = lazy(() => import('./features/security/pages/AuditLog'));
-const Sessions = lazy(() => import('./features/security/pages/Sessions'));
 const LoginAttempts = lazy(() => import('./features/security/pages/LoginAttempts'));
-const Vulnerabilities = lazy(() => import('./features/security/pages/Vulnerabilities'));
 
 const Settings = lazy(() => import('./features/settings/pages/Settings'));
-const Term = lazy(() => import('./features/settings/pages/Term'));
-const EmailOtp = lazy(() => import('./features/settings/pages/EmailOtp'));
-const SecurityPolicy = lazy(() => import('./features/settings/pages/SecurityPolicy'));
-const Uploads = lazy(() => import('./features/settings/pages/Uploads'));
 const AiSettings = lazy(() => import('./features/settings/pages/AiSettings'));
 const SystemSettings = lazy(() => import('./features/settings/pages/SystemSettings'));
-const Backup = lazy(() => import('./features/settings/pages/Backup'));
 const Legal = lazy(() => import('./features/settings/pages/Legal'));
 const Account = lazy(() => import('./features/settings/pages/Account'));
 
@@ -85,18 +78,11 @@ export default function App() {
 
             <Route path={ROUTES.security} element={<SecurityCenter />} />
             <Route path={ROUTES.securityAuditLog} element={<AuditLog />} />
-            <Route path={ROUTES.securitySessions} element={<Sessions />} />
             <Route path={ROUTES.securityLoginAttempts} element={<LoginAttempts />} />
-            <Route path={ROUTES.securityVulnerabilities} element={<Vulnerabilities />} />
 
             <Route path={ROUTES.settings} element={<Settings />} />
-            <Route path={ROUTES.settingsTerm} element={<Term />} />
-            <Route path={ROUTES.settingsEmailOtp} element={<EmailOtp />} />
-            <Route path={ROUTES.settingsSecurityPolicy} element={<SecurityPolicy />} />
-            <Route path={ROUTES.settingsUploads} element={<Uploads />} />
             <Route path={ROUTES.settingsAi} element={<AiSettings />} />
             <Route path={ROUTES.settingsSystem} element={<SystemSettings />} />
-            <Route path={ROUTES.settingsBackup} element={<Backup />} />
             <Route path={ROUTES.settingsLegal} element={<Legal />} />
             <Route path={ROUTES.settingsAccount} element={<Account />} />
 

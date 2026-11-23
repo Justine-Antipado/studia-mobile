@@ -31,7 +31,6 @@ import {
   mockAssignments,
   mockQuizzes,
   mockClassAnnouncements,
-  mockSystemAnnouncements,
   mockAiRequestsTrend,
   mockAiFeatureHealth,
   mockAiQuota,
@@ -42,9 +41,7 @@ import {
   mockContentConsumption,
   mockStrugglingConcepts,
   mockAuditLog,
-  mockSessions,
   mockLoginAttempts,
-  mockVulnerabilities,
   BLOOM_LEVELS,
   DIFFICULTIES,
 } from './mockData';
@@ -111,12 +108,6 @@ const ADMIN_ACCOUNT = {
 
 /** Human label per top-level settings key, for the audit log's one-line summary. */
 const SETTINGS_SECTION_LABELS = {
-  term: 'the academic term',
-  email: 'Email & OTP settings',
-  securityPolicy: 'the security policy',
-  uploads: 'upload limits',
-  system: 'system settings',
-  backup: 'backup settings',
   legal: 'the legal text',
   ai: 'AI settings',
 };
@@ -137,12 +128,9 @@ const db = () => {
     assignments: structuredClone(mockAssignments),
     quizzes: structuredClone(mockQuizzes),
     classAnnouncements: structuredClone(mockClassAnnouncements),
-    systemAnnouncements: structuredClone(mockSystemAnnouncements),
     notifications: structuredClone(mockNotifications),
     auditLog: structuredClone(mockAuditLog),
-    sessions: structuredClone(mockSessions),
     loginAttempts: structuredClone(mockLoginAttempts),
-    vulnerabilities: structuredClone(mockVulnerabilities),
   };
   return database;
 };
@@ -291,48 +279,27 @@ export const mockBackend = {
     };
   },
 
-  /** params: { page, pageSize, sort, order, q, filters } -> { data, meta }. System-wide notices. */
+  /**
+   * params: { page, pageSize, sort, order, q, filters } -> { data, meta }.
+   * The class streams: every announcement an instructor posted inside a class (what students see in the
+   * mobile course > Announcements tab), with its comments. Read and delete only; posts are written in the app.
+   */
   async getAnnouncements(params = {}) {
     await delay(200);
-    const rows = [...db().systemAnnouncements].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    return applyListParams(rows, { ...params, searchKeys: ['title', 'body', 'audience', 'course'] });
-  },
-
-  /** The one area admin may create content. Validated again here — the client is never the authority. */
-  async createAnnouncement(input) {
-    await delay();
-    const title = String(input?.title ?? '').trim();
-    const body = String(input?.body ?? '').trim();
-    const fieldErrors = {};
-    if (!title) fieldErrors.title = 'Title is required.';
-    if (!body) fieldErrors.body = 'Message is required.';
-    if (input?.audience === 'course' && !input?.course) fieldErrors.course = 'Select a course.';
-    if (Object.keys(fieldErrors).length) throw fail(422, 'Please check the highlighted fields.', { fieldErrors });
-
-    const now = new Date();
-    const isFuture = input.scheduledAt && new Date(input.scheduledAt).getTime() > now.getTime();
-    const item = {
-      id: `sysann-${Date.now()}`,
-      title,
-      body,
-      audience: input.audience,
-      course: input.audience === 'course' ? input.course : null,
-      status: isFuture ? 'Scheduled' : 'Published',
-      scheduledAt: isFuture ? input.scheduledAt : null,
-      publishedAt: isFuture ? null : now.toISOString(),
-      createdAt: now.toISOString(),
-    };
-    const store = db();
-    store.systemAnnouncements = [item, ...store.systemAnnouncements];
-    logAudit(store, 'create', `${isFuture ? 'Scheduled' : 'Published'} announcement "${title}".`);
-    return item;
+    const rows = db().classAnnouncements.map((a) => ({ ...structuredClone(a), commentCount: a.comments.length }));
+    const { pinned, classId } = params.filters ?? {};
+    const filtered = rows.filter(
+      (a) => (!pinned || pinned === 'All' || (pinned === 'Pinned') === a.pinned) && (!classId || classId === 'All' || a.classId === classId)
+    );
+    const sorted = filtered.sort((a, b) => new Date(b.postedAt) - new Date(a.postedAt));
+    return applyListParams(sorted, { ...params, filters: {}, searchKeys: ['title', 'body', 'className', 'authorName'] });
   },
 
   async deleteAnnouncements(ids) {
     await delay();
     const store = db();
-    store.systemAnnouncements = store.systemAnnouncements.filter((a) => !ids.includes(a.id));
-    logAudit(store, 'delete', `Deleted ${ids.length} announcement${ids.length === 1 ? '' : 's'}.`);
+    store.classAnnouncements = store.classAnnouncements.filter((a) => !ids.includes(a.id));
+    logAudit(store, 'delete', `Deleted ${ids.length} class announcement${ids.length === 1 ? '' : 's'}.`);
     return true;
   },
 
@@ -420,21 +387,6 @@ export const mockBackend = {
     return structuredClone(store.settings);
   },
 
-  async runBackup() {
-    await delay(900);
-    const store = db();
-    const now = new Date().toISOString();
-    const point = { id: `bkp-${Date.now()}`, at: now, sizeLabel: '1.8 GB' };
-    store.settings.backup = {
-      lastBackupAt: now,
-      lastBackupSizeLabel: point.sizeLabel,
-      ok: true,
-      restorePoints: [point, ...store.settings.backup.restorePoints],
-    };
-    logAudit(store, 'settings', 'Ran a manual backup.');
-    return structuredClone(store.settings.backup);
-  },
-
   // --- Password change with OTP ---
   async sendOtp() {
     await delay();
@@ -483,23 +435,6 @@ export const mockBackend = {
     });
   },
 
-  /** Active admin sessions, not paginated — there are only ever a handful. */
-  async getSessions() {
-    await delay(200);
-    return structuredClone(db().sessions);
-  },
-
-  async revokeSession(id) {
-    await delay();
-    const store = db();
-    const session = store.sessions.find((s) => s.id === id);
-    if (!session) throw fail(404, 'That session no longer exists.');
-    if (session.current) throw fail(422, 'You cannot revoke the session you are using right now.');
-    store.sessions = store.sessions.filter((s) => s.id !== id);
-    logAudit(store, 'security', `Revoked a session on ${session.browser} · ${session.device}.`);
-    return true;
-  },
-
   /** params: { page, pageSize, sort, order, q, filters: { result } } -> { data, meta }. Failed logins, lockouts and IPs. */
   async getLoginAttempts(params = {}) {
     await delay(200);
@@ -517,11 +452,6 @@ export const mockBackend = {
     });
   },
 
-  /** Security posture checklist — "scanner-style" findings. Not paginated; from the API once it exists. */
-  async getVulnerabilities() {
-    await delay(250);
-    return structuredClone(db().vulnerabilities);
-  },
 };
 
 export default mockBackend;

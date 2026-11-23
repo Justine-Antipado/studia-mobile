@@ -41,7 +41,6 @@ export const httpBackend = {
 
   getAnnouncements: (params = {}, options) =>
     http.get(`${BASE}/announcements`, { ...options, params: toListParams(params) }).then((r) => toList(r, params)),
-  createAnnouncement: (input) => http.post(`${BASE}/announcements`, toApi(input)).then(toUi),
   deleteAnnouncements: (ids) => http.post(`${BASE}/announcements/delete`, { ids }).then(toUi),
 
   getAiHealth: (options) => http.get(`${BASE}/ai`, options).then(toUi),
@@ -57,18 +56,11 @@ export const httpBackend = {
 
   getSettings: (options) => http.get(`${BASE}/settings`, options).then(toUi),
   saveSettings: (patch) => http.put(`${BASE}/settings`, toApi(patch)).then(toUi),
-  runBackup: () => http.post(`${BASE}/settings/backup/run`).then(toUi),
-
   getAuditLog: (params = {}, options) =>
     http.get(`${BASE}/security/audit-log`, { ...options, params: toListParams(params) }).then((r) => toList(r, params)),
 
-  getSessions: (options) => http.get(`${BASE}/security/sessions`, options).then(toUi),
-  revokeSession: (id) => http.post(`${BASE}/security/sessions/${encodeURIComponent(id)}/revoke`).then(() => true),
-
   getLoginAttempts: (params = {}, options) =>
     http.get(`${BASE}/security/login-attempts`, { ...options, params: toListParams(params) }).then((r) => toList(r, params)),
-
-  getVulnerabilities: (options) => http.get(`${BASE}/security/vulnerabilities`, options).then(toUi),
 
   sendOtp: () => http.post(`${BASE}/account/otp/send`).then(toUi),
   verifyOtp: (code) => http.post(`${BASE}/account/otp/verify`, { code }).then(() => true),

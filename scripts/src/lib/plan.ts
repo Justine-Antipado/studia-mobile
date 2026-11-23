@@ -84,7 +84,6 @@ export const PLAN: readonly TablePlan[] = [
   { csv: "18_quiz_answers", src: "quiz_answers", dest: "quiz_answers" },
   { csv: "19_announcements", src: "announcements", dest: "announcements" },
   { csv: "20_announcement_comments", src: "announcement_comments", dest: "announcement_comments" },
-  { csv: "21_platform_announcements", src: "platform_announcements", dest: "platform_announcements" },
   { csv: "22_notifications", src: "notifications", dest: "notifications" },
   { csv: "23_ai_requests", src: "ai_requests", dest: "ai_requests" },
   { csv: "24_ai_chat_messages", src: "ai_chat_messages", dest: "ai_chat_messages" },
@@ -92,7 +91,6 @@ export const PLAN: readonly TablePlan[] = [
   { csv: "26_audit_log", src: "audit_log", dest: "audit_log" },
   { csv: "27_login_attempts", src: "login_attempts", dest: "login_attempts" },
   { csv: "28_backup_runs", src: "backup_runs", dest: "backup_runs" },
-  { csv: "29_security_findings", src: "security_findings", dest: "security_findings" },
 ];
 
 export type Manifest = {

@@ -57,7 +57,6 @@ export const getAssessments = (options) => backend.getAssessments(options);
 
 /* --- announcements --- */
 export const getAnnouncements = (params, options) => backend.getAnnouncements(params, options);
-export const createAnnouncement = (input) => backend.createAnnouncement(input);
 export const deleteAnnouncements = (ids) => backend.deleteAnnouncements(ids);
 
 /* --- ai --- */
@@ -75,14 +74,10 @@ export const markAllNotificationsRead = () => backend.markAllNotificationsRead()
 /* --- settings --- */
 export const getSettings = (options) => backend.getSettings(options);
 export const saveSettings = (patch) => backend.saveSettings(patch);
-export const runBackup = () => backend.runBackup();
 
 /* --- security --- */
 export const getAuditLog = (params, options) => backend.getAuditLog(params, options);
-export const getSessions = (options) => backend.getSessions(options);
-export const revokeSession = (id) => backend.revokeSession(id);
 export const getLoginAttempts = (params, options) => backend.getLoginAttempts(params, options);
-export const getVulnerabilities = (options) => backend.getVulnerabilities(options);
 
 /* --- admin account --- */
 export const sendOtp = () => backend.sendOtp();

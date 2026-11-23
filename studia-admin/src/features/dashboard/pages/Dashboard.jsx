@@ -18,7 +18,7 @@ import { C } from '../../../theme';
 
 const QUICK_LINKS = [
   { to: ROUTES.users, label: 'Manage users', icon: 'Users' },
-  { to: ROUTES.announcements, label: 'Post an announcement', icon: 'Megaphone' },
+  { to: ROUTES.announcements, label: 'Class announcements', icon: 'Megaphone' },
   { to: ROUTES.security, label: 'Security center', icon: 'Shield' },
   { to: ROUTES.settings, label: 'Settings', icon: 'Settings' },
 ];

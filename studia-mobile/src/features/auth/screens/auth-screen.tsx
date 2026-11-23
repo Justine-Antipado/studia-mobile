@@ -28,7 +28,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DATA_SOURCE } from "@/core/config/data-source";
 import { setUser } from "@/core/data/storage/session-store";
 import { profileRepository } from "@/features/shared-screens/data/profile-repository";
 import { toProfile } from "@/features/auth/logic/user-profile";
@@ -175,7 +174,6 @@ async function logRuntimeEnv() {
         appOwnership: Constants.appOwnership, // "expo" = Expo Go
         isExpoGo: Constants.executionEnvironment === "storeClient",
         appName: Constants.expoConfig?.name,
-        dataSource: DATA_SOURCE,
         googleSignin,
       },
       null,
