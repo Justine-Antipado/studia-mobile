@@ -1,14 +1,11 @@
 /**
- * REMOTE CAMPUS ANNOUNCEMENTS — the admin's broadcast notices.
- *  - Reading: straight from Supabase with the admin's session (RLS lets only the admin SELECT).
- *  - Sending / deleting: POST /api/admin/announcements on studia-api, which verifies the admin and
- *    writes with the service role (the session itself has no write access, migration 023).
- * Inserting a row makes the database create one `notifications` row per recipient (migration 022),
- * which is what the mobile Alerts tab shows. Same ApiError shape as every other backend.
+ * REMOTE CAMPUS ANNOUNCEMENTS — the admin's broadcast notices, straight to Supabase with the admin's
+ * own session (RLS on public.platform_announcements allows only the admin). Inserting a row makes
+ * the database create one `notifications` row per recipient (migration 022), which is what the
+ * mobile Alerts tab shows. Same ApiError shape as every other backend.
  */
 import { applyListParams } from '../../logic/mappers';
-import { env } from '../../config/env';
-import { ApiError, ERROR_CODES, fail } from '../http/errors';
+import { fail } from '../http/errors';
 import { getSupabase } from './remoteAuth';
 
 const FIELDS = 'id, title, body, audience, course, recipients, created_at';
@@ -27,28 +24,6 @@ function check({ error }, fallback) {
   if (!error) return;
   if (error.code === '42501') throw fail(403, 'Only the administrator can do that.');
   throw fail(500, fallback);
-}
-
-async function callApi(payload) {
-  const { data: session } = await getSupabase().auth.getSession();
-  const token = session.session?.access_token;
-  if (!token) throw fail(401, 'Your session has ended. Please sign in again.');
-  let res;
-  try {
-    res = await fetch(`${env.apiUrl}/api/admin/announcements`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload),
-    });
-  } catch {
-    throw new ApiError({ code: ERROR_CODES.network });
-  }
-  const json = await res.json().catch(() => null);
-  if (res.ok) return json;
-  const e = json?.error ?? {};
-  if (e.code === 'VALIDATION') throw fail(422, e.message ?? 'Please check the highlighted fields.', { fieldErrors: e.fields ?? {} });
-  if (e.code === 'UNAUTHORIZED') throw fail(401, 'Your session has ended. Please sign in again.');
-  throw fail(res.status >= 500 ? 500 : res.status, 'The request could not be completed.');
 }
 
 export const remoteCampus = {
@@ -70,18 +45,28 @@ export const remoteCampus = {
     if (input?.audience === 'course' && !input?.course) fieldErrors.course = 'Select a course.';
     if (Object.keys(fieldErrors).length) throw fail(422, 'Please check the highlighted fields.', { fieldErrors });
 
-    const out = await callApi({
-      action: 'create',
-      title,
-      body,
-      audience: input.audience,
-      ...(input.audience === 'course' ? { course: input.course } : {}),
-    });
-    return toUi(out.announcement);
+    const supabase = getSupabase();
+    const { data: session } = await supabase.auth.getSession();
+    const res = await supabase
+      .from('platform_announcements')
+      .insert({
+        author_id: session.session?.user.id,
+        title,
+        body,
+        audience: input.audience,
+        course: input.audience === 'course' ? input.course : null,
+      })
+      .select(FIELDS)
+      .single();
+    check(res, 'The announcement could not be sent.');
+    // `recipients` is filled in by the trigger after the insert; read it back.
+    const fresh = await supabase.from('platform_announcements').select(FIELDS).eq('id', res.data.id).single();
+    return toUi(fresh.data ?? res.data);
   },
 
   async deleteCampusAnnouncements(ids) {
-    await callApi({ action: 'delete', ids });
+    const res = await getSupabase().from('platform_announcements').delete().in('id', ids);
+    check(res, 'The announcements could not be deleted.');
     return true;
   },
 };

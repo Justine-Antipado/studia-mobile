@@ -126,7 +126,7 @@ Sinasabi ng migration 008: *"admin has NO direct data access: the admin dashboar
 ## 6. Campus-wide announcements (migration 022, naka-apply sa `studia-dev`)
 
 - Admin > Announcements ay may dalawang tab: **Class stream** (moderation) at **Campus-wide** (composer at listahan ng naipadala).
-- Read-only ang session ng admin sa `platform_announcements` (migration 023: SELECT lang, admin lang). Ang pagpapadala at pagbura ay dumadaan sa `studia-api` `POST /api/admin/announcements` na may service role, pagkatapos i-verify na admin ang token. Sinubukan sa DB: bawal mag-insert at magbura ang admin session, gumagana ang service role, at nag-fan-out ang trigger.
+- Ang admin ay nag-i-insert at nagbubura sa `platform_announcements` gamit ang sarili niyang Supabase session. Admin lang ang pinapayagan ng RLS (migrations 022 at 024; ang 023 ay naibalik ng 024). Sinubukan: bawal ang student, pasok ang admin.
 - Ang trigger ay gumagawa ng `notifications` row (kind `notice`) para sa bawat active na student at instructor ayon sa audience (lahat, students, instructors, o isang course), at nagsusulat sa `audit_log`. Lumalabas ito sa Alerts tab at sa push (migration 019, kapag naka-set ang send-push). Walang pagbabago sa mobile.
 - Sinubukan sa dev (na-rollback ang test): lahat = 7 recipients, students = 6, BSIT = 1.
 - Immediate send lang; walang scheduling. Max 500 characters ang mensahe.
