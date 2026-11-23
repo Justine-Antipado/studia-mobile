@@ -121,25 +121,15 @@ export const NAV_GROUPS = [
         path: ROUTES.security,
         label: 'Security',
         icon: 'Shield',
-        title: 'Security center',
-        description: 'Audit log and login attempts.',
-        children: [
-          { path: ROUTES.securityAuditLog, label: 'Audit log', icon: 'Chart', title: 'Audit log', description: 'Who did what, and when.' },
-          { path: ROUTES.securityLoginAttempts, label: 'Login attempts', icon: 'Lock', title: 'Login attempts', description: 'Failed logins, lockouts and IP addresses.' },
-        ],
+        title: 'Security',
+        description: 'Login overview, audit log and login attempts.',
       },
       {
         path: ROUTES.settings,
         label: 'Settings',
         icon: 'Settings',
         title: 'Settings',
-        description: 'AI features, system, legal text and the admin account.',
-        children: [
-          { path: ROUTES.settingsAi, label: 'AI', icon: 'Sparkle', title: 'AI settings', description: 'Feature toggles, language and limits.' },
-          { path: ROUTES.settingsSystem, label: 'System', icon: 'Settings', title: 'System', description: 'Maintenance mode, version and updates.' },
-          { path: ROUTES.settingsLegal, label: 'Legal', icon: 'Info', title: 'Terms & privacy', description: 'The text shown inside the mobile app.' },
-          { path: ROUTES.settingsAccount, label: 'Account', icon: 'User', title: 'Admin account', description: 'Profile and password change with OTP.' },
-        ],
+        description: 'AI, system and maintenance, legal text and the admin account.',
       },
       {
         path: ROUTES.help,

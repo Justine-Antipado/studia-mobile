@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ROUTES } from './core/config/routes';
 import ProtectedRoute from './features/auth/components/ProtectedRoute';
 import ErrorBoundary from './shared/components/ErrorBoundary';
@@ -27,20 +27,20 @@ const Announcements = lazy(() => import('./features/announcements/pages/Announce
 const AiHealth = lazy(() => import('./features/ai/pages/AiHealth'));
 const Reports = lazy(() => import('./features/reports/pages/Reports'));
 
+const Security = lazy(() => import('./features/security/pages/Security'));
 const Notifications = lazy(() => import('./features/notifications/pages/Notifications'));
-const SecurityCenter = lazy(() => import('./features/security/pages/SecurityCenter'));
-const AuditLog = lazy(() => import('./features/security/pages/AuditLog'));
-const LoginAttempts = lazy(() => import('./features/security/pages/LoginAttempts'));
 
 const Settings = lazy(() => import('./features/settings/pages/Settings'));
-const AiSettings = lazy(() => import('./features/settings/pages/AiSettings'));
-const SystemSettings = lazy(() => import('./features/settings/pages/SystemSettings'));
-const Legal = lazy(() => import('./features/settings/pages/Legal'));
-const Account = lazy(() => import('./features/settings/pages/Account'));
 
 const Help = lazy(() => import('./features/help/pages/Help'));
 const Forbidden = lazy(() => import('./features/errors/pages/Forbidden'));
 const NotFound = lazy(() => import('./features/errors/pages/NotFound'));
+
+/** /settings/legal -> /settings?tab=legal (unknown sections fall back to the first tab). */
+function LegacySettingsRedirect() {
+  const { section } = useParams();
+  return <Navigate to={`/settings?tab=${encodeURIComponent(section)}`} replace />;
+}
 
 export default function App() {
   return (
@@ -76,15 +76,14 @@ export default function App() {
 
             <Route path={ROUTES.notifications} element={<Notifications />} />
 
-            <Route path={ROUTES.security} element={<SecurityCenter />} />
-            <Route path={ROUTES.securityAuditLog} element={<AuditLog />} />
-            <Route path={ROUTES.securityLoginAttempts} element={<LoginAttempts />} />
+            <Route path={ROUTES.security} element={<Security />} />
 
             <Route path={ROUTES.settings} element={<Settings />} />
-            <Route path={ROUTES.settingsAi} element={<AiSettings />} />
-            <Route path={ROUTES.settingsSystem} element={<SystemSettings />} />
-            <Route path={ROUTES.settingsLegal} element={<Legal />} />
-            <Route path={ROUTES.settingsAccount} element={<Account />} />
+
+            {/* Old deep links: the sub-pages are now tabs of Security and Settings. */}
+            <Route path="/security/audit-log" element={<Navigate to="/security?tab=audit-log" replace />} />
+            <Route path="/security/login-attempts" element={<Navigate to="/security?tab=login-attempts" replace />} />
+            <Route path="/settings/:section" element={<LegacySettingsRedirect />} />
 
             <Route path={ROUTES.help} element={<Help />} />
           </Route>

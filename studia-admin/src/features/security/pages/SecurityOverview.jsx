@@ -1,20 +1,11 @@
-// Phase 7: the security hub. Cards for the four sub-pages come from
-// navigation.js's own children list (childrenFor), so adding a fourth
-// sub-page only means editing navigation.js, not this file too.
-import { Link } from 'react-router-dom';
+// Security overview tab: the headline login numbers.
 import * as securityRepo from '../data/securityRepository';
-import { childrenFor } from '../../../core/config/navigation';
-import { ROUTES } from '../../../core/config/routes';
 import EmptyState from '../../../shared/components/EmptyState';
-import { getIcon } from '../../../shared/components/Icon';
-import PageHeader from '../../../shared/components/PageHeader';
 import { SkeletonCards } from '../../../shared/components/Skeleton';
 import StatCard from '../../../shared/components/StatCard';
 import { useAsync } from '../../../shared/hooks';
 
-const CHILDREN = childrenFor(ROUTES.security);
-
-export default function SecurityCenter() {
+export default function SecurityOverview() {
   const { data, error, loading, reload } = useAsync(
     async (signal) => {
       const [failed, locked] = await Promise.all([
@@ -28,8 +19,6 @@ export default function SecurityCenter() {
 
   return (
     <>
-      <PageHeader title="Security center" subtitle="Audit log and login attempts." />
-
       {loading && <SkeletonCards count={2} />}
 
       {!loading && error && (
@@ -51,23 +40,6 @@ export default function SecurityCenter() {
           <StatCard label="Lockouts" value={data.locked.meta.total} tone={data.locked.meta.total ? 'warn' : 'default'} />
         </div>
       )}
-
-      <div className="hub-grid">
-        {CHILDREN.map((child) => {
-          const ChildIcon = getIcon(child.icon ?? 'Shield');
-          return (
-            <Link key={child.path} to={child.path} className="hub-card">
-              <span className="hub-card-icon">
-                <ChildIcon />
-              </span>
-              <span className="hub-card-text">
-                <strong>{child.label}</strong>
-                <p>{child.description}</p>
-              </span>
-            </Link>
-          );
-        })}
-      </div>
     </>
   );
 }

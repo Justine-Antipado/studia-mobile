@@ -1,36 +1,14 @@
-// Phase 7: the settings hub replaces the pre-phase-1 monolith (phase-0
-// audit: "300 lines, three concerns in one file"). Cards for the four
-// sub-pages come from navigation.js's own children list (childrenFor), so
-// adding a fifth sub-page only means editing navigation.js, not this file.
-import { Link } from 'react-router-dom';
-import { childrenFor } from '../../../core/config/navigation';
-import { ROUTES } from '../../../core/config/routes';
-import { getIcon } from '../../../shared/components/Icon';
-import PageHeader from '../../../shared/components/PageHeader';
+// One Settings page with tabs, like Announcements: AI, System, Legal, Account.
+import { lazy } from 'react';
+import TabbedPage from '../../../shared/components/TabbedPage';
 
-const CHILDREN = childrenFor(ROUTES.settings);
+const TABS = [
+  { key: 'ai', label: 'AI', component: lazy(() => import('./AiSettings')) },
+  { key: 'system', label: 'System', component: lazy(() => import('./SystemSettings')) },
+  { key: 'legal', label: 'Legal', component: lazy(() => import('./Legal')) },
+  { key: 'account', label: 'Account', component: lazy(() => import('./Account')) },
+];
 
 export default function Settings() {
-  return (
-    <>
-      <PageHeader title="Settings" subtitle="AI features, system, legal text and the admin account." />
-
-      <div className="hub-grid">
-        {CHILDREN.map((child) => {
-          const ChildIcon = getIcon(child.icon ?? 'Settings');
-          return (
-            <Link key={child.path} to={child.path} className="hub-card">
-              <span className="hub-card-icon">
-                <ChildIcon />
-              </span>
-              <span className="hub-card-text">
-                <strong>{child.label}</strong>
-                <p>{child.description}</p>
-              </span>
-            </Link>
-          );
-        })}
-      </div>
-    </>
-  );
+  return <TabbedPage tabs={TABS} aria-label="Settings sections" />;
 }
