@@ -34,6 +34,7 @@ const LoginAttempts = lazy(() => import('./features/security/pages/LoginAttempts
 
 const Settings = lazy(() => import('./features/settings/pages/Settings'));
 const AiSettings = lazy(() => import('./features/settings/pages/AiSettings'));
+const SystemSettings = lazy(() => import('./features/settings/pages/SystemSettings'));
 const Legal = lazy(() => import('./features/settings/pages/Legal'));
 const Account = lazy(() => import('./features/settings/pages/Account'));
 
@@ -81,6 +82,7 @@ export default function App() {
 
             <Route path={ROUTES.settings} element={<Settings />} />
             <Route path={ROUTES.settingsAi} element={<AiSettings />} />
+            <Route path={ROUTES.settingsSystem} element={<SystemSettings />} />
             <Route path={ROUTES.settingsLegal} element={<Legal />} />
             <Route path={ROUTES.settingsAccount} element={<Account />} />
 

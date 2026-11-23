@@ -133,9 +133,10 @@ export const NAV_GROUPS = [
         label: 'Settings',
         icon: 'Settings',
         title: 'Settings',
-        description: 'AI features, legal text and the admin account.',
+        description: 'AI features, system, legal text and the admin account.',
         children: [
           { path: ROUTES.settingsAi, label: 'AI', icon: 'Sparkle', title: 'AI settings', description: 'Feature toggles, language and limits.' },
+          { path: ROUTES.settingsSystem, label: 'System', icon: 'Settings', title: 'System', description: 'Maintenance mode, version and updates.' },
           { path: ROUTES.settingsLegal, label: 'Legal', icon: 'Info', title: 'Terms & privacy', description: 'The text shown inside the mobile app.' },
           { path: ROUTES.settingsAccount, label: 'Account', icon: 'User', title: 'Admin account', description: 'Profile and password change with OTP.' },
         ],

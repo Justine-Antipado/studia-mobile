@@ -72,9 +72,8 @@ Nakumpirma: `npm run lint` at `npm run build` ay malinis (studia-admin).
 | Security > **Sessions** | Binura ang page, route, nav, `getSessions`/`revokeSession`, at ang Active sessions card. Pinalitan ng Lockouts card ang Security center |
 | Settings > **Backup** | Binura ang page, route, nav, `runBackup` |
 | Settings > **Security policy**, **Email & OTP** | Binura ang pages, routes, nav |
-| Settings > **System** (maintenance) | Binura ang page, ang maintenance banner, ang `core/state` at `core/logic` ng maintenance, at ang CSS |
 
-Natira sa Settings: AI, Legal, Account. Natira sa Security: Audit log, Login attempts. Ang mock `email` (OTP resend) at `system.appVersion` ay iniwan dahil ginagamit ng Account at Help. Hindi ko pa binura ang mga table na `sessions` at `backup_runs`; hindi ito kasama sa migration 021. Sabihin kung isasama.
+**Ibinalik** ang Settings > System (maintenance), kasama ang banner, state at logic, kasunod ng utos mo. Natira sa Settings: AI, System, Legal, Account. Natira sa Security: Audit log, Login attempts. Ang mock `email` (OTP resend) at `system.appVersion` ay iniwan dahil ginagamit ng Account at Help. Hindi ko pa binura ang mga table na `sessions` at `backup_runs`; hindi ito kasama sa migration 021. Sabihin kung isasama.
 
 ---|---|---|
 | Security > **Sessions** | Supabase Auth ang session ng mobile at admin; walang nagsusulat sa `sessions` (0 rows) | `sessions` |

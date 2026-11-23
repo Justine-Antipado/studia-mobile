@@ -4,11 +4,13 @@ import { env } from '../../core/config/env';
 import { descriptionFor, titleFor } from '../../core/config/navigation';
 import * as api from '../../core/data/api';
 import { setNavCounts, useNavCounts } from '../../core/state/navCounts';
+import { setMaintenance, useMaintenance } from '../../core/state/maintenance';
 // TODO(refactor): shared/ should not import features/ — move AuthContext into core/ later.
 import { useAuth } from '../../features/auth/hooks/useAuth';
 import { useAsync, useDocumentTitle, useIdleTimeout } from '../hooks';
 import ErrorBoundary from './ErrorBoundary';
 import IdleWarning from './IdleWarning';
+import MaintenanceBanner from './MaintenanceBanner';
 import OfflineBanner from './OfflineBanner';
 import PageTransition from './PageTransition';
 import Sidebar from './Sidebar';
@@ -30,11 +32,20 @@ export default function Layout() {
   // Sidebar badges (unread notifications, …). A failure here must never break
   // the shell, so the error is swallowed and the badges simply stay empty.
   const { data: fetchedCounts } = useAsync((signal) => api.getNavCounts({ signal }), []);
+  // The maintenance banner has to show on every page, so the shell owns the fetch.
+  const { data: fetchedSettings } = useAsync((signal) => api.getSettings({ signal }), []);
+  const maintenance = useMaintenance();
   const counts = useNavCounts();
 
   useEffect(() => {
     if (fetchedCounts) setNavCounts(fetchedCounts);
   }, [fetchedCounts]);
+
+  useEffect(() => {
+    if (fetchedSettings?.system) {
+      setMaintenance(fetchedSettings.system.maintenance, fetchedSettings.system.maintenanceMode);
+    }
+  }, [fetchedSettings]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -77,6 +88,7 @@ export default function Layout() {
           unread={counts?.unreadNotifications ?? 0}
           onOpenNav={() => setNavOpen(true)}
         />
+        <MaintenanceBanner config={maintenance} />
         <OfflineBanner />
 
         <main id="main" className="main">

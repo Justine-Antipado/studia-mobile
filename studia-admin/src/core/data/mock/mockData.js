@@ -287,6 +287,9 @@ export const mockActivity = [
 export const mockSettings = {
   email: { senderEmail: env.mailFrom, otpExpiryMinutes: 5, requireOtpForReset: true, resendSeconds: 60 },
   system: {
+    maintenanceMode: false,
+    // See core/logic/maintenance.js for the shape and the isUnderMaintenance gate.
+    maintenance: { enabled: false, scope: 'all', roles: [], features: [], message: '', startsAt: '', endsAt: '' },
     appVersion: 'v1.0.0',
     upToDate: true,
   },

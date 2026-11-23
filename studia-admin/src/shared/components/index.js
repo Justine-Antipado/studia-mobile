@@ -8,6 +8,7 @@ export { default as EmptyState } from './EmptyState';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { default as IdleWarning } from './IdleWarning';
 export { default as Layout } from './Layout';
+export { default as MaintenanceBanner } from './MaintenanceBanner';
 export { default as OfflineBanner } from './OfflineBanner';
 export { default as Pager } from './Pager';
 export { default as PageHeader } from './PageHeader';

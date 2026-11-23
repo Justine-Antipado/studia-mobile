@@ -26,6 +26,7 @@ export const ROUTES = {
 
   settings: '/settings',
   settingsAi: '/settings/ai',
+  settingsSystem: '/settings/system',
   settingsLegal: '/settings/legal',
   settingsAccount: '/settings/account',
 
