@@ -85,7 +85,6 @@ export default function UserDetail() {
       <PageHeader
         title={user?.name ?? 'User profile'}
         subtitle="Profile, classes, activity and AI usage. Accounts are created in the mobile app; here you can deactivate or remove them."
-        back={ROUTES.users}
         breadcrumbOverrides={{ current: user?.name }}
       />
 

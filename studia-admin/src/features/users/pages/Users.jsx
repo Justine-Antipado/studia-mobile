@@ -84,6 +84,8 @@ export default function Users() {
   const rows = data?.data ?? [];
   const pagination = usePagination({ page: query.page, pageSize: PAGE_SIZE, total: data?.meta.total ?? 0 });
   const selectedRows = rows.filter((u) => selected.has(u.id));
+  // Only active accounts can be deactivated; a deactivated one is reactivated instead.
+  const activeSelected = selectedRows.filter((u) => u.status === 'Active');
   const deleteTargets = rows.filter((u) => deleteIds?.includes(u.id));
 
   const runDelete = async () => {
@@ -103,6 +105,16 @@ export default function Users() {
       showError(e);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const reactivate = async (u) => {
+    try {
+      await usersRepo.setUsersActive([u.id], true);
+      showToast(`${u.name} reactivated.`);
+      reload();
+    } catch (e) {
+      showError(e);
     }
   };
 
@@ -146,10 +158,10 @@ export default function Users() {
             <button
               type="button"
               className="btn btn-red"
-              disabled={!selectedRows.length || busy}
-              onClick={() => setDeleteIds(selectedRows.map((u) => u.id))}
+              disabled={!activeSelected.length || busy}
+              onClick={() => setDeleteIds(activeSelected.map((u) => u.id))}
             >
-              <Icon.Close /> Deactivate ({selectedRows.length})
+              <Icon.Close /> Deactivate ({activeSelected.length})
             </button>
           </>
         }
@@ -204,7 +216,11 @@ export default function Users() {
                     label="Export"
                     onClick={() => exportCsv([u], `studia-user-${u.id}.csv`)}
                   />
-                  <ActionButton icon="Close" label="Deactivate" tone="danger" onClick={() => setDeleteIds([u.id])} />
+                  {u.status === 'Active' ? (
+                    <ActionButton icon="Close" label="Deactivate" tone="danger" onClick={() => setDeleteIds([u.id])} />
+                  ) : (
+                    <ActionButton icon="Check" label="Reactivate" tone="primary" onClick={() => reactivate(u)} />
+                  )}
                 </ActionRow>
               )}
             />

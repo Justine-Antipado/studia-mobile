@@ -37,7 +37,6 @@ export default function ClassDetail() {
       <PageHeader
         title={cls?.title ?? 'Class detail'}
         subtitle="Roster, materials, assignments and announcements. Read and delete only — classes are created in the mobile app."
-        back={ROUTES.classes}
         breadcrumbOverrides={{ current: cls?.title }}
       />
 
