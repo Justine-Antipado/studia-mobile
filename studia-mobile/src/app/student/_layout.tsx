@@ -15,6 +15,7 @@ import { Stack } from "expo-router";
 
 import { MODAL_SHEET, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
+import { RouteFeatureGate } from "@/shared/components/ui/gate-views";
 import { RoleGate } from "@/shared/components/ui/role-gate";
 import { singularScreenId } from "@/core/logic/screen-id";
 
@@ -53,6 +54,7 @@ export default function StudentLayout() {
             <Stack.Screen key={name} name={name} options={modal} dangerouslySingular={singularScreenId} />
           ))}
         </Stack>
+        <RouteFeatureGate />
       </ErrorBoundary>
     </RoleGate>
   );

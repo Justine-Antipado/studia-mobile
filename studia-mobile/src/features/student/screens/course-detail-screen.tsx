@@ -2,6 +2,7 @@
 import { useRouter } from "expo-router";
 import { useCallback } from "react";
 
+import { FeatureGate } from "@/shared/components/ui/gate-views";
 import { ListState, PageTitle, SegmentedTabs } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { useRouteEnum, useRouteId } from "@/core/logic/route-params";
@@ -41,10 +42,26 @@ export default function StudentCourseDetail() {
         {course ? (
           <>
             <SegmentedTabs items={TABS} value={tab} onChange={setTab} />
-            {tab === "Stream" && <StreamTab classId={course.id} />}
-            {tab === "Lessons" && <LessonsTab classId={course.id} />}
-            {tab === "Tasks" && <TasksTab classId={course.id} />}
-            {tab === "Grades" && <GradesTab classId={course.id} />}
+            {tab === "Stream" && (
+              <FeatureGate feature="announcements">
+                <StreamTab classId={course.id} />
+              </FeatureGate>
+            )}
+            {tab === "Lessons" && (
+              <FeatureGate feature="content">
+                <LessonsTab classId={course.id} />
+              </FeatureGate>
+            )}
+            {tab === "Tasks" && (
+              <FeatureGate feature="assessments">
+                <TasksTab classId={course.id} />
+              </FeatureGate>
+            )}
+            {tab === "Grades" && (
+              <FeatureGate feature="assessments">
+                <GradesTab classId={course.id} />
+              </FeatureGate>
+            )}
             {tab === "People" && <PeopleTab classId={course.id} onLeft={onLeft} />}
           </>
         ) : null}

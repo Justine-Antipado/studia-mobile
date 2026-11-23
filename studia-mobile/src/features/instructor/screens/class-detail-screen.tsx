@@ -1,4 +1,5 @@
 // class-detail-screen.tsx — tabs: Stream · Materials · Assessments · People · Grades (docs/ROUTE-MAP.md).
+import { FeatureGate } from "@/shared/components/ui/gate-views";
 import { ListState, PageTitle, SegmentedTabs } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { useRouteEnum, useRouteId } from "@/core/logic/route-params";
@@ -36,11 +37,27 @@ export default function InstructorClassDetailScreen() {
         {cls ? (
           <>
             <SegmentedTabs items={TABS} value={tab} onChange={setTab} />
-            {tab === "Stream" && <StreamTab classId={cls.id} />}
-            {tab === "Materials" && <MaterialsTab classId={cls.id} />}
-            {tab === "Assessments" && <AssessmentsTab classId={cls.id} />}
+            {tab === "Stream" && (
+              <FeatureGate feature="announcements">
+                <StreamTab classId={cls.id} />
+              </FeatureGate>
+            )}
+            {tab === "Materials" && (
+              <FeatureGate feature="content">
+                <MaterialsTab classId={cls.id} />
+              </FeatureGate>
+            )}
+            {tab === "Assessments" && (
+              <FeatureGate feature="assessments">
+                <AssessmentsTab classId={cls.id} />
+              </FeatureGate>
+            )}
             {tab === "People" && <PeopleTab classId={cls.id} />}
-            {tab === "Grades" && <GradesTab classId={cls.id} />}
+            {tab === "Grades" && (
+              <FeatureGate feature="assessments">
+                <GradesTab classId={cls.id} />
+              </FeatureGate>
+            )}
           </>
         ) : null}
       </ListState>

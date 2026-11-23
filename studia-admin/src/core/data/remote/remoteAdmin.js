@@ -96,7 +96,7 @@ async function pingApi() {
 
 const SETTINGS_DEFAULTS = {
   email: { senderEmail: env.mailFrom, otpExpiryMinutes: 5, requireOtpForReset: true, resendSeconds: 60 },
-  system: { maintenanceMode: false, appVersion: 'v1.0.0', upToDate: true },
+  system: { maintenanceMode: false, appVersion: 'v1.0.0', upToDate: true, update: { required: false } },
   legal: { terms: '', privacy: '' },
   ai: { summarizer: true, planner: true, quizSynthesizer: true, chat: true, language: 'English', dailyRequestLimit: 5000 },
 };

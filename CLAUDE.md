@@ -64,6 +64,13 @@ Supabase implementation. `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_
   table. Campus announcements fan out to `notifications`, which the `send-push` Edge Function
   (deployed, wired via Vault secrets `push_function_url` + `push_webhook_secret`) forwards to phones.
   There is no register route and no hard-coded admin login.
+- **Maintenance / required update / legal text** (admin Settings → System and Legal) reach the phone through
+  the public `app_status()` function (migration 027), read by `core/logic/app-status.ts` (launch, foreground,
+  every 60 s). `core/logic/maintenance.ts` decides who is blocked: `AppGate` (root) blocks the whole app,
+  `RouteFeatureGate` (role layouts, route → feature map) and `FeatureGate` (tabs inside a screen) block
+  features and their sub features (`classes` ⊃ content, assessments, announcements). An installed version
+  older than `system.update.min_version` is told to download the new one. Bump `version` in `app.json` for
+  every release. Client-side only: a modified client can ignore it.
 
 `docs/api-contract.md` maps every repository method to the endpoint the backend has to build, and
 lists what the server must enforce itself (it must never trust client-side validation). When

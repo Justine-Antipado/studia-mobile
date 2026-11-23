@@ -164,3 +164,64 @@ export function isMaintenanceValid(config) {
   if (starts !== null && ends !== null && ends <= starts) return false;
   return true;
 }
+
+/* ------------------------------------------------------------------ required app update
+ * Stored under `settings.system.update`; the phones read it through app_status().
+ *
+ *   { required: boolean, minVersion: '1.2.0', scope: 'all' | 'features',
+ *     features: [...], downloadUrl: 'https://…', message: string }
+ *
+ * An installed app older than `minVersion` cannot use the whole app (scope 'all') or the chosen
+ * features and their sub features (scope 'features'); it shows "please download the new version".
+ */
+export const UPDATE_SCOPES = [
+  { value: 'all', label: 'Whole app', hint: 'Old versions cannot be used until they update.' },
+  { value: 'features', label: 'Specific features', hint: 'Only these features ask old versions to update.' },
+];
+
+/** Closing one of these also closes everything inside it on the phone. */
+export const SUB_FEATURE_NOTE = 'Classes also covers lessons, assignments, quizzes and announcements inside a class.';
+
+export const EMPTY_UPDATE = Object.freeze({
+  required: false,
+  minVersion: '',
+  scope: 'all',
+  features: [],
+  downloadUrl: '',
+  message: '',
+});
+
+export const VERSION_PATTERN = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/;
+
+export function normalizeUpdate(raw) {
+  const value = raw && typeof raw === 'object' ? raw : {};
+  return {
+    ...EMPTY_UPDATE,
+    required: value.required === true,
+    minVersion: typeof value.minVersion === 'string' ? value.minVersion.trim() : '',
+    scope: value.scope === 'features' ? 'features' : 'all',
+    features: Array.isArray(value.features) ? value.features.filter((f) => FEATURE_LABELS.has(f)) : [],
+    downloadUrl: typeof value.downloadUrl === 'string' ? value.downloadUrl.trim() : '',
+    message: typeof value.message === 'string' ? value.message : '',
+  };
+}
+
+/** Field-level problems; an empty object means the document can be saved. */
+export function updateErrors(config) {
+  const u = normalizeUpdate(config);
+  const errors = {};
+  if (!u.required) return errors;
+  if (!VERSION_PATTERN.test(u.minVersion)) errors.minVersion = 'Use three numbers, like 1.2.0.';
+  if (u.scope === 'features' && u.features.length === 0) errors.features = 'Pick at least one feature.';
+  if (u.downloadUrl && !/^https:\/\/\S+$/i.test(u.downloadUrl)) errors.downloadUrl = 'The link must start with https://';
+  return errors;
+}
+
+export function describeUpdate(config) {
+  const u = normalizeUpdate(config);
+  if (!u.required) return 'No update is required. Every installed version works.';
+  const v = u.minVersion || 'the new version';
+  if (u.scope === 'all') return `Anyone on a version older than ${v} cannot use the app until they download it.`;
+  const names = u.features.map((f) => FEATURE_LABELS.get(f) ?? f);
+  return `On versions older than ${v}, ${list(names) || 'the chosen features'} stop working and ask the user to download the new version.`;
+}

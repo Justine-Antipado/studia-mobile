@@ -1,6 +1,8 @@
 // account-info-screens.tsx — read-only Account sub pages: Privacy Policy and About (= Learn More).
 import { Text, View } from "react-native";
 
+import { useAppStatus } from "@/core/logic/app-status";
+
 import { LearnMoreView } from "@/features/onboarding/screens/learn-more-screen";
 import type { Role } from "@/core/types/role";
 import { Card, PageTitle } from "@/shared/components/ui";
@@ -29,19 +31,59 @@ const POLICY: { title: string; body: string }[] = [
   },
 ];
 
+/** Paragraphs of a policy text the admin posted ("Settings > Legal"), split on blank lines. */
+const paragraphs = (text: string) => text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+
 export function AccountPrivacyScreen({ role }: { role: Role }) {
   const goBack = useSafeBack(`/${role}/account`);
+  const legal = useAppStatus()?.legal;
+  // The text comes from the database (the admin edits it). The built-in policy only shows until the
+  // admin has posted one, or when the phone has never been able to reach the server.
+  const posted = legal && (legal.privacy.trim() || legal.terms.trim()) ? legal : null;
+  const updated = posted?.updatedAt
+    ? new Date(posted.updatedAt).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    : POLICY_UPDATED;
+
   return (
     <Screen role={role} scope={`${role}/account-privacy`}>
-      <PageTitle title="Privacy Policy" subtitle={`Last updated ${POLICY_UPDATED}`} onBack={goBack} />
-      {POLICY.map((p) => (
-        <Card key={p.title}>
-          <View style={{ gap: SPACE.xs }}>
-            <Text style={TYPE.h3}>{p.title}</Text>
-            <Text style={TYPE.body}>{p.body}</Text>
-          </View>
-        </Card>
-      ))}
+      <PageTitle title="Privacy Policy" subtitle={`Last updated ${updated}`} onBack={goBack} />
+      {posted ? (
+        <>
+          {posted.privacy.trim() ? (
+            <Card>
+              <View style={{ gap: SPACE.sm }}>
+                <Text style={TYPE.h3}>Privacy policy</Text>
+                {paragraphs(posted.privacy).map((p, i) => (
+                  <Text key={i} style={TYPE.body}>
+                    {p}
+                  </Text>
+                ))}
+              </View>
+            </Card>
+          ) : null}
+          {posted.terms.trim() ? (
+            <Card>
+              <View style={{ gap: SPACE.sm }}>
+                <Text style={TYPE.h3}>Terms of use</Text>
+                {paragraphs(posted.terms).map((p, i) => (
+                  <Text key={i} style={TYPE.body}>
+                    {p}
+                  </Text>
+                ))}
+              </View>
+            </Card>
+          ) : null}
+        </>
+      ) : (
+        POLICY.map((p) => (
+          <Card key={p.title}>
+            <View style={{ gap: SPACE.xs }}>
+              <Text style={TYPE.h3}>{p.title}</Text>
+              <Text style={TYPE.body}>{p.body}</Text>
+            </View>
+          </Card>
+        ))
+      )}
     </Screen>
   );
 }

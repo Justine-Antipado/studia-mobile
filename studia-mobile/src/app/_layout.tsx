@@ -14,10 +14,12 @@ import {
 
 import { queryCache } from "@/core/data/cache/query-cache";
 import { STACK_ROOT, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
+import { appStatusReady, useAppStatusSync } from "@/core/logic/app-status";
 import { sessionReady } from "@/features/auth/data/auth-service";
 import { useLiveUpdates } from "@/core/logic/live-updates";
 import { usePushNotifications } from "@/core/logic/push-notifications";
 import { reportError } from "@/core/logic/report-error";
+import { AppGate } from "@/shared/components/ui/gate-views";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { ToastProvider } from "@/shared/components/ui/toast";
 
@@ -35,9 +37,11 @@ export default function RootLayout() {
 
   const [sessionLoaded, setSessionLoaded] = useState(false);
   useEffect(() => {
-    void sessionReady.then(() => setSessionLoaded(true));
+    // The splash also waits (at most a few seconds) for the maintenance status, so a closed app never flashes open.
+    void Promise.all([sessionReady, appStatusReady]).then(() => setSessionLoaded(true));
   }, []);
 
+  useAppStatusSync();
   useLiveUpdates();
   usePushNotifications();
 
@@ -62,6 +66,7 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <ErrorBoundary scope="root" onReset={onReset}>
         <ToastProvider>
+          <AppGate>
           <Stack screenOptions={root}>
             <Stack.Screen name="index" />
             <Stack.Screen name="learn-more" options={subpage} />
@@ -71,6 +76,7 @@ export default function RootLayout() {
             <Stack.Screen name="student" />
             <Stack.Screen name="instructor" />
           </Stack>
+          </AppGate>
         </ToastProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
