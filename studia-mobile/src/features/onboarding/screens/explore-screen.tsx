@@ -1,5 +1,6 @@
 // explore.tsx
 
+import { useAppStatus } from "@/core/logic/app-status";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
@@ -41,7 +42,8 @@ const ROLES: { id: Role; title: string; desc: string; icon: number }[] = [
   },
 ];
 
-// Placeholder copy: ipa-review sa school/DPO bago i-release.
+// Built-in copy, shown only until the admin posts the Terms and Privacy text (Settings > Legal, stored in
+// the database and read through app_status()), or when the phone cannot reach the server.
 const TERMS: { title: string; body: string }[] = [
   {
     title: "1. Using STUDIA",
@@ -69,7 +71,20 @@ const TERMS: { title: string; body: string }[] = [
   },
 ];
 
+/** The admin's posted text as sheet blocks: one block per paragraph group, under its own heading. */
+function postedBlocks(legal: { terms: string; privacy: string } | undefined): { title: string; body: string }[] {
+  if (!legal) return [];
+  const parts = (text: string) => text.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+  const blocks = [
+    ...parts(legal.terms).map((body, i) => ({ title: i === 0 ? "Terms of use" : "", body })),
+    ...parts(legal.privacy).map((body, i) => ({ title: i === 0 ? "Privacy policy" : "", body })),
+  ];
+  return blocks;
+}
+
 export default function ExploreScreen() {
+  const posted = postedBlocks(useAppStatus()?.legal);
+  const terms = posted.length ? posted : TERMS;
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -269,9 +284,9 @@ export default function ExploreScreen() {
               contentContainerStyle={s.termsContent}
               showsVerticalScrollIndicator
             >
-              {TERMS.map((t) => (
-                <View key={t.title} style={s.termBlock}>
-                  <Text style={s.termTitle}>{t.title}</Text>
+              {terms.map((t, i) => (
+                <View key={`${i}-${t.title}`} style={s.termBlock}>
+                  {t.title ? <Text style={s.termTitle}>{t.title}</Text> : null}
                   <Text style={s.termBody}>{t.body}</Text>
                 </View>
               ))}

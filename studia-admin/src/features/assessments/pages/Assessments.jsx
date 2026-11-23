@@ -31,6 +31,18 @@ const QUIZ_COLUMNS = [
   { key: 'bloom', header: 'Bloom level' },
   { key: 'difficulty', header: 'Difficulty' },
   { key: 'submissionRatePct', header: 'Submission rate', render: (q) => formatPercent(q.submissionRatePct) },
+  { key: 'dueAt', header: 'Due', render: (q) => (q.dueAt ? formatDate(q.dueAt) : 'No due date') },
+  {
+    key: 'allowLate',
+    header: 'Late attempts',
+    render: (q) => (
+      <div>
+        <Badge tone={q.allowLate ? 'green' : 'grey'}>{q.allowLate ? 'Allowed' : 'Not allowed'}</Badge>
+        {q.allowLate && q.closesAt && <div className="muted small">Closes {formatDate(q.closesAt)}</div>}
+      </div>
+    ),
+  },
+  { key: 'lateAttempts', header: 'Taken late' },
 ];
 
 const ASSIGNMENT_COLUMNS = [
@@ -42,7 +54,17 @@ const ASSIGNMENT_COLUMNS = [
   ) },
   { key: 'dueAt', header: 'Due', render: (a) => formatDate(a.dueAt) },
   { key: 'points', header: 'Points' },
-  { key: 'allowLate', header: 'Late submissions', render: (a) => <Badge tone={a.allowLate ? 'green' : 'grey'}>{a.allowLate ? 'Allowed' : 'Not allowed'}</Badge> },
+  {
+    key: 'allowLate',
+    header: 'Late submissions',
+    render: (a) => (
+      <div>
+        <Badge tone={a.allowLate ? 'green' : 'grey'}>{a.allowLate ? 'Allowed' : 'Not allowed'}</Badge>
+        {a.allowLate && a.closesAt && <div className="muted small">Closes {formatDate(a.closesAt)}</div>}
+      </div>
+    ),
+  },
+  { key: 'lateSubmissions', header: 'Turned in late' },
   { key: 'createdAt', header: 'Created', render: (a) => formatDate(a.createdAt) },
 ];
 

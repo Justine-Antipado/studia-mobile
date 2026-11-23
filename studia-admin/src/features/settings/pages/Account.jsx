@@ -33,6 +33,21 @@ function RuleChecklist({ password }) {
 
 const RESEND_SECONDS = 60;
 
+/** Numbered heading of one step of the password change. */
+function StepHead({ n, title, hint, done = false }) {
+  return (
+    <div className="step-head">
+      <span className={'step-num' + (done ? ' done' : '')} aria-hidden="true">
+        {done ? <Icon.Check /> : n}
+      </span>
+      <div>
+        <strong>{title}</strong>
+        <small className="muted block">{hint}</small>
+      </div>
+    </div>
+  );
+}
+
 export default function Account() {
   const { admin } = useAuth();
   const { settings, error, loading, reload } = useSettings();
@@ -119,7 +134,7 @@ export default function Account() {
 
   return (
     <>
-      <PageHeader title="Admin account" subtitle="Profile and password change with OTP." />
+      <PageHeader title="Admin account" subtitle="Change your password with an emailed code." />
 
       {loading && <Skeleton height={420} radius="var(--radius-lg)" />}
 
@@ -137,82 +152,89 @@ export default function Account() {
       )}
 
       {!loading && !error && settings && (
-        <Card className="settings-card">
-          <div className="profile-row">
-            <Avatar name={admin?.name ?? 'Admin'} size={52} />
-            <div>
-              <strong>{admin?.name}</strong>
-              <small className="muted block">{admin?.email}</small>
+        <div className="form-stack">
+          <Card className="settings-card">
+            <div className="profile-row">
+              <Avatar name={admin?.name ?? 'Admin'} size={52} />
+              <div>
+                <strong>{admin?.name}</strong>
+                <small className="muted block">{admin?.email}</small>
+              </div>
             </div>
-          </div>
+          </Card>
 
-          <p className="step">Step 1 · Send OTP to {admin?.email}</p>
-          <div className="form-footer">
-            <button type="button" className="btn btn-soft" onClick={sendOtp} disabled={busy || cooldown > 0}>
-              {cooldown > 0 ? `Resend OTP (0:${String(cooldown).padStart(2, '0')})` : otpSent ? 'Resend OTP' : 'Send OTP'}
+          <Card className="settings-card step-card">
+            <StepHead n={1} title="Send a code" hint={`We email a 6-digit code to ${admin?.email ?? 'your address'}.`} done={otpSent} />
+            <button type="button" className="btn btn-soft btn-block" onClick={sendOtp} disabled={busy || cooldown > 0}>
+              {cooldown > 0 ? `Resend code in 0:${String(cooldown).padStart(2, '0')}` : otpSent ? 'Resend code' : 'Send code'}
             </button>
-          </div>
+          </Card>
 
-          <p className="step">
-            Step 2 · Enter OTP{cooldown > 0 && ` (resend in 0:${String(cooldown).padStart(2, '0')})`}
-          </p>
-          <div className="otp-row">
-            {digits.map((d, i) => (
-              <input
-                key={i}
-                ref={(el) => {
-                  refs.current[i] = el;
-                }}
-                className={`otp-box ${verified ? 'ok' : ''}`}
-                inputMode="numeric"
-                maxLength={1}
-                value={d}
-                disabled={!otpSent || verified}
-                onChange={(e) => onDigit(i, e.target.value)}
-                onKeyDown={(e) => onKeyDown(i, e)}
-                aria-label={`OTP digit ${i + 1}`}
-              />
-            ))}
-          </div>
+          <Card className={'settings-card step-card' + (otpSent ? '' : ' locked')}>
+            <StepHead n={2} title="Enter the code" hint="Type the 6 digits from the email." done={verified} />
+            <div className="otp-row">
+              {digits.map((d, i) => (
+                <input
+                  key={i}
+                  ref={(el) => {
+                    refs.current[i] = el;
+                  }}
+                  className={`otp-box ${verified ? 'ok' : ''}`}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={1}
+                  value={d}
+                  disabled={!otpSent || verified}
+                  onChange={(e) => onDigit(i, e.target.value)}
+                  onKeyDown={(e) => onKeyDown(i, e)}
+                  aria-label={`Code digit ${i + 1}`}
+                />
+              ))}
+            </div>
+          </Card>
 
-          <p className="step">Step 3 · New password (unlocks after a valid OTP)</p>
-          <div className="two-col">
-            <label className="field">
-              <span>New password</span>
-              <input
-                type="password"
-                className="input"
-                disabled={!verified}
-                value={pw}
-                onChange={(e) => setPw(e.target.value)}
-                placeholder="••••••••"
-              />
-            </label>
-            <label className="field">
-              <span>Confirm password</span>
-              <input
-                type="password"
-                className="input"
-                disabled={!verified}
-                value={pw2}
-                onChange={(e) => setPw2(e.target.value)}
-                placeholder="••••••••"
-              />
-            </label>
-          </div>
-          <RuleChecklist password={pw} />
-          {mismatch && <p className="field-error mt">Passwords don't match.</p>}
-          <div className="form-footer">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!verified || !allRulesMet || !pw2 || mismatch || busy}
-              onClick={updatePassword}
-            >
-              Update password
-            </button>
-          </div>
-        </Card>
+          <Card className={'settings-card step-card' + (verified ? '' : ' locked')}>
+            <StepHead n={3} title="Choose a new password" hint="Unlocks after the code is accepted." />
+            <div className="form-grid">
+              <label className="field">
+                <span>New password</span>
+                <input
+                  type="password"
+                  className="input"
+                  autoComplete="new-password"
+                  disabled={!verified}
+                  value={pw}
+                  onChange={(e) => setPw(e.target.value)}
+                  placeholder="At least 8 characters"
+                />
+              </label>
+              <label className="field">
+                <span>Confirm password</span>
+                <input
+                  type="password"
+                  className="input"
+                  autoComplete="new-password"
+                  disabled={!verified}
+                  value={pw2}
+                  onChange={(e) => setPw2(e.target.value)}
+                  placeholder="Type it again"
+                />
+                {mismatch && <small className="field-error">Passwords don&apos;t match.</small>}
+              </label>
+            </div>
+            <RuleChecklist password={pw} />
+            <div className="form-footer">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!verified || !allRulesMet || !pw2 || mismatch || busy}
+                onClick={updatePassword}
+              >
+                {busy ? 'Updating…' : 'Update password'}
+              </button>
+            </div>
+          </Card>
+        </div>
       )}
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />

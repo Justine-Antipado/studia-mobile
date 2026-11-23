@@ -114,7 +114,7 @@ export const NAV_GROUPS = [
         label: 'Notifications',
         icon: 'Bell',
         title: 'Notifications',
-        description: 'Failed jobs, storage warnings and security alerts.',
+        description: 'New accounts, announcements, failed jobs, storage and security alerts.',
         badge: 'unreadNotifications',
       },
       {
@@ -129,7 +129,7 @@ export const NAV_GROUPS = [
         label: 'Settings',
         icon: 'Settings',
         title: 'Settings',
-        description: 'AI, system and maintenance, legal text and the admin account.',
+        description: 'System and maintenance, legal text and the admin account.',
       },
       {
         path: ROUTES.help,

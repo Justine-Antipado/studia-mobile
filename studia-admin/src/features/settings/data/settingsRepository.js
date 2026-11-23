@@ -2,10 +2,8 @@
  * SETTINGS REPOSITORY — the only module features/settings may call data from.
  * Wraps core/data/api, so a future endpoint change touches one file.
  *
- * AI toggles are deliberately NOT re-exported here: /settings/ai imports
- * updateAiFeature straight from features/ai/data/aiRepository so the toggle
- * switches and /ai keep calling the exact same function (one source, not a
- * second copy that could drift — see docs/admin-progress.md phase 7).
+ * AI toggles are not part of this repository: /ai owns them
+ * (features/ai/data/aiRepository).
  */
 import * as api from '../../../core/data/api';
 

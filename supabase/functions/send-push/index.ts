@@ -60,8 +60,9 @@ async function sendPush(n: Notif): Promise<void> {
 
 async function sendEmail(n: Notif): Promise<void> {
   if (!mailer || NO_EMAIL.has(n.kind)) return;
-  const { data: user } = await supabase.from("users").select("email, full_name, status, deleted_at").eq("id", n.user_id).maybeSingle();
-  if (!user || user.status !== "active" || user.deleted_at) return;
+  const { data: user } = await supabase.from("users").select("email, full_name, status, deleted_at, role").eq("id", n.user_id).maybeSingle();
+  // The admin inbox (registrations, failures) is read in the portal; do not email it.
+  if (!user || user.role === "admin" || user.status !== "active" || user.deleted_at) return;
 
   const meta = n.link_params?.meta ? `<p style="margin:0 0 8px;color:#6b7280;font-size:13px">${esc(n.link_params.meta)}</p>` : "";
   const body = n.body ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.5">${esc(n.body)}</p>` : "";

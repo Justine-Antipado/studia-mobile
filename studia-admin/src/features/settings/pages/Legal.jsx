@@ -52,7 +52,7 @@ export default function Legal() {
 
   return (
     <>
-      <PageHeader title="Terms & privacy" subtitle="The text shown inside the mobile app." />
+      <PageHeader title="Terms & privacy" subtitle="Stored in the database and shown in the mobile app. Separate paragraphs with a blank line." />
 
       {loading && <Skeleton height={340} radius="var(--radius-lg)" />}
 

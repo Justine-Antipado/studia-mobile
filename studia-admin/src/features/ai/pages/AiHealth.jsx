@@ -2,7 +2,7 @@
 // error rate, the transcription queue and its failures, the AI-generated
 // quiz mix by Bloom level and difficulty, the monthly quota/cost estimate,
 // and the on/off switches the brief asks this page to carry (phase 7's
-// /settings/ai reads the same settings.ai source, so the two can't disagree).
+// the switches read settings.ai, the same source the phones use).
 import { useState } from 'react';
 import * as aiRepo from '../data/aiRepository';
 import FeatureToggles from '../components/FeatureToggles';

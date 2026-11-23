@@ -30,6 +30,9 @@ const TYPE_META = {
   job: { label: 'Failed job', icon: 'Alert' },
   storage: { label: 'Storage warning', icon: 'Info' },
   security: { label: 'Security alert', icon: 'Shield' },
+  class: { label: 'New activity', icon: 'Users' },
+  notice: { label: 'Announcement', icon: 'Megaphone' },
+  ai: { label: 'AI', icon: 'Sparkle' },
 };
 
 export default function Notifications() {
