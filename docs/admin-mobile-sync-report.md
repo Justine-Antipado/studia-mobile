@@ -122,3 +122,11 @@ Sinasabi ng migration 008: *"admin has NO direct data access: the admin dashboar
 - Hindi ko in-apply ang 018–021 sa Supabase. Production-adjacent na DB ito (ang production EAS profile ay nakaturo rito), at may drop ng table.
 - Hindi ko ginalaw ang profile photo (device lang) sa mobile.
 - Hindi ko na-test ang admin sa browser: ang login ay totoong Supabase, kaya hindi ako makapasok. In-verify ko ang bagong mock sa pamamagitan ng direktang pag-load ng `mockBackend` (filter, search, class detail) at ng build at lint.
+
+## 6. Campus-wide announcements (migration 022, naka-apply sa `studia-dev`)
+
+- Admin > Announcements ay may dalawang tab: **Class stream** (moderation) at **Campus-wide** (composer at listahan ng naipadala).
+- Ang admin ay nag-i-insert at nagbubura sa `platform_announcements` gamit ang sarili niyang Supabase session. Admin lang ang pinapayagan ng RLS (migrations 022 at 024; ang 023 ay naibalik ng 024). Sinubukan: bawal ang student, pasok ang admin.
+- Ang trigger ay gumagawa ng `notifications` row (kind `notice`) para sa bawat active na student at instructor ayon sa audience (lahat, students, instructors, o isang course), at nagsusulat sa `audit_log`. Lumalabas ito sa Alerts tab at sa push (migration 019, kapag naka-set ang send-push). Walang pagbabago sa mobile.
+- Sinubukan sa dev (na-rollback ang test): lahat = 7 recipients, students = 6, BSIT = 1.
+- Immediate send lang; walang scheduling. Max 500 characters ang mensahe.

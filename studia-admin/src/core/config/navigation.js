@@ -81,7 +81,7 @@ export const NAV_GROUPS = [
         label: 'Announcements',
         icon: 'Megaphone',
         title: 'Announcements',
-        description: 'Class stream posts and comments, as students see them in the app.',
+        description: 'Class stream posts, plus campus-wide notices sent to every Alerts tab.',
       },
     ],
   },

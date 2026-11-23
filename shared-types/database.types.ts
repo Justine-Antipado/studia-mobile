@@ -1131,6 +1131,47 @@ export type Database = {
           },
         ]
       }
+      platform_announcements: {
+        Row: {
+          audience: Database["public"]["Enums"]["announcement_audience"]
+          author_id: string | null
+          body: string
+          course: Database["public"]["Enums"]["course_code"] | null
+          created_at: string
+          id: string
+          recipients: number
+          title: string
+        }
+        Insert: {
+          audience?: Database["public"]["Enums"]["announcement_audience"]
+          author_id?: string | null
+          body: string
+          course?: Database["public"]["Enums"]["course_code"] | null
+          created_at?: string
+          id?: string
+          recipients?: number
+          title: string
+        }
+        Update: {
+          audience?: Database["public"]["Enums"]["announcement_audience"]
+          author_id?: string | null
+          body?: string
+          course?: Database["public"]["Enums"]["course_code"] | null
+          created_at?: string
+          id?: string
+          recipients?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_announcements_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_tokens: {
         Row: {
           platform: string
@@ -1744,6 +1785,7 @@ export type Database = {
         | "transcription"
       ai_source_type: "material" | "class" | "quiz" | "chat" | "planner"
       ai_status: "ok" | "error" | "timeout"
+      announcement_audience: "all" | "students" | "instructors" | "course"
       audit_action: "create" | "update" | "delete" | "settings" | "security"
       auth_provider: "password" | "google"
       auth_token_kind: "reset" | "google_profile"
@@ -1936,6 +1978,7 @@ export const Constants = {
       ],
       ai_source_type: ["material", "class", "quiz", "chat", "planner"],
       ai_status: ["ok", "error", "timeout"],
+      announcement_audience: ["all", "students", "instructors", "course"],
       audit_action: ["create", "update", "delete", "settings", "security"],
       auth_provider: ["password", "google"],
       auth_token_kind: ["reset", "google_profile"],

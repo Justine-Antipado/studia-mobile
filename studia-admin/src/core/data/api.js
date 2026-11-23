@@ -13,6 +13,7 @@ import { env } from '../config/env';
 import { httpBackend } from './http/httpBackend';
 import { mockBackend } from './mock/mockBackend';
 import { remoteAuth } from './remote/remoteAuth';
+import { remoteCampus } from './remote/remoteCampus';
 
 // Compared against the raw env value so Vite inlines it as a literal: in a
 // build with VITE_USE_MOCK=false the mock backend (and the admin password it
@@ -58,6 +59,11 @@ export const getAssessments = (options) => backend.getAssessments(options);
 /* --- announcements --- */
 export const getAnnouncements = (params, options) => backend.getAnnouncements(params, options);
 export const deleteAnnouncements = (ids) => backend.deleteAnnouncements(ids);
+
+/* Campus-wide announcements: always real (Supabase + the admin's session), they fan out to every user's Alerts. */
+export const getCampusAnnouncements = (params) => remoteCampus.getCampusAnnouncements(params);
+export const createCampusAnnouncement = (input) => remoteCampus.createCampusAnnouncement(input);
+export const deleteCampusAnnouncements = (ids) => remoteCampus.deleteCampusAnnouncements(ids);
 
 /* --- ai --- */
 export const getAiHealth = (options) => backend.getAiHealth(options);
