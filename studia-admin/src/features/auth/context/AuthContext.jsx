@@ -13,6 +13,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => subscribe(setLocalSession), []);
 
+  // The local "signed in" marker can outlive the Supabase session. Without one, database reads run as
+  // anonymous and fail, so end the session and send the admin back to the login page.
+  useEffect(() => {
+    if (!getSession()) return;
+    let cancelled = false;
+    api.hasSupabaseSession().then((ok) => {
+      if (!ok && !cancelled) clearSession();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   /**
    * Step one. A correct password does NOT create a session: the backend holds a
    * pending login and emails a code, and this returns what the OTP screen needs.

@@ -22,7 +22,8 @@ const toUi = (r) => ({
 
 function check({ error }, fallback) {
   if (!error) return;
-  if (error.code === '42501') throw fail(403, 'Only the administrator can do that.');
+  // 42501 on a read means the request ran as anonymous (no session); on a write, RLS refused a non-admin.
+  if (error.code === '42501') throw fail(401, 'Your session has ended. Please sign out and sign in again.');
   throw fail(500, fallback);
 }
 

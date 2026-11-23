@@ -32,6 +32,8 @@ export const login = (identifier, password) => authBackend.login(identifier, pas
 export const verifyLoginOtp = (pendingToken, code) => authBackend.verifyLoginOtp(pendingToken, code);
 export const resendLoginOtp = (pendingToken) => authBackend.resendLoginOtp(pendingToken);
 export const logout = () => authBackend.logout();
+/** False when the portal thinks it is signed in but Supabase has no session any more. */
+export const hasSupabaseSession = () => authBackend.hasSession();
 
 /* --- shell --- */
 export const getNavCounts = (options) => backend.getNavCounts(options);

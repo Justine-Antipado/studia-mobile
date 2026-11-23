@@ -74,6 +74,20 @@ async function postLogin(identifier, password) {
 }
 
 export const remoteAuth = {
+  /**
+   * Does this browser still hold a Supabase session? The portal's own "signed in" marker can outlive it
+   * (older login, cleared storage, revoked refresh token); every database call would then run as anon.
+   * Returns true when it cannot tell (not configured), so a configuration problem never logs anyone out.
+   */
+  async hasSession() {
+    try {
+      const { data } = await getSupabase().auth.getSession();
+      return !!data.session;
+    } catch {
+      return true;
+    }
+  },
+
   async login(identifier, password) {
     const { session, profile } = await postLogin(String(identifier).trim(), password);
     const { error } = await getSupabase().auth.setSession({
