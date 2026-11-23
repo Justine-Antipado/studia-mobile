@@ -1,7 +1,8 @@
 // Phase 4: rebuilt on DataTable with URL-synced filters, server-shaped paging
 // and sort, and a user detail page. The pending/approve/block/unblock flow is
 // gone — status is Active/Inactive, set in the mobile app; this page is read
-// and delete only (View, Export, Delete per row; bulk delete via selection).
+// and deactivate only (View, Export, Deactivate per row; bulk via selection). Permanent delete lives on
+// the profile page, where the admin first sees what would be lost.
 import { useMemo, useState } from 'react';
 import UserFilters from '../components/UserFilters';
 import { useNavigate } from 'react-router-dom';
@@ -89,8 +90,8 @@ export default function Users() {
     if (!deleteIds?.length) return;
     setBusy(true);
     try {
-      await usersRepo.deleteUsers(deleteIds);
-      showToast(`${deleteIds.length} user${deleteIds.length === 1 ? '' : 's'} deleted.`);
+      await usersRepo.setUsersActive(deleteIds, false);
+      showToast(`${deleteIds.length} user${deleteIds.length === 1 ? '' : 's'} deactivated.`);
       setSelected((prev) => {
         const next = new Set(prev);
         deleteIds.forEach((id) => next.delete(id));
@@ -136,7 +137,7 @@ export default function Users() {
     <>
       <PageHeader
         title="Users"
-        subtitle="Students and instructors registered in the mobile app. Accounts are created there, so this page is read and delete only."
+        subtitle="Students and instructors registered in the mobile app. Accounts are created there, so this page is read and deactivate only."
         actions={
           <>
             <button type="button" className="btn btn-ghost" disabled={!rows.length} onClick={() => exportCsv(rows)}>
@@ -148,7 +149,7 @@ export default function Users() {
               disabled={!selectedRows.length || busy}
               onClick={() => setDeleteIds(selectedRows.map((u) => u.id))}
             >
-              <Icon.Trash /> Delete ({selectedRows.length})
+              <Icon.Close /> Deactivate ({selectedRows.length})
             </button>
           </>
         }
@@ -203,7 +204,7 @@ export default function Users() {
                     label="Export"
                     onClick={() => exportCsv([u], `studia-user-${u.id}.csv`)}
                   />
-                  <ActionButton icon="Trash" label="Delete" tone="danger" onClick={() => setDeleteIds([u.id])} />
+                  <ActionButton icon="Close" label="Deactivate" tone="danger" onClick={() => setDeleteIds([u.id])} />
                 </ActionRow>
               )}
             />
@@ -216,23 +217,23 @@ export default function Users() {
         open={!!deleteIds}
         title={
           deleteTargets.length === 1
-            ? `Delete ${deleteTargets[0].name}?`
-            : `Delete ${deleteIds?.length ?? 0} users?`
+            ? `Deactivate ${deleteTargets[0].name}?`
+            : `Deactivate ${deleteIds?.length ?? 0} users?`
         }
-        confirmWord={deleteTargets.length === 1 ? undefined : 'DELETE'}
-        confirmLabel={deleteTargets.length === 1 ? 'Delete' : 'Delete permanently'}
+        confirmLabel="Deactivate"
         busy={busy}
         onConfirm={runDelete}
         onClose={() => setDeleteIds(null)}
       >
         {deleteTargets.length === 1 ? (
           <>
-            <b>{deleteTargets[0].name}</b> will be
+            <b>{deleteTargets[0].name}</b>
           </>
         ) : (
-          `${deleteIds?.length ?? 0} users will be`
+          `${deleteIds?.length ?? 0} users`
         )}{' '}
-        permanently removed, together with their submissions and AI history. This cannot be undone.
+         cannot sign in any more and are signed out of every device. Nothing is deleted: classes, submissions and
+        grades stay as they are, and you can reactivate the account from its profile.
       </ConfirmDialog>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />

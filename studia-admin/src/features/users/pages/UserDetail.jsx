@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as usersRepo from '../data/usersRepository';
 import { ROUTES } from '../../../core/config/routes';
@@ -7,19 +7,67 @@ import { composeSection } from '../../../core/logic/validation';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import EmptyState from '../../../shared/components/EmptyState';
 import { Icon } from '../../../shared/components/Icon';
+import Select from '../../../shared/components/Select';
 import PageHeader from '../../../shared/components/PageHeader';
 import { Skeleton, SkeletonCards } from '../../../shared/components/Skeleton';
 import StatCard from '../../../shared/components/StatCard';
 import { Avatar, Badge, Card, Toast } from '../../../shared/components/ui';
 import { useAsync, useToast } from '../../../shared/hooks';
 
+const IMPACT_LINES = [
+  ['submissions', 'assignment submission'],
+  ['quizAttempts', 'quiz attempt'],
+  ['lessonViews', 'lesson view'],
+  ['plannerItems', 'planner item'],
+  ['chatMessages', 'AI chat message'],
+  ['enrolments', 'class enrolment'],
+];
+
 export default function UserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: user, error, loading, reload } = useAsync((signal) => usersRepo.getUser(id, { signal }), [id]);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const { data: impact, reload: reloadImpact } = useAsync(() => usersRepo.getUserImpact(id).catch(() => null), [id]);
+  // Other active instructors, as the new owner when this instructor's classes are moved.
+  const { data: instructors } = useAsync(
+    (signal) =>
+      user?.role === 'Instructor'
+        ? usersRepo.getUsers({ page: 1, pageSize: 500, filters: { role: 'Instructor', status: 'Active' } }, { signal })
+        : Promise.resolve(null),
+    [user?.role]
+  );
+  const [dialog, setDialog] = useState(null); // 'deactivate' | 'reactivate' | 'delete' | 'reassign'
+  const [newOwner, setNewOwner] = useState('');
   const [busy, setBusy] = useState(false);
-  const { toast, showError, clearToast } = useToast();
+  const { toast, showToast, showError, clearToast } = useToast();
+
+  const isActive = user?.status === 'Active';
+  const ownedClasses = impact?.classesOwned ?? 0;
+  const owners = useMemo(
+    () => (instructors?.data ?? []).filter((i) => i.id !== id).map((i) => ({ value: i.id, label: i.name })),
+    [instructors, id]
+  );
+  const impactLines = impact ? IMPACT_LINES.filter(([k]) => impact[k] > 0).map(([k, w]) => `${impact[k]} ${w}${impact[k] === 1 ? '' : 's'}`) : [];
+
+  const close = () => {
+    setDialog(null);
+    setNewOwner('');
+  };
+
+  const run = async (action, done) => {
+    setBusy(true);
+    try {
+      await action();
+      showToast(done);
+      close();
+      reload();
+      reloadImpact();
+    } catch (e) {
+      showError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const runDelete = async () => {
     setBusy(true);
@@ -36,7 +84,7 @@ export default function UserDetail() {
     <>
       <PageHeader
         title={user?.name ?? 'User profile'}
-        subtitle="Profile, classes, activity and AI usage. Read and delete only — accounts are created in the mobile app."
+        subtitle="Profile, classes, activity and AI usage. Accounts are created in the mobile app; here you can deactivate or remove them."
         back={ROUTES.users}
         breadcrumbOverrides={{ current: user?.name }}
       />
@@ -144,11 +192,42 @@ export default function UserDetail() {
             </Card>
           </div>
 
-          <Card className="danger-zone" title="Danger zone">
-            <p className="muted">
-              Deleting this account permanently removes the profile, submissions and AI history. An instructor's classes are removed with the account. This cannot be undone.
-            </p>
-            <button type="button" className="btn btn-red" onClick={() => setConfirmOpen(true)}>
+          <Card className="danger-zone" title="Account access">
+            {isActive ? (
+              <p className="muted">
+                Deactivating blocks sign-in and signs the person out everywhere. Nothing is deleted
+                {user.role === 'Instructor' ? ': their classes and every student&apos;s work in them stay intact' : ''}. You can reactivate at any time.
+              </p>
+            ) : (
+              <p className="muted">This account is deactivated and cannot sign in.</p>
+            )}
+            <div className="row-actions">
+              {isActive ? (
+                <button type="button" className="btn btn-primary" onClick={() => setDialog('deactivate')}>
+                  <Icon.Close /> Deactivate account
+                </button>
+              ) : (
+                <button type="button" className="btn btn-primary" onClick={() => setDialog('reactivate')}>
+                  <Icon.Check /> Reactivate account
+                </button>
+              )}
+              {user.role === 'Instructor' && ownedClasses > 0 && (
+                <button type="button" className="btn btn-ghost" onClick={() => setDialog('reassign')}>
+                  Reassign {ownedClasses} class{ownedClasses === 1 ? '' : 'es'}…
+                </button>
+              )}
+            </div>
+            <hr />
+            <h3>Delete permanently</h3>
+            {ownedClasses > 0 ? (
+              <p className="muted">
+                This instructor still owns {ownedClasses} class{ownedClasses === 1 ? '' : 'es'}, so the account cannot be deleted.
+                Reassign the classes to another instructor first, or deactivate the account instead.
+              </p>
+            ) : (
+              <p className="muted">Removes the profile and everything listed in the confirmation. This cannot be undone.</p>
+            )}
+            <button type="button" className="btn btn-red" disabled={ownedClasses > 0 || !impact} onClick={() => setDialog('delete')}>
               <Icon.Trash /> Delete account
             </button>
           </Card>
@@ -156,15 +235,56 @@ export default function UserDetail() {
       )}
 
       <ConfirmDialog
-        open={confirmOpen}
-        title={`Delete ${user?.name ?? 'this user'}?`}
+        open={dialog === 'deactivate'}
+        title={`Deactivate ${user?.name ?? 'this user'}?`}
+        confirmLabel="Deactivate"
+        busy={busy}
+        onConfirm={() => run(() => usersRepo.setUsersActive([id], false), 'Account deactivated.')}
+        onClose={close}
+      >
+        <b>{user?.name}</b> will not be able to sign in and will be signed out of every device. Their data is kept.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={dialog === 'reactivate'}
+        title={`Reactivate ${user?.name ?? 'this user'}?`}
+        confirmLabel="Reactivate"
+        tone="primary"
+        busy={busy}
+        onConfirm={() => run(() => usersRepo.setUsersActive([id], true), 'Account reactivated.')}
+        onClose={close}
+      >
+        <b>{user?.name}</b> will be able to sign in again.
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={dialog === 'reassign'}
+        title={`Reassign ${ownedClasses} class${ownedClasses === 1 ? '' : 'es'}`}
+        confirmLabel="Reassign"
+        tone="primary"
+        busy={busy}
+        confirmDisabled={!newOwner}
+        onConfirm={() => run(() => usersRepo.reassignClasses(id, newOwner), 'Classes reassigned.')}
+        onClose={close}
+      >
+        <p>Every class of <b>{user?.name}</b> moves to the instructor you pick, with all its lessons, quizzes and student work.</p>
+        <div className="field">
+          <span>New owner</span>
+          <Select label="New owner" searchable value={newOwner} placeholder="Choose an active instructor" options={owners} onChange={setNewOwner} />
+        </div>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={dialog === 'delete'}
+        title={`Delete ${user?.name ?? 'this user'} permanently?`}
         confirmWord="DELETE"
         confirmLabel="Delete permanently"
         busy={busy}
         onConfirm={runDelete}
-        onClose={() => setConfirmOpen(false)}
+        onClose={close}
       >
-        <b>{user?.name}</b> will be permanently removed, together with their submissions and AI history (and their classes, for an instructor). This cannot be undone.
+        <b>{user?.name}</b> and these records will be removed for good:{' '}
+        {impactLines.length ? impactLines.join(', ') : 'only the profile (there is no other activity)'}. This cannot be undone.
       </ConfirmDialog>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />

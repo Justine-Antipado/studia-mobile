@@ -23,6 +23,7 @@ function ConfirmDialogBody({
   confirmLabel = 'Delete',
   cancelLabel = 'Cancel',
   busy = false,
+  confirmDisabled = false,
   tone = 'danger',
   onConfirm,
   onClose,
@@ -45,7 +46,7 @@ function ConfirmDialogBody({
           <button
             type="button"
             className={`btn ${tone === 'danger' ? 'btn-red' : 'btn-primary'}`}
-            disabled={busy || !ready}
+            disabled={busy || confirmDisabled || !ready}
             onClick={onConfirm}
           >
             {busy ? 'Working…' : confirmLabel}

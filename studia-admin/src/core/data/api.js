@@ -29,6 +29,9 @@ export const getDashboard = (options) => remoteAdmin.getDashboard(options);
 export const getUsers = (params, options) => remoteAdmin.getUsers(params, options);
 export const getUser = (id, options) => remoteAdmin.getUser(id, options);
 export const deleteUsers = (ids) => remoteAdmin.deleteUsers(ids);
+export const getUserImpact = (id) => remoteAdmin.getUserImpact(id);
+export const setUsersActive = (ids, active) => remoteAdmin.setUsersActive(ids, active);
+export const reassignClasses = (fromId, toId) => remoteAdmin.reassignClasses(fromId, toId);
 
 /* --- classes --- */
 export const getClasses = (params, options) => remoteAdmin.getClasses(params, options);

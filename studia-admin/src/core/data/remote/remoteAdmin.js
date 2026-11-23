@@ -139,6 +139,17 @@ export const remoteAdmin = {
     return true;
   },
 
+  getUserImpact: (id) => rpc('admin_user_impact', { p_id: String(id) }, {}, 'The impact could not be checked.'),
+
+  async setUsersActive(ids, active) {
+    await rpc('admin_set_user_active', { p_ids: ids, p_active: active }, {}, 'The account could not be updated.');
+    return true;
+  },
+
+  async reassignClasses(fromId, toId) {
+    return rpc('admin_reassign_classes', { p_from: String(fromId), p_to: String(toId) }, {}, 'The classes could not be reassigned.');
+  },
+
   /* ---- classes ---- */
   async getClasses(params = {}, options) {
     const rows = await rpc('admin_classes', {}, options, 'Classes could not load.');
