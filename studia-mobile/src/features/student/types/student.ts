@@ -13,6 +13,8 @@ export type StudentClass = {
   title: string;
   section: string;
   teacher: string;
+  /** The instructor's user id (for their photo). */
+  teacherId?: string;
   progress: number; // 0..1
 };
 

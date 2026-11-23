@@ -8,6 +8,7 @@
 import { z } from "zod";
 
 import { appError, fail, ok, type AppError, type Result } from "@/core/data/errors/app-error";
+import { invalidateAvatars } from "@/core/data/avatars";
 import { getSupabase } from "@/core/data/supabase/client";
 import { getUser, setUser, type UserProfile } from "@/core/data/storage/session-store";
 import { post } from "@/features/auth/data/auth-api";
@@ -96,6 +97,7 @@ export class RemoteProfileRepository implements ProfileRepository {
       Avatar,
     );
     if (!r.ok) return r;
+    invalidateAvatars(); // my id appears in classmates' lists and my own comments
     const { avatarUri: _old, ...rest } = user;
     void _old;
     const next: UserProfile = r.value.url ? { ...rest, avatarUri: r.value.url } : rest;

@@ -25,6 +25,8 @@ export type VideoLink = {
 export type Comment = {
   id: string;
   author: string;
+  /** The author's user id (for their photo); null when the account no longer exists. */
+  authorId?: string | null;
   /** The signed-in user wrote it, so they may delete it (instructors may delete any comment). */
   authorIsMe: boolean;
   /** Written by the class instructor (shown with an "Instructor" label). */

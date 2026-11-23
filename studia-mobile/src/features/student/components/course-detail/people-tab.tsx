@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { ActionButton, ConfirmDialog, ListRow, SectionHeader } from "@/shared/components/ui";
+import { ActionButton, Avatar, ConfirmDialog, ListRow, SectionHeader } from "@/shared/components/ui";
 import { SPACE } from "@/shared/constants/tokens";
 import { useClass, useClassmates, useLeaveClass } from "@/features/student/hooks/use-classes";
 
@@ -23,14 +23,25 @@ export function PeopleTab({ classId, onLeft }: { classId: string; onLeft: () => 
       <View>
         <SectionHeader title="Instructor" />
         {cls ? (
-          <ListRow icon="school-outline" title={cls.teacher} subtitle="Instructor" flat />
+          <ListRow
+            leading={<Avatar name={cls.teacher} userId={cls.teacherId} size={40} />}
+            title={cls.teacher}
+            subtitle="Instructor"
+            flat
+          />
         ) : null}
       </View>
 
       <View style={{ gap: SPACE.md }}>
         <SectionHeader title="Classmates" />
         {classmates.map((person) => (
-          <ListRow key={person.id} icon="person-outline" title={person.name} subtitle="Student" flat />
+          <ListRow
+            key={person.id}
+            leading={<Avatar name={person.name} userId={person.id} size={40} />}
+            title={person.name}
+            subtitle="Student"
+            flat
+          />
         ))}
       </View>
 

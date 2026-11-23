@@ -3,7 +3,7 @@
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { View } from "react-native";
 
-import { Badge, ListRow, ListState } from "@/shared/components/ui";
+import { Avatar, Badge, ListRow, ListState } from "@/shared/components/ui";
 import { SPACE } from "@/shared/constants/tokens";
 import { scoreTone } from "@/features/instructor/logic/format";
 import { useClassStudents } from "@/features/instructor/hooks/use-students";
@@ -27,7 +27,7 @@ export function PeopleTab({ classId }: { classId: string }) {
         {students.map((s) => (
           <ListRow
             key={s.id}
-            icon="person-outline"
+            leading={<Avatar name={s.name} userId={s.id} size={40} />}
             title={s.name}
             subtitle={`${Math.round(s.progress * 100)}% progress · ${s.pendingCount} pending`}
             trailing={<Badge label={`${Math.round(s.progress * 100)}%`} tone={scoreTone(Math.round(s.progress * 100))} />}

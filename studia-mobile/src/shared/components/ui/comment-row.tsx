@@ -25,7 +25,7 @@ export const CommentRow = memo(function CommentRow({
 
   return (
     <View style={s.row}>
-      <Avatar name={comment.author} size={32} />
+      <Avatar name={comment.author} userId={comment.authorId} size={32} />
       <View style={s.body}>
         <View style={s.head}>
           <Text style={[TYPE.bodyStrong, s.name]} numberOfLines={1}>

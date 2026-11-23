@@ -47,6 +47,7 @@ function toComment(c: CommentRow, ownerId: string | null, me: string): Comment {
   return {
     id: c.id,
     author: name ? (byOwner ? `Prof. ${name}` : name) : byOwner ? "Instructor" : "Classmate",
+    authorId: c.author_id,
     authorIsMe: c.author_id === me,
     authorIsInstructor: byOwner,
     text: c.body,

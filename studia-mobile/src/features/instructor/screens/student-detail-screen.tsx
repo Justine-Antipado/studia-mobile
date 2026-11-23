@@ -40,7 +40,7 @@ export default function StudentDetailScreen() {
           <View style={{ gap: SPACE.lg }}>
             <Card>
               <View style={{ flexDirection: "row", alignItems: "center", gap: SPACE.md }}>
-                <Avatar name={student.name} size={56} />
+                <Avatar name={student.name} userId={student.id} size={56} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={TYPE.h3} numberOfLines={1}>{student.name}</Text>
                   <Text style={TYPE.muted} numberOfLines={1}>{student.email}</Text>

@@ -5,7 +5,7 @@ import { db, guard, must, mustOk, myId, sectionLabel } from "@/core/data/supabas
 import type { ClassRepository } from "@/features/student/data/classes-repository";
 import type { Person, StudentClass } from "@/features/student/types/student";
 
-const COLS = "id, subject_code, title, course, year_level, section, instructor:users!classes_instructor_id_fkey(full_name)";
+const COLS = "id, subject_code, title, course, year_level, section, instructor_id, instructor:users!classes_instructor_id_fkey(full_name)";
 
 type Row = {
   id: string;
@@ -14,6 +14,7 @@ type Row = {
   course: string;
   year_level: string;
   section: string;
+  instructor_id: string;
   instructor: { full_name: string } | null;
 };
 
@@ -28,6 +29,7 @@ const toClass = (r: Row, progress: number): StudentClass => ({
   code: r.subject_code,
   title: r.title,
   section: sectionLabel(r.course, r.year_level, r.section),
+  teacherId: r.instructor_id,
   teacher: `Prof. ${r.instructor?.full_name ?? "Instructor"}`,
   progress,
 });
