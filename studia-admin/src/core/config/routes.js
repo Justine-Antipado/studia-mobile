@@ -22,15 +22,10 @@ export const ROUTES = {
 
   security: '/security',
   securityAuditLog: '/security/audit-log',
-  securitySessions: '/security/sessions',
   securityLoginAttempts: '/security/login-attempts',
 
   settings: '/settings',
-  settingsEmailOtp: '/settings/email-otp',
-  settingsSecurityPolicy: '/settings/security-policy',
   settingsAi: '/settings/ai',
-  settingsSystem: '/settings/system',
-  settingsBackup: '/settings/backup',
   settingsLegal: '/settings/legal',
   settingsAccount: '/settings/account',
 

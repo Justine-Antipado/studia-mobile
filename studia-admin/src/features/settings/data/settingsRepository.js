@@ -11,7 +11,6 @@ import * as api from '../../../core/data/api';
 
 export const getSettings = (options) => api.getSettings(options);
 export const saveSettings = (patch) => api.saveSettings(patch);
-export const runBackup = () => api.runBackup();
 
 export const sendOtp = () => api.sendOtp();
 export const verifyOtp = (code) => api.verifyOtp(code);

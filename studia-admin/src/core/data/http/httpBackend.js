@@ -56,13 +56,8 @@ export const httpBackend = {
 
   getSettings: (options) => http.get(`${BASE}/settings`, options).then(toUi),
   saveSettings: (patch) => http.put(`${BASE}/settings`, toApi(patch)).then(toUi),
-  runBackup: () => http.post(`${BASE}/settings/backup/run`).then(toUi),
-
   getAuditLog: (params = {}, options) =>
     http.get(`${BASE}/security/audit-log`, { ...options, params: toListParams(params) }).then((r) => toList(r, params)),
-
-  getSessions: (options) => http.get(`${BASE}/security/sessions`, options).then(toUi),
-  revokeSession: (id) => http.post(`${BASE}/security/sessions/${encodeURIComponent(id)}/revoke`).then(() => true),
 
   getLoginAttempts: (params = {}, options) =>
     http.get(`${BASE}/security/login-attempts`, { ...options, params: toListParams(params) }).then((r) => toList(r, params)),

@@ -286,26 +286,9 @@ export const mockActivity = [
 
 export const mockSettings = {
   email: { senderEmail: env.mailFrom, otpExpiryMinutes: 5, requireOtpForReset: true, resendSeconds: 60 },
-  // Mirrors studia-mobile's auth-service.ts defaults (LOGIN_MAX_FAILS 5, LOGIN_LOCK_MS 60s = 1 min);
-  // mockBackend.login reads these live, so changing them here actually changes lockout behavior.
-  securityPolicy: { minPasswordLength: 8, requireUppercase: true, requireNumber: true, requireSymbol: true, sessionTimeoutMinutes: 20, maxLoginAttempts: 5, lockoutMinutes: 1 },
   system: {
-    maintenanceMode: false,
-    // See core/logic/maintenance.js for the shape and the isUnderMaintenance gate.
-    maintenance: { enabled: false, scope: 'all', roles: [], features: [], message: '', startsAt: '', endsAt: '' },
     appVersion: 'v1.0.0',
     upToDate: true,
-  },
-  backup: {
-    lastBackupAt: isoDaysAgo(4, 2),
-    lastBackupSizeLabel: '1.8 GB',
-    ok: true,
-    restorePoints: [
-      { id: 'bkp-1', at: isoDaysAgo(4, 2), sizeLabel: '1.8 GB' },
-      { id: 'bkp-2', at: isoDaysAgo(11, 2), sizeLabel: '1.7 GB' },
-      { id: 'bkp-3', at: isoDaysAgo(18, 2), sizeLabel: '1.6 GB' },
-      { id: 'bkp-4', at: isoDaysAgo(25, 2), sizeLabel: '1.6 GB' },
-    ],
   },
   legal: {
     terms: '1. Using STUDIA — provided by OMSU Mamburao Campus for learning and academic activities.',
@@ -320,28 +303,20 @@ export const mockSettings = {
 export const mockAuditLog = [
   { id: 'log-1', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 1 user account.', at: isoDaysAgo(0, 9) },
   { id: 'log-2', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 1 class announcement.', at: isoDaysAgo(1, 11) },
-  { id: 'log-3', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated Email & OTP settings.', at: isoDaysAgo(2, 15) },
+  { id: 'log-3', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated the AI settings.', at: isoDaysAgo(2, 15) },
   { id: 'log-4', actor: 'OMSU Administrator', action: 'security', summary: 'Changed the admin password.', at: isoDaysAgo(3, 10) },
   { id: 'log-5', actor: 'OMSU Administrator', action: 'update', summary: 'Disabled the AI chat feature.', at: isoDaysAgo(4, 13) },
   { id: 'log-6', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 3 content items from BSIT 2-A.', at: isoDaysAgo(5, 8) },
-  { id: 'log-7', actor: 'OMSU Administrator', action: 'settings', summary: 'Ran a manual backup.', at: isoDaysAgo(6, 2) },
+  { id: 'log-7', actor: 'OMSU Administrator', action: 'settings', summary: 'Disabled the AI chat feature.', at: isoDaysAgo(6, 2) },
   { id: 'log-8', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted the class "BEED 1-C".', at: isoDaysAgo(7, 16) },
-  { id: 'log-9', actor: 'OMSU Administrator', action: 'security', summary: 'Revoked a session on Chrome · Windows.', at: isoDaysAgo(8, 9) },
+  { id: 'log-9', actor: 'OMSU Administrator', action: 'security', summary: 'Changed the admin password.', at: isoDaysAgo(8, 9) },
   { id: 'log-10', actor: 'OMSU Administrator', action: 'update', summary: 'Disabled the AI planner feature.', at: isoDaysAgo(9, 14) },
   { id: 'log-11', actor: 'OMSU Administrator', action: 'update', summary: 'Re-enabled the AI quiz synthesizer.', at: isoDaysAgo(10, 10) },
   { id: 'log-12', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated the legal text.', at: isoDaysAgo(12, 9) },
   { id: 'log-13', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 2 user accounts.', at: isoDaysAgo(14, 11) },
   { id: 'log-14', actor: 'OMSU Administrator', action: 'settings', summary: 'Updated the AI settings.', at: isoDaysAgo(16, 15) },
   { id: 'log-15', actor: 'OMSU Administrator', action: 'delete', summary: 'Deleted 2 class announcements.', at: isoDaysAgo(19, 8) },
-  { id: 'log-16', actor: 'OMSU Administrator', action: 'security', summary: 'Updated the security policy.', at: isoDaysAgo(22, 13) },
-];
-
-/** Active admin sessions — there is one admin account, but it can be signed in from several devices. */
-export const mockSessions = [
-  { id: 'sess-1', device: 'Windows PC', browser: 'Chrome 131', ip: '203.177.42.10', location: 'Mamburao, Occidental Mindoro', startedAt: isoDaysAgo(0, 8), lastActiveAt: isoDaysAgo(0, 8), current: true },
-  { id: 'sess-2', device: 'iPhone', browser: 'Safari 18', ip: '110.54.128.77', location: 'San Jose, Occidental Mindoro', startedAt: isoDaysAgo(2, 19), lastActiveAt: isoDaysAgo(1, 7), current: false },
-  { id: 'sess-3', device: 'MacBook', browser: 'Chrome 130', ip: '112.198.90.4', location: 'Manila, NCR', startedAt: isoDaysAgo(6, 21), lastActiveAt: isoDaysAgo(5, 12), current: false },
-  { id: 'sess-4', device: 'Android phone', browser: 'Chrome Mobile 130', ip: '49.145.12.233', location: 'Mamburao, Occidental Mindoro', startedAt: isoDaysAgo(9, 10), lastActiveAt: isoDaysAgo(9, 10), current: false },
+  { id: 'log-16', actor: 'OMSU Administrator', action: 'security', summary: 'Updated the legal text.', at: isoDaysAgo(22, 13) },
 ];
 
 /** Seed history for /security/login-attempts; the mock backend appends a real row on every login call. */

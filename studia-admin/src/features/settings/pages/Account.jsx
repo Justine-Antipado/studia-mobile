@@ -31,6 +31,8 @@ function RuleChecklist({ password }) {
   );
 }
 
+const RESEND_SECONDS = 60;
+
 export default function Account() {
   const { admin } = useAuth();
   const { settings, error, loading, reload } = useSettings();
@@ -61,7 +63,7 @@ export default function Account() {
       setOtpSent(true);
       setVerified(false);
       setDigits(Array(6).fill(''));
-      setCooldown(settings.email.resendSeconds);
+      setCooldown(RESEND_SECONDS);
       showToast(`OTP sent to ${r.sentTo} (dev: ${r.devCode})`);
       setTimeout(() => refs.current[0]?.focus(), 50);
     } catch (e) {

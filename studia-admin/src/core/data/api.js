@@ -74,12 +74,9 @@ export const markAllNotificationsRead = () => backend.markAllNotificationsRead()
 /* --- settings --- */
 export const getSettings = (options) => backend.getSettings(options);
 export const saveSettings = (patch) => backend.saveSettings(patch);
-export const runBackup = () => backend.runBackup();
 
 /* --- security --- */
 export const getAuditLog = (params, options) => backend.getAuditLog(params, options);
-export const getSessions = (options) => backend.getSessions(options);
-export const revokeSession = (id) => backend.revokeSession(id);
 export const getLoginAttempts = (params, options) => backend.getLoginAttempts(params, options);
 
 /* --- admin account --- */

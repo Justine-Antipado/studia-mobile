@@ -65,10 +65,18 @@ Ayusin: `supabase db push` sa `studia-dev` (isasama nito ang 021 kung hindi mo i
 
 Nakumpirma: `npm run lint` at `npm run build` ay malinis (studia-admin).
 
-### Hindi ko na galaw (rekomendasyon, ikaw ang magdesisyon)
+### Tinanggal din (kasunod na utos)
 
-| Page | Dahilan | Table |
-|---|---|---|
+| Tinanggal | Ano ang ginawa |
+|---|---|
+| Security > **Sessions** | Binura ang page, route, nav, `getSessions`/`revokeSession`, at ang Active sessions card. Pinalitan ng Lockouts card ang Security center |
+| Settings > **Backup** | Binura ang page, route, nav, `runBackup` |
+| Settings > **Security policy**, **Email & OTP** | Binura ang pages, routes, nav |
+| Settings > **System** (maintenance) | Binura ang page, ang maintenance banner, ang `core/state` at `core/logic` ng maintenance, at ang CSS |
+
+Natira sa Settings: AI, Legal, Account. Natira sa Security: Audit log, Login attempts. Ang mock `email` (OTP resend) at `system.appVersion` ay iniwan dahil ginagamit ng Account at Help. Hindi ko pa binura ang mga table na `sessions` at `backup_runs`; hindi ito kasama sa migration 021. Sabihin kung isasama.
+
+---|---|---|
 | Security > **Sessions** | Supabase Auth ang session ng mobile at admin; walang nagsusulat sa `sessions` (0 rows) | `sessions` |
 | Settings > **Backup** | Walang backup job sa repo; Supabase ang may backup. May 4 na `backup_runs` rows sa dev | `backup_runs` |
 | Settings > **Security policy**, **Email & OTP** | Hardcoded ang mobile; walang `from("settings")` sa app, kaya walang epekto ang admin | `settings` |

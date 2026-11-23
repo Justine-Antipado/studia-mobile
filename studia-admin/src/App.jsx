@@ -30,15 +30,10 @@ const Reports = lazy(() => import('./features/reports/pages/Reports'));
 const Notifications = lazy(() => import('./features/notifications/pages/Notifications'));
 const SecurityCenter = lazy(() => import('./features/security/pages/SecurityCenter'));
 const AuditLog = lazy(() => import('./features/security/pages/AuditLog'));
-const Sessions = lazy(() => import('./features/security/pages/Sessions'));
 const LoginAttempts = lazy(() => import('./features/security/pages/LoginAttempts'));
 
 const Settings = lazy(() => import('./features/settings/pages/Settings'));
-const EmailOtp = lazy(() => import('./features/settings/pages/EmailOtp'));
-const SecurityPolicy = lazy(() => import('./features/settings/pages/SecurityPolicy'));
 const AiSettings = lazy(() => import('./features/settings/pages/AiSettings'));
-const SystemSettings = lazy(() => import('./features/settings/pages/SystemSettings'));
-const Backup = lazy(() => import('./features/settings/pages/Backup'));
 const Legal = lazy(() => import('./features/settings/pages/Legal'));
 const Account = lazy(() => import('./features/settings/pages/Account'));
 
@@ -82,15 +77,10 @@ export default function App() {
 
             <Route path={ROUTES.security} element={<SecurityCenter />} />
             <Route path={ROUTES.securityAuditLog} element={<AuditLog />} />
-            <Route path={ROUTES.securitySessions} element={<Sessions />} />
             <Route path={ROUTES.securityLoginAttempts} element={<LoginAttempts />} />
 
             <Route path={ROUTES.settings} element={<Settings />} />
-            <Route path={ROUTES.settingsEmailOtp} element={<EmailOtp />} />
-            <Route path={ROUTES.settingsSecurityPolicy} element={<SecurityPolicy />} />
             <Route path={ROUTES.settingsAi} element={<AiSettings />} />
-            <Route path={ROUTES.settingsSystem} element={<SystemSettings />} />
-            <Route path={ROUTES.settingsBackup} element={<Backup />} />
             <Route path={ROUTES.settingsLegal} element={<Legal />} />
             <Route path={ROUTES.settingsAccount} element={<Account />} />
 

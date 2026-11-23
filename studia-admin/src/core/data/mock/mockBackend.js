@@ -41,7 +41,6 @@ import {
   mockContentConsumption,
   mockStrugglingConcepts,
   mockAuditLog,
-  mockSessions,
   mockLoginAttempts,
   BLOOM_LEVELS,
   DIFFICULTIES,
@@ -109,10 +108,6 @@ const ADMIN_ACCOUNT = {
 
 /** Human label per top-level settings key, for the audit log's one-line summary. */
 const SETTINGS_SECTION_LABELS = {
-  email: 'Email & OTP settings',
-  securityPolicy: 'the security policy',
-  system: 'system settings',
-  backup: 'backup settings',
   legal: 'the legal text',
   ai: 'AI settings',
 };
@@ -135,7 +130,6 @@ const db = () => {
     classAnnouncements: structuredClone(mockClassAnnouncements),
     notifications: structuredClone(mockNotifications),
     auditLog: structuredClone(mockAuditLog),
-    sessions: structuredClone(mockSessions),
     loginAttempts: structuredClone(mockLoginAttempts),
   };
   return database;
@@ -393,21 +387,6 @@ export const mockBackend = {
     return structuredClone(store.settings);
   },
 
-  async runBackup() {
-    await delay(900);
-    const store = db();
-    const now = new Date().toISOString();
-    const point = { id: `bkp-${Date.now()}`, at: now, sizeLabel: '1.8 GB' };
-    store.settings.backup = {
-      lastBackupAt: now,
-      lastBackupSizeLabel: point.sizeLabel,
-      ok: true,
-      restorePoints: [point, ...store.settings.backup.restorePoints],
-    };
-    logAudit(store, 'settings', 'Ran a manual backup.');
-    return structuredClone(store.settings.backup);
-  },
-
   // --- Password change with OTP ---
   async sendOtp() {
     await delay();
@@ -454,23 +433,6 @@ export const mockBackend = {
         return String(row[key]) === String(value);
       },
     });
-  },
-
-  /** Active admin sessions, not paginated — there are only ever a handful. */
-  async getSessions() {
-    await delay(200);
-    return structuredClone(db().sessions);
-  },
-
-  async revokeSession(id) {
-    await delay();
-    const store = db();
-    const session = store.sessions.find((s) => s.id === id);
-    if (!session) throw fail(404, 'That session no longer exists.');
-    if (session.current) throw fail(422, 'You cannot revoke the session you are using right now.');
-    store.sessions = store.sessions.filter((s) => s.id !== id);
-    logAudit(store, 'security', `Revoked a session on ${session.browser} · ${session.device}.`);
-    return true;
   },
 
   /** params: { page, pageSize, sort, order, q, filters: { result } } -> { data, meta }. Failed logins, lockouts and IPs. */

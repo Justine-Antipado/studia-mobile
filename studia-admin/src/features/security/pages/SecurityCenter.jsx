@@ -17,18 +17,18 @@ const CHILDREN = childrenFor(ROUTES.security);
 export default function SecurityCenter() {
   const { data, error, loading, reload } = useAsync(
     async (signal) => {
-      const [sessions, attempts] = await Promise.all([
-        securityRepo.getSessions({ signal }),
-        securityRepo.getLoginAttempts({ page: 1, pageSize: 5, filters: { result: 'Failed' } }, { signal }),
+      const [failed, locked] = await Promise.all([
+        securityRepo.getLoginAttempts({ page: 1, pageSize: 1, filters: { result: 'Failed' } }, { signal }),
+        securityRepo.getLoginAttempts({ page: 1, pageSize: 1, filters: { result: 'Locked' } }, { signal }),
       ]);
-      return { sessions, attempts };
+      return { failed, locked };
     },
     []
   );
 
   return (
     <>
-      <PageHeader title="Security center" subtitle="Audit log, sessions and login attempts." />
+      <PageHeader title="Security center" subtitle="Audit log and login attempts." />
 
       {loading && <SkeletonCards count={2} />}
 
@@ -47,8 +47,8 @@ export default function SecurityCenter() {
 
       {!loading && !error && data && (
         <div className="stat-grid stat-grid-2">
-          <StatCard label="Active sessions" value={data.sessions.length} />
-          <StatCard label="Failed logins" value={data.attempts.meta.total} />
+          <StatCard label="Failed logins" value={data.failed.meta.total} />
+          <StatCard label="Lockouts" value={data.locked.meta.total} tone={data.locked.meta.total ? 'warn' : 'default'} />
         </div>
       )}
 
