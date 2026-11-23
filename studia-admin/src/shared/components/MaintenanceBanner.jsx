@@ -17,7 +17,7 @@ export default function MaintenanceBanner({ config }) {
       <span>
         <strong>Maintenance active:</strong> {maintenanceBannerLabel(config)}
       </span>
-      <Link to={ROUTES.settingsSystem} className="maintenance-banner-link">
+      <Link to={`${ROUTES.settings}?tab=system`} className="maintenance-banner-link">
         Manage
       </Link>
     </div>

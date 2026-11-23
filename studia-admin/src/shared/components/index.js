@@ -17,6 +17,7 @@ export { default as Select } from './Select';
 export { default as Sidebar } from './Sidebar';
 export { default as StatCard } from './StatCard';
 export { default as Tabs } from './Tabs';
+export { default as TabbedPage } from './TabbedPage';
 export { default as Topbar } from './Topbar';
 export { PageSkeleton, Skeleton, SkeletonCards, SkeletonTable, SkeletonText } from './Skeleton';
 export { Icon, getIcon } from './Icon';

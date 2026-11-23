@@ -1,6 +1,8 @@
+import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumbs from './Breadcrumbs';
 import { Icon } from './Icon';
+import { PanelContext } from './panelContext';
 
 /**
  * The in-page header: breadcrumbs, an optional Back button and an actions slot.
@@ -15,6 +17,18 @@ export default function PageHeader({
   children,
 }) {
   const navigate = useNavigate();
+  // Inside a tab panel the breadcrumbs are already shown above the tabs; keep only the actions.
+  const inPanel = useContext(PanelContext);
+  if (inPanel) {
+    return actions ? (
+      <header className="page-header">
+        <div className="page-header-row">
+          <div className="page-header-text" />
+          <div className="page-header-actions">{actions}</div>
+        </div>
+      </header>
+    ) : null;
+  }
 
   return (
     <header className="page-header">

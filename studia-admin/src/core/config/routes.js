@@ -21,14 +21,8 @@ export const ROUTES = {
   notifications: '/notifications',
 
   security: '/security',
-  securityAuditLog: '/security/audit-log',
-  securityLoginAttempts: '/security/login-attempts',
 
   settings: '/settings',
-  settingsAi: '/settings/ai',
-  settingsSystem: '/settings/system',
-  settingsLegal: '/settings/legal',
-  settingsAccount: '/settings/account',
 
   help: '/help',
   forbidden: '/403',
