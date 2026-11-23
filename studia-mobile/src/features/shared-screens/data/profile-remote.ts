@@ -4,8 +4,7 @@
 //   POST /api/me/otp-send         { purpose }
 //   POST /api/me/profile-update   { code, fullName, phone, course|year|section | department }
 //   POST /api/me/password-change  { code, newPassword }
-// The profile photo is kept on the device only (see setAvatar).
-import AsyncStorage from "@react-native-async-storage/async-storage";
+//   POST /api/me/avatar           { action: get | set | remove, data? }  (private `avatars` bucket)
 import { z } from "zod";
 
 import { appError, fail, ok, type AppError, type Result } from "@/core/data/errors/app-error";
@@ -26,7 +25,7 @@ const departmentCode = (label: string | undefined) =>
 
 const Sent = z.object({ email: z.string(), resendInSec: z.number(), expiresInSec: z.number() });
 const Done = z.object({}).passthrough();
-const avatarKey = (email: string) => `studia.avatar.${email.toLowerCase()}`;
+const Avatar = z.object({ url: z.string().nullable() });
 
 async function token(): Promise<string> {
   const { data } = await getSupabase().auth.getSession();
@@ -88,18 +87,18 @@ export class RemoteProfileRepository implements ProfileRepository {
     return r.ok ? ok(undefined) : r;
   }
 
-  // The photo stays on this device (AsyncStorage, keyed by email): no upload, no signed URLs, nothing
-  // extra for the server to store or serve. The trade-off is that it is not shared across devices.
+  // The photo lives in the private `avatars` bucket (migration 015). The server sniffs the real file
+  // type, stores it under the caller's own folder and hands back a short-lived signed URL.
   async setAvatar(user: UserProfile, file: AvatarFile | null): Promise<Result<UserProfile>> {
-    try {
-      if (file) await AsyncStorage.setItem(avatarKey(user.email), `data:image/jpeg;base64,${file.base64}`);
-      else await AsyncStorage.removeItem(avatarKey(user.email));
-    } catch {
-      return fail(appError("unknown", "Could not save the photo on this device.", false));
-    }
+    const r = await call(
+      "me/avatar",
+      file ? { action: "set", data: file.base64 } : { action: "remove" },
+      Avatar,
+    );
+    if (!r.ok) return r;
     const { avatarUri: _old, ...rest } = user;
     void _old;
-    const next: UserProfile = file ? { ...rest, avatarUri: file.uri } : rest;
+    const next: UserProfile = r.value.url ? { ...rest, avatarUri: r.value.url } : rest;
     setUser(next);
     return ok(next);
   }
@@ -107,12 +106,9 @@ export class RemoteProfileRepository implements ProfileRepository {
   async loadAvatar(): Promise<void> {
     const me = getUser();
     if (!me) return;
-    try {
-      const uri = await AsyncStorage.getItem(avatarKey(me.email));
-      const current = getUser();
-      if (uri && current && current.email === me.email) setUser({ ...current, avatarUri: uri });
-    } catch {
-      // no saved photo: the initials are shown
-    }
+    const r = await call("me/avatar", { action: "get" }, Avatar);
+    const current = getUser();
+    if (r.ok && r.value.url && current && current.email === me.email) setUser({ ...current, avatarUri: r.value.url });
+    // no saved photo or no connection: the initials are shown
   }
 }

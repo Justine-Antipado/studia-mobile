@@ -21,7 +21,7 @@
 | Quizzes (instructor: gawa, i-grade) | RPC `save_quiz`, `grade_quiz_attempt`, `quiz_question_keys` | Connected |
 | Account: register, login, OTP, Google | Supabase Auth + `studia-api` (`api/auth/*`), `users`, `otp_codes` | Connected |
 | Account: edit profile, password | `studia-api` `api/me/profile-update`, `password-change` | Connected |
-| **Account: profile photo** | `AsyncStorage` lang (`profile-remote.ts:95`) | **Hindi connected.** Handa na ang `users.avatar_path`, `avatars` bucket (015) at `api/me/avatar.ts`; mobile na lang ang kulang |
+| Account: profile photo | `studia-api` `POST /api/me/avatar` → `avatars` bucket + `users.avatar_path` | Connected na (dating device lang). Hindi pa na-test sa device |
 | Feedback sa assignment | RPC `grade_assignment` (`feedback`), `assignment_submissions` | Connected |
 | Feedback sa quiz | RPC `grade_quiz_attempt` (`feedback`) | Connected |
 | **Feedback sa app/admin** (user nagpapadala) | Walang screen, walang table | **Wala sa app** |
