@@ -5,7 +5,7 @@
 //   - tapping a push opens the Alerts tab
 //   - signOut() calls unregisterPushToken() so the next account on this phone does not get the push
 // Mounted once in the root layout. A no-op in Expo Go and on simulators.
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { AndroidImportance } from "expo-notifications";
@@ -33,10 +33,17 @@ Notifications.setNotificationHandler({
 let registeredToken: string | null = null;
 
 /**
+ * Expo Go dropped remote notifications in SDK 53: on Android `addPushTokenListener` THROWS and
+ * `setNotificationChannelAsync` rejects with a native NullPointerException. Nothing in this module
+ * may run there — push needs a development or EAS build (docs/ROUTE-MAP.md, AGENTS.md).
+ */
+const IS_EXPO_GO = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+/**
  * Why this device has no push token, for the error sink. Push silently doing nothing was the
  * hardest part of B1 to diagnose: every dead end now reports itself once.
  */
-type PushBlocker = "simulator" | "permission-denied" | "no-project-id" | null;
+type PushBlocker = "expo-go" | "simulator" | "permission-denied" | "no-project-id" | null;
 
 let lastBlocker: PushBlocker = null;
 
@@ -49,6 +56,7 @@ function reportBlocker(blocker: Exclude<PushBlocker, null>): null {
 }
 
 async function getPushToken(): Promise<string | null> {
+  if (IS_EXPO_GO) return reportBlocker("expo-go");
   if (!Device.isDevice) return reportBlocker("simulator"); // simulators have no push token
 
   if (Platform.OS === "android") {
@@ -98,7 +106,8 @@ export function usePushNotifications(): void {
   const router = useRouter();
   const user = useUser();
   const role = user?.role;
-  const enabled = supabaseConfigured && !!role;
+  // Expo Go has no remote notifications at all, so nothing below may even be subscribed there.
+  const enabled = supabaseConfigured && !!role && !IS_EXPO_GO;
 
   useEffect(() => {
     if (!enabled) return;
