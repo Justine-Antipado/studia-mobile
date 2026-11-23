@@ -109,29 +109,36 @@ export function usePushNotifications(): void {
   // Expo Go has no remote notifications at all, so nothing below may even be subscribed there.
   const enabled = supabaseConfigured && !!role && !IS_EXPO_GO;
 
-  useEffect(() => {
-    if (!enabled) return;
-    registerPushToken().catch((e) => reportError(e, { scope: "push.register" }));
-
-    // Expo can rotate the token (reinstall, restored backup, FCM refresh). Without this the
-    // server keeps pushing to a dead token and the phone goes quiet for good.
-    const sub = Notifications.addPushTokenListener(({ data }) => {
-      if (typeof data !== "string" || data === registeredToken) return;
-      sendToken(data).catch((e) => reportError(e, { scope: "push.rotate" }));
-    });
-
-    // Permission can also be granted later, from Android settings: re-check on every return.
-    const app = AppState.addEventListener("change", (state) => {
-      if (state === "active" && !registeredToken) {
-        registerPushToken().catch((e) => reportError(e, { scope: "push.register" }));
-      }
-    });
-
-    return () => {
-      sub.remove();
-      app.remove();
-    };
-  }, [enabled, role]);
+  // ===========================================================================================
+  // ⬇️ DEV BUILD / APK: UNCOMMENT THIS WHOLE BLOCK (walang ibang kailangang baguhin).
+  // Pinatay muna para matest sa Expo Go: sa Android, `addPushTokenListener` ay nag-THROW at
+  // `setNotificationChannelAsync` ay nagre-reject (NullPointerException) — tinanggal ng Expo Go
+  // ang remote notifications noong SDK 53. Ang in-app toast (Realtime) ay tumatakbo pa rin.
+  // ===========================================================================================
+  // useEffect(() => {
+  //   if (!enabled) return;
+  //   registerPushToken().catch((e) => reportError(e, { scope: "push.register" }));
+  //
+  //   // Expo can rotate the token (reinstall, restored backup, FCM refresh). Without this the
+  //   // server keeps pushing to a dead token and the phone goes quiet for good.
+  //   const sub = Notifications.addPushTokenListener(({ data }) => {
+  //     if (typeof data !== "string" || data === registeredToken) return;
+  //     sendToken(data).catch((e) => reportError(e, { scope: "push.rotate" }));
+  //   });
+  //
+  //   // Permission can also be granted later, from Android settings: re-check on every return.
+  //   const app = AppState.addEventListener("change", (state) => {
+  //     if (state === "active" && !registeredToken) {
+  //       registerPushToken().catch((e) => reportError(e, { scope: "push.register" }));
+  //     }
+  //   });
+  //
+  //   return () => {
+  //     sub.remove();
+  //     app.remove();
+  //   };
+  // }, [enabled, role]);
+  // ======================================= END BLOCK =========================================
 
   const last = Notifications.useLastNotificationResponse();
   useEffect(() => {
