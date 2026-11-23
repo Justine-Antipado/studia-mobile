@@ -49,9 +49,9 @@ export default function InstructorClassesScreen() {
           onRetry={refetch}
           emptyIcon="school-outline"
           emptyTitle="No classes yet"
-          emptyMessage="Create your first class to get started."
-          emptyActionLabel="Create class"
-          onEmptyAction={openCreate}
+          // F7: no second "Create class" button down here — the header action is always in reach
+          // and two buttons for one action is what the empty state used to add.
+          emptyMessage="Use Create above to add your first class."
         >
           <AppList data={classes} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
         </ListState>

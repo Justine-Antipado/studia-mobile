@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { Icon } from "@/shared/components/ui/icon";
 import { C } from "@/shared/constants/studia-colors";
 import { FONT, RADIUS, SPACE } from "@/shared/constants/tokens";
+import { useKeyboardVisible } from "@/shared/hooks/use-keyboard";
 
 export function AiChatComposer({
   suggestions,
@@ -20,9 +21,13 @@ export function AiChatComposer({
   /** True while a reply is on its way: blocks a second send. */
   disabled?: boolean;
 }) {
-  // Chips would eat the little room the keyboard leaves, so they hide while typing.
+  // Chips would eat the little room the keyboard leaves, so they hide while typing (E3).
+  // The keyboard flag matters on top of `focused`: the field can lose focus while the keyboard is
+  // still on screen (tapping the thread, the OS dismiss arrow), and the chips used to pop back in
+  // over the keyboard for that moment.
   const [focused, setFocused] = useState(false);
-  const showChips = !focused && !input;
+  const keyboardVisible = useKeyboardVisible();
+  const showChips = !focused && !keyboardVisible && !input;
 
   return (
     <View style={s.area}>

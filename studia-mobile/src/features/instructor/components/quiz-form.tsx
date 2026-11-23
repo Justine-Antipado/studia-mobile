@@ -6,7 +6,19 @@ import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { Href } from "expo-router";
 
-import { ActionButton, Card, Chip, ConfirmDialog, DateTimeField, FormField, PageTitle, SelectField, useToast } from "@/shared/components/ui";
+import {
+  ActionButton,
+  Card,
+  Chip,
+  ConfirmDialog,
+  CustomDropdown,
+  DateTimeField,
+  FormField,
+  PageTitle,
+  SelectField,
+  useToast,
+  type DropdownOption,
+} from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { TONES } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
@@ -55,6 +67,15 @@ export function QuizForm({
   const toast = useToast();
   const classes = useInstructorClasses();
   const base = useMemo(() => defaultSchedule(), []);
+  const classOptions = useMemo<DropdownOption<string>[]>(
+    () =>
+      (classes.data ?? []).map((c) => ({
+        value: c.id,
+        label: `${c.code} · ${c.section}`,
+        description: c.title,
+      })),
+    [classes.data],
+  );
 
   const [title, setTitle] = useState(initial?.title ?? "");
   const [classId, setClassId] = useState<string | null>(initial?.classId ?? presetClassId ?? null);
@@ -113,15 +134,18 @@ export function QuizForm({
 
       <FormField label="Quiz title" value={title} onChangeText={(v) => { setTitle(v); touch(); }} placeholder="e.g. Quiz 3: Risk Management" maxLength={80} />
 
+      {/* F4: a dropdown, so the form stays the same height with 3 classes or 30. */}
       {mode === "create" ? (
-        <View style={{ gap: SPACE.sm }}>
-          <Text style={TYPE.label}>Class</Text>
-          <View style={s.wrap}>
-            {(classes.data ?? []).map((c) => (
-              <Chip key={c.id} label={`${c.code} · ${c.section}`} selected={classId === c.id} onPress={() => { setClassId(c.id); touch(); }} />
-            ))}
-          </View>
-        </View>
+        <CustomDropdown
+          label="Class"
+          placeholder="Choose a class"
+          options={classOptions}
+          value={classId ?? ""}
+          onChange={(id) => {
+            setClassId(id);
+            touch();
+          }}
+        />
       ) : null}
 
       <Text style={TYPE.h2}>Schedule & rules</Text>

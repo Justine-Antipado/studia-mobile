@@ -9,6 +9,7 @@ import {
   Badge,
   Card,
   ConfirmDialog,
+  FeedbackNote,
   FormField,
   ListState,
   PageTitle,
@@ -18,6 +19,7 @@ import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import type { Tone } from "@/shared/constants/studia-colors";
 import { useRouteIds } from "@/core/logic/route-params";
+import { useOpenFile } from "@/features/shared-screens/hooks/use-open-file";
 import { useForceBack, useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
 import { dueLabel, isOverdue, scoreTone, toPercent } from "@/features/student/logic/format";
@@ -66,6 +68,7 @@ export default function StudentAssignmentDetail() {
     : editing && (text !== (assignment?.submissionText ?? "") || file?.id !== assignment?.submissionFile?.id);
   const fallback = classId ? { pathname: "/student/course-detail" as const, params: { id: classId } } : "/student/courses";
   const goBack = useSafeBack(fallback, { blocked: dirty, onBlocked: () => setConfirmDiscard(true) });
+  const openFile = useOpenFile("student");
   const forceBack = useForceBack(fallback);
 
   const pickFile = async () => {
@@ -126,7 +129,7 @@ export default function StudentAssignmentDetail() {
             {assignment.attachments.length > 0 ? (
               <View style={{ gap: SPACE.sm }}>
                 <Text style={TYPE.label}>Brief</Text>
-                {assignment.attachments.map((a) => <AttachmentRow key={a.id} attachment={a} />)}
+                {assignment.attachments.map((a) => <AttachmentRow key={a.id} attachment={a} onPress={() => openFile(a.id)} />)}
               </View>
             ) : null}
 
@@ -140,7 +143,10 @@ export default function StudentAssignmentDetail() {
                   label={`${toPercent(assignment.score!, assignment.points)}%`}
                   tone={scoreTone(toPercent(assignment.score!, assignment.points))}
                 />
-                {assignment.feedback ? <Text style={[TYPE.muted, { marginTop: SPACE.sm }]}>{assignment.feedback}</Text> : null}
+                {/* Same presentation as the quiz result and the Grades tab (G2). */}
+                <View style={{ marginTop: SPACE.sm }}>
+                  <FeedbackNote feedback={assignment.feedback} />
+                </View>
               </Card>
             ) : null}
 
@@ -148,7 +154,7 @@ export default function StudentAssignmentDetail() {
               <View style={{ gap: SPACE.sm }}>
                 <Text style={TYPE.label}>Your submission</Text>
                 {assignment.submissionText ? <Text style={TYPE.body}>{assignment.submissionText}</Text> : null}
-                {assignment.submissionFile ? <AttachmentRow attachment={assignment.submissionFile} /> : null}
+                {assignment.submissionFile ? <AttachmentRow attachment={assignment.submissionFile} onPress={() => openFile(assignment.submissionFile!.id)} /> : null}
                 {canEdit ? <ActionButton label="Edit submission" icon="create-outline" variant="secondary" onPress={startEdit} /> : null}
               </View>
             ) : null}
@@ -164,7 +170,7 @@ export default function StudentAssignmentDetail() {
                   tone="orange"
                 />
                 {assignment.submissionText ? <Text style={TYPE.body}>{assignment.submissionText}</Text> : null}
-                {assignment.submissionFile ? <AttachmentRow attachment={assignment.submissionFile} /> : null}
+                {assignment.submissionFile ? <AttachmentRow attachment={assignment.submissionFile} onPress={() => openFile(assignment.submissionFile!.id)} /> : null}
                 {isOverdue(assignment.dueAt) && !assignment.allowLate ? null : (
                   <ActionButton label="Turn in" icon="checkmark-circle-outline" loading={turnIn.loading} onPress={turnInDraft} />
                 )}

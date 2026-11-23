@@ -8,6 +8,7 @@ import { Screen } from "@/shared/components/ui/screen";
 import { C, OVERLAY } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
+import { useOpenFile } from "@/features/shared-screens/hooks/use-open-file";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
 import { useDeleteMaterial, useMaterial, useProvideTranscript } from "@/features/instructor/hooks/use-materials";
@@ -48,6 +49,7 @@ export default function MaterialDetailScreen() {
   const { classId, id } = useRouteIds("classId", "id");
   const router = useRouter();
   const goBack = useSafeBack(classId ? { pathname: "/instructor/class-detail", params: { id: classId } } : "/instructor/classes");
+  const openFile = useOpenFile("instructor");
   const { data: material, loading, error, refetch } = useMaterial(classId, id);
   const deleteMaterial = useDeleteMaterial(classId ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -92,7 +94,7 @@ export default function MaterialDetailScreen() {
                   />
                   <Text style={s.placeholderText}>{material.attachment.name}</Text>
                 </View>
-                <AttachmentRow attachment={material.attachment} />
+                <AttachmentRow attachment={material.attachment} onPress={() => openFile(material.attachment!.id)} />
               </>
             ) : null}
 

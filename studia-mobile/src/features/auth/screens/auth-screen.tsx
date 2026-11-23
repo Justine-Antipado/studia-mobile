@@ -28,6 +28,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { lastLogin } from "@/core/data/storage/device-flags";
 import { setUser } from "@/core/data/storage/session-store";
 import { profileRepository } from "@/features/shared-screens/data/profile-repository";
 import { toProfile } from "@/features/auth/logic/user-profile";
@@ -65,6 +66,7 @@ import {
   type FieldKey,
 } from "@/features/auth/logic/auth-validation";
 import {
+  BLOCKED_MESSAGE,
   completeGoogleProfile,
   isAuthError,
   login,
@@ -194,8 +196,22 @@ export default function Auth() {
   const topPad = insets.top + (compact ? 8 : 14);
   const bottomPad = Math.max(insets.bottom, 16) + 8;
 
+  // A1: the phone remembers the last account that signed in here (email + provider, never a
+  // password). The login form opens prefilled and the Google button names the account, so a
+  // returning user types nothing. Google itself never hands out a password, so reusing the Google
+  // credential for the password form is impossible; this removes the retyping instead.
+  const hint = lastLogin.peek();
+  const sameRoleHint = hint && hint.role === role ? hint : null;
+
   const [mode, setMode] = useState<Mode>("login");
-  const [form, setForm] = useState<Form>(EMPTY_FORM);
+  const [form, setForm] = useState<Form>(() =>
+    sameRoleHint ? { ...EMPTY_FORM, email: sameRoleHint.email } : EMPTY_FORM,
+  );
+
+  const googleLabel =
+    mode === "login" && sameRoleHint?.provider === "google"
+      ? `Continue as ${sameRoleHint.email}`
+      : "Continue with Google";
   const [errors, setErrors] = useState<FieldErrors>({});
   const [active, setActive] = useState<FieldKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -287,6 +303,14 @@ export default function Auth() {
 
     if (e.fields) applyErrors(e.fields, FIELD_ORDER.signup[role]);
 
+    // Deactivated account: say so, from whichever step it surfaced on. The server message is not
+    // reused here so the wording is the same everywhere (A2).
+    if (e.code === "ACCOUNT_INACTIVE") {
+      goMode("login");
+      showBanner("error", BLOCKED_MESSAGE);
+      return;
+    }
+
     if (e.code === "OTP_INVALID" || e.code === "OTP_LOCKED") {
       setOtpError(e.message);
       setOtp("");
@@ -326,6 +350,7 @@ export default function Auth() {
   const onAuthenticated = (session: Session) => {
     // The session token is persisted by the Supabase client (core/data/supabase/secure-storage.ts).
     const { user } = session;
+    void lastLogin.set({ email: user.email, provider: user.authProvider, role: user.role });
     setUser(toProfile(user));
     void profileRepository.loadAvatar(); // saved photo comes from the database
     router.replace(HOME_ROUTES[user.role ?? role]);
@@ -817,7 +842,7 @@ export default function Auth() {
                   onPress={submitGoogle}
                   disabled={busy}
                   accessibilityRole="button"
-                  accessibilityLabel="Continue with Google"
+                  accessibilityLabel={googleLabel}
                   style={({ pressed }) => [
                     s.google,
                     pressed && !busy && { opacity: 0.85 },
@@ -825,7 +850,9 @@ export default function Auth() {
                   ]}
                 >
                   <Ionicons name="logo-google" size={18} color={C.text} />
-                  <Text style={s.googleText}>{googleBusy ? "Connecting to Google…" : "Continue with Google"}</Text>
+                  <Text style={s.googleText} numberOfLines={1}>
+                    {googleBusy ? "Connecting to Google…" : googleLabel}
+                  </Text>
                 </Pressable>
               </>
             ) : null}

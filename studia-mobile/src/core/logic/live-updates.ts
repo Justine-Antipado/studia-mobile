@@ -9,6 +9,7 @@ import { AppState } from "react-native";
 import { queryCache } from "@/core/data/cache/query-cache";
 import { useUser } from "@/core/data/storage/session-store";
 import { getSupabase, supabaseConfigured } from "@/core/data/supabase/client";
+import { publishNotification, toIncoming } from "@/core/logic/notification-stream";
 
 const STALE_AFTER_MS = 20_000;
 
@@ -41,8 +42,12 @@ export function useLiveUpdates(): void {
       if (cancelled || !uid) return;
       const channel = client
         .channel(`notifications:${uid}`)
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` }, () => {
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${uid}` }, (payload) => {
           queryCache.clear();
+          // Also announce it in the app: the OS banner is suppressed while Studia is in the
+          // foreground, so this toast is what the user actually sees (B1).
+          const incoming = toIncoming(payload.new);
+          if (incoming) publishNotification(incoming);
         })
         .subscribe();
       cleanup = () => void client.removeChannel(channel);

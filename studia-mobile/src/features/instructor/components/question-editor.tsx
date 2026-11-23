@@ -3,7 +3,14 @@
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { ActionButton, Chip, FormField, Icon } from "@/shared/components/ui";
+import {
+  ActionButton,
+  CustomDropdown,
+  FormField,
+  Icon,
+  toOptions,
+  type DropdownOption,
+} from "@/shared/components/ui";
 import { C } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { ESSAY_DEFAULT_POINTS, OPTION_LABELS } from "@/features/instructor/logic/quiz-validation";
@@ -17,6 +24,20 @@ const TYPE_LABELS: Record<QuizQuestionType, string> = {
 const TYPES: QuizQuestionType[] = ["multiple_choice", "identification", "essay"];
 const BLOOM_LEVELS: BloomLevel[] = ["Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"];
 const DIFFICULTIES: Difficulty[] = ["Easy", "Medium", "Hard"];
+
+// F4: type, Bloom level and difficulty are dropdowns instead of three chip rows per question —
+// with ten questions on screen the chips were most of the form. Bloom and difficulty stay
+// optional, so each list starts with "Not set", which maps back to null.
+const NONE = "";
+const TYPE_OPTIONS: DropdownOption<QuizQuestionType>[] = TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }));
+const BLOOM_OPTIONS: DropdownOption<BloomLevel | typeof NONE>[] = [
+  { value: NONE, label: "Not set" },
+  ...toOptions(BLOOM_LEVELS),
+];
+const DIFFICULTY_OPTIONS: DropdownOption<Difficulty | typeof NONE>[] = [
+  { value: NONE, label: "Not set" },
+  ...toOptions(DIFFICULTIES),
+];
 
 type Props = {
   index: number;
@@ -44,11 +65,7 @@ function QuestionEditorBase({ index, question, canRemove, onChange, onRemove }: 
     <View style={s.box}>
       <Text style={TYPE.h3}>Question {index + 1}</Text>
 
-      <View style={s.chips}>
-        {TYPES.map((t) => (
-          <Chip key={t} label={TYPE_LABELS[t]} selected={question.type === t} onPress={() => setType(t)} />
-        ))}
-      </View>
+      <CustomDropdown label="Question type" options={TYPE_OPTIONS} value={question.type} onChange={setType} />
 
       <FormField
         label="Question"
@@ -104,23 +121,19 @@ function QuestionEditorBase({ index, question, canRemove, onChange, onRemove }: 
         maxLength={3}
       />
 
-      <View style={{ gap: SPACE.sm }}>
-        <Text style={TYPE.label}>Bloom level (optional)</Text>
-        <View style={s.chips}>
-          {BLOOM_LEVELS.map((b) => (
-            <Chip key={b} label={b} selected={question.bloom === b} onPress={() => onChange(question.id, { bloom: question.bloom === b ? null : b })} />
-          ))}
-        </View>
-      </View>
+      <CustomDropdown
+        label="Bloom level (optional)"
+        options={BLOOM_OPTIONS}
+        value={question.bloom ?? NONE}
+        onChange={(v) => onChange(question.id, { bloom: v === NONE ? null : v })}
+      />
 
-      <View style={{ gap: SPACE.sm }}>
-        <Text style={TYPE.label}>Difficulty (optional)</Text>
-        <View style={s.chips}>
-          {DIFFICULTIES.map((d) => (
-            <Chip key={d} label={d} selected={question.difficulty === d} onPress={() => onChange(question.id, { difficulty: question.difficulty === d ? null : d })} />
-          ))}
-        </View>
-      </View>
+      <CustomDropdown
+        label="Difficulty (optional)"
+        options={DIFFICULTY_OPTIONS}
+        value={question.difficulty ?? NONE}
+        onChange={(v) => onChange(question.id, { difficulty: v === NONE ? null : v })}
+      />
 
       {canRemove ? <ActionButton label="Remove question" icon="trash-outline" variant="danger" onPress={() => onRemove(question.id)} /> : null}
     </View>

@@ -12,26 +12,44 @@ import {
 import { BottomSheet } from "@/shared/components/ui/bottom-sheet";
 import { AppList } from "@/shared/components/ui/app-list";
 import { Badge } from "@/shared/components/ui/badge";
+import { CustomDropdown, type DropdownOption } from "@/shared/components/ui/dropdown";
 import { ListRow } from "@/shared/components/ui/list-row";
 import { ListState } from "@/shared/components/ui/list-state";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Screen } from "@/shared/components/ui/screen";
-import { SegmentedTabs } from "@/shared/components/ui/segmented-tabs";
 import type { NotificationItem } from "@/features/shared-screens/types/shared-screens";
 import { C } from "@/shared/constants/studia-colors";
 import { FONT, HIT_SLOP, SPACE, TYPE } from "@/shared/constants/tokens";
 
-const FILTERS = ["All", "Unread"] as const;
+/** E4: "Read" joins All and Unread, and the three live in a dropdown instead of a chip strip. */
+type Filter = "all" | "unread" | "read";
 
 export function NotificationsScreen({ role }: { role: Role }) {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All");
+  const [filter, setFilter] = useState<Filter>("all");
   const { data, loading, error, refetch } = useNotifications(role);
   const items = useMemo(() => data ?? [], [data]);
   const unreadCount = useMemo(() => items.filter((n) => n.unread).length, [items]);
-  const shown = useMemo(
-    () => (filter === "Unread" ? items.filter((n) => n.unread) : items),
-    [items, filter],
+  const shown = useMemo(() => {
+    if (filter === "unread") return items.filter((n) => n.unread);
+    if (filter === "read") return items.filter((n) => !n.unread);
+    return items;
+  }, [items, filter]);
+
+  // Counts live on the options so the dropdown says how much each filter holds.
+  const filterOptions = useMemo<DropdownOption<Filter>[]>(
+    () => [
+      { value: "all", label: "All alerts", meta: String(items.length) },
+      { value: "unread", label: "Unread", meta: String(unreadCount) },
+      { value: "read", label: "Read", meta: String(items.length - unreadCount) },
+    ],
+    [items.length, unreadCount],
   );
+
+  const emptyCopy: Record<Filter, { title: string; message: string }> = {
+    all: { title: "You're all caught up", message: "New notifications will show up here." },
+    unread: { title: "Nothing unread", message: "Every alert has been read." },
+    read: { title: "Nothing read yet", message: "Alerts you open will appear here." },
+  };
 
   const markRead = useMarkNotificationRead(role);
   const markAllRead = useMarkAllNotificationsRead(role);
@@ -80,7 +98,14 @@ export function NotificationsScreen({ role }: { role: Role }) {
         }
       />
 
-      <SegmentedTabs items={FILTERS} value={filter} onChange={setFilter} />
+      <CustomDropdown
+        variant="nav"
+        icon="funnel-outline"
+        sheetTitle="Show"
+        options={filterOptions}
+        value={filter}
+        onChange={setFilter}
+      />
 
       <View style={s.fill}>
         <ListState
@@ -89,8 +114,8 @@ export function NotificationsScreen({ role }: { role: Role }) {
           empty={!loading && shown.length === 0}
           onRetry={refetch}
           emptyIcon="notifications-off-outline"
-          emptyTitle="You're all caught up"
-          emptyMessage="New notifications will show up here."
+          emptyTitle={emptyCopy[filter].title}
+          emptyMessage={emptyCopy[filter].message}
         >
           <AppList data={shown} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
         </ListState>

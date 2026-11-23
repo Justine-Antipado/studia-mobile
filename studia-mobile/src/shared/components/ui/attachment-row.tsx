@@ -34,6 +34,7 @@ export const AttachmentRow = memo(function AttachmentRow({
       subtitle={attachment.sizeLabel}
       onPress={onPress}
       flat
+      chevron={!onRemove}
       trailing={
         onRemove ? (
           <Pressable

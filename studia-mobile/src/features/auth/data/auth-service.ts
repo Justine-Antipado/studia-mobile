@@ -5,6 +5,7 @@ import type { AuthService } from "@/features/auth/types/auth-types";
 
 export {
   AuthError,
+  BLOCKED_MESSAGE,
   isAuthError,
   type AuthErrorCode,
   type AuthService,

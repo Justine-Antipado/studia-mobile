@@ -92,6 +92,29 @@ export const isOtp = (v: string) => /^\d{6}$/.test(v);
 /** New accounts must use Gmail (server hook, migration 010). Only sign-up applies this. */
 export const isGmail = (v: string) => /^[a-z0-9._+-]{1,64}@gmail\.com$/.test(v);
 
+export const EMAIL_NOT_REAL = "This email doesn't exist, please use a real email.";
+
+/**
+ * Could this address actually be a Google account, i.e. can the sign-up code reach it?
+ *
+ * Sign-up is Gmail-only, so an MX lookup would always answer "yes, gmail.com receives mail" and
+ * tells us nothing. What does rule out an address is Google's own account-name rules: 6 to 30
+ * characters, letters/digits/dots only, starting with a letter, no ".." and no leading or trailing
+ * dot, at least 6 characters once the (ignored) dots are removed. "a@gmail.com" or "x.y@gmail.com"
+ * cannot exist, so they are rejected before an OTP is wasted on them. Addresses that pass are
+ * proven for real by the OTP step, which is the only true deliverability test available.
+ */
+const GMAIL_LOCAL_RE = /^[a-z][a-z0-9.]{4,28}[a-z0-9]$/;
+
+export function isDeliverableGmail(v: string): boolean {
+  const at = v.indexOf("@");
+  if (at < 0) return false;
+  const local = v.slice(0, at);
+  const base = local.split("+")[0] ?? "";
+  if (base.includes("..") || !GMAIL_LOCAL_RE.test(base)) return false;
+  return base.replace(/\./g, "").length >= 6;
+}
+
 type Ctx = {
   role: Role;
   /** Needed to validate "confirm". */
@@ -126,7 +149,9 @@ export function validateField(
       const v = normalizeEmail(raw);
       if (!v) return "Email is required.";
       if (!isEmail(v)) return "Enter a valid email address.";
-      return ctx.gmailOnly && !isGmail(v) ? "Use a Gmail address (you@gmail.com)." : null;
+      if (!ctx.gmailOnly) return null;
+      if (!isGmail(v)) return "Use a Gmail address (you@gmail.com).";
+      return isDeliverableGmail(v) ? null : EMAIL_NOT_REAL;
     }
     case "phone":
       return normalizePhone(raw) === null

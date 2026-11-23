@@ -3,26 +3,9 @@
 // so a 50-point exam counts more than a 5-point quiz.
 import type { GradeEntry } from "@/features/instructor/data/gradebook-repository";
 
-export type ItemFilter = { kind: "assignment" | "quiz"; refId: string } | null;
-
-export const itemKey = (e: Pick<GradeEntry, "kind" | "refId">) => `${e.kind}:${e.refId}`;
-
-export type GradeItem = { key: string; kind: GradeEntry["kind"]; refId: string; title: string; classCode: string; classId: string };
-
-/** Distinct assignments + quizzes present in the entries, newest class first by title. */
-export function itemsOf(entries: GradeEntry[]): GradeItem[] {
-  const seen = new Map<string, GradeItem>();
-  for (const e of entries) {
-    const key = itemKey(e);
-    if (!seen.has(key)) seen.set(key, { key, kind: e.kind, refId: e.refId, title: e.title, classCode: e.classCode, classId: e.classId });
-  }
-  return [...seen.values()].sort((a, b) => a.classCode.localeCompare(b.classCode) || a.title.localeCompare(b.title));
-}
-
-export const applyItem = (entries: GradeEntry[], filter: ItemFilter) =>
-  filter ? entries.filter((e) => e.kind === filter.kind && e.refId === filter.refId) : entries;
-
-export type Stats = { averagePercent: number | null; high: number | null; low: number | null; graded: number; pending: number; missing: number };
+// The per-item filter (ItemFilter / itemsOf / applyItem) was removed with the gradebook filter it
+// served (F1): the Assessments tab and the grading queue are where a single assignment is opened.
+export type Stats = { averagePercent: number | null; graded: number; pending: number; missing: number };
 
 const pct = (e: GradeEntry) => (e.max > 0 && e.score !== null ? Math.round((e.score / e.max) * 100) : 0);
 
@@ -31,8 +14,6 @@ export function statsOf(entries: GradeEntry[]): Stats {
   const percents = graded.map(pct);
   return {
     averagePercent: percents.length ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length) : null,
-    high: percents.length ? Math.max(...percents) : null,
-    low: percents.length ? Math.min(...percents) : null,
     graded: graded.length,
     pending: entries.filter((e) => e.status === "pending").length,
     missing: entries.filter((e) => e.status === "missing").length,

@@ -39,9 +39,9 @@ export default function StudentCourses() {
           onRetry={refetch}
           emptyIcon="book-outline"
           emptyTitle="No classes yet"
-          emptyMessage="Join a class with the 6-character code from your instructor."
-          emptyActionLabel="Join Class"
-          onEmptyAction={openJoin}
+          // G1: no second "Join Class" button in the empty state — the one above the list is
+          // always visible, so the empty state only has to say what to do.
+          emptyMessage="Use Join Class above and enter the 6-character code from your instructor."
         >
           <AppList data={classes} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
         </ListState>

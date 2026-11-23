@@ -74,7 +74,15 @@ export function listAnnouncements(classId: string): Promise<Result<AnnouncementV
     const me = await myId();
     const [owner, rows] = await Promise.all([
       ownerOf(classId),
-      db().from("announcements").select(SELECT).eq("class_id", classId).is("deleted_at", null).order("posted_at", { ascending: false }),
+      // Pinned first, then newest: a pinned announcement must never end up buried under later
+      // posts (B2). The Stream still renders it in its own section.
+      db()
+        .from("announcements")
+        .select(SELECT)
+        .eq("class_id", classId)
+        .is("deleted_at", null)
+        .order("pinned", { ascending: false })
+        .order("posted_at", { ascending: false }),
     ]);
     return (must(rows) as unknown as AnnRow[]).map((a) => toView(a, owner, me));
   });

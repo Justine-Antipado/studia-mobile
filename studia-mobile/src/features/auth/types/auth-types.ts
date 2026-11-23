@@ -32,6 +32,13 @@ export class AuthError extends Error {
   }
 }
 
+/**
+ * Shown whenever an account is deactivated by the admin (status "inactive"), on every entry point
+ * — password login, Google, OTP and profile completion. One constant so the wording cannot drift
+ * into a generic "Something went wrong", which is what it used to say.
+ */
+export const BLOCKED_MESSAGE = "This user is blocked, please contact the admin.";
+
 export const isAuthError = (e: unknown): e is AuthError =>
   e instanceof AuthError ||
   (typeof e === "object" &&
@@ -48,7 +55,7 @@ export type User = {
   phone?: string;
   authProvider: "password" | "google";
   emailVerified: boolean;
-  status: "active" | "pending_approval";
+  status: "active" | "inactive" | "pending_approval";
   createdAt: string;
 };
 

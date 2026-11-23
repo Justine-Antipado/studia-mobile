@@ -1,7 +1,7 @@
 // quiz-result-screen.tsx — score + per-question review with instant rationale.
 import { Text, View } from "react-native";
 
-import { Badge, ListState, PageTitle, ProgressBar } from "@/shared/components/ui";
+import { Badge, FeedbackNote, ListState, PageTitle, ProgressBar } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
@@ -39,6 +39,9 @@ export default function StudentQuizResult() {
               ) : null}
               <ProgressBar value={(attempt.score ?? 0) / Math.max(attempt.maxScore, 1)} />
             </View>
+
+            {/* G2: the instructor's note, right under the score. */}
+            <FeedbackNote feedback={attempt.feedback} />
 
             {quiz.questions.map((q, i) => (
               <QuizQuestionCard

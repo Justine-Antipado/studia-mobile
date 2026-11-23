@@ -8,6 +8,7 @@ import { AttachmentRow } from "@/shared/components/ui/attachment-row";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
+import { useOpenFile } from "@/features/shared-screens/hooks/use-open-file";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { timeAgo } from "@/features/instructor/logic/format";
 import { useAssignmentSubmissions, useGradeAssignmentSubmission } from "@/features/instructor/hooks/use-assignment-submissions";
@@ -62,6 +63,7 @@ function GradeForm({
   onSaved: () => void;
 }) {
   const toast = useToast();
+  const openFile = useOpenFile("instructor");
   const grade = useGradeAssignmentSubmission(classId, submission.assignmentId, submission.studentId);
   const [score, setScore] = useState(submission.score === null ? "" : String(submission.score));
   const [feedback, setFeedback] = useState(submission.feedback ?? "");
@@ -92,7 +94,7 @@ function GradeForm({
         <Text style={TYPE.label}>Answer</Text>
         <Text style={[TYPE.body, { marginTop: SPACE.xs }]}>{submission.text ?? "No written answer."}</Text>
       </Card>
-      {submission.file ? <AttachmentRow attachment={submission.file} /> : null}
+      {submission.file ? <AttachmentRow attachment={submission.file} onPress={() => openFile(submission.file!.id)} /> : null}
 
       <FormField
         label={`Score (out of ${max})`}

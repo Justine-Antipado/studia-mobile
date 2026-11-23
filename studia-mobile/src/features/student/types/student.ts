@@ -95,6 +95,8 @@ export type QuizAttempt = {
   answers: QuizAnswer[];
   score: number | null;
   maxScore: number;
+  /** The instructor's note, once the attempt is graded (null when there is none). */
+  feedback: string | null;
 };
 
 export type Quiz = {
@@ -135,8 +137,27 @@ export type PlannerBlock = {
 
 export type PlannerExam = { id: string; title: string; dateIso: string };
 
+/**
+ * G6: what actually happens on a day, next to the generated study blocks — an assignment or quiz
+ * due that day, or an announcement posted that day. Read-only: these come from the class, not from
+ * the planner, so they cannot be moved or ticked.
+ */
+export type PlannerEventKind = "assignment" | "quiz" | "announcement";
+
+export type PlannerEvent = {
+  id: string;
+  dayIso: string;
+  kind: PlannerEventKind;
+  title: string;
+  classCode: string;
+  /** "Due 11:59 PM" / "Posted 8:12 AM" — already formatted. */
+  timeLabel: string;
+};
+
 export type PlannerWeek = {
   weekStartIso: string;
   blocks: PlannerBlock[];
   exams: PlannerExam[];
+  /** Due dates and announcements inside the 7-day window, in day order. */
+  events: PlannerEvent[];
 };

@@ -8,6 +8,7 @@ import { ActionButton, Badge, Card, ConfirmDialog, ListState, PageTitle } from "
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
+import { useOpenFile } from "@/features/shared-screens/hooks/use-open-file";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
 import { AssignmentSubmissions } from "@/features/instructor/components/assignment-submissions";
@@ -18,6 +19,7 @@ export default function InstructorAssignmentDetailScreen() {
   const { classId, id } = useRouteIds("classId", "id");
   const router = useSafeRouter();
   const goBack = useSafeBack(classId ? { pathname: "/instructor/class-detail", params: { id: classId } } : "/instructor/classes");
+  const openFile = useOpenFile("instructor");
   const { data: assignment, loading, error, refetch } = useInstructorAssignment(classId, id);
   const deleteAssignment = useDeleteAssignment(classId ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -54,7 +56,7 @@ export default function InstructorAssignmentDetailScreen() {
             {assignment.attachments.length > 0 ? (
               <View style={{ gap: SPACE.sm }}>
                 <Text style={TYPE.label}>Attachments</Text>
-                {assignment.attachments.map((a) => <AttachmentRow key={a.id} attachment={a} />)}
+                {assignment.attachments.map((a) => <AttachmentRow key={a.id} attachment={a} onPress={() => openFile(a.id)} />)}
               </View>
             ) : null}
 

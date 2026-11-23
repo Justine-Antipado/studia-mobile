@@ -2,11 +2,14 @@
 
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
+import { Redirect } from "expo-router";
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { legalAgreed, onboardingDone } from "@/core/data/storage/device-flags";
+import { usePersistedValue } from "@/core/data/storage/persisted-value";
 import { AppButton } from "@/shared/components/ui/app-button";
 import { C, SPLASH_GRADIENT } from "@/shared/constants/studia-colors";
 
@@ -26,9 +29,19 @@ export default function WelcomeScreen() {
   const mascotSize = Math.min(width * 0.85, height * 0.4, 360);
   const logoSize = compact ? 64 : 80;
 
+  // Once the Terms are accepted on this device, the landing screen and the Terms sheet never come
+  // back: the app opens on "Choose account type" (core/data/storage/device-flags). The flags are
+  // read before the splash hides, so this screen cannot flash first.
+  const { value: agreed } = usePersistedValue(legalAgreed);
+
   // push (not replace) so Back returns to the welcome screen.
-  const handleGetStarted = () => router.push("/explore");
+  const handleGetStarted = () => {
+    void onboardingDone.set(true);
+    router.push("/explore");
+  };
   const handleLearnMore = () => router.push("/learn-more");
+
+  if (agreed) return <Redirect href="/explore" />;
 
   return (
     <View style={s.root}>

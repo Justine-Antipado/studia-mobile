@@ -1,5 +1,7 @@
 // explore.tsx
 
+import { legalAgreed } from "@/core/data/storage/device-flags";
+import { usePersistedValue } from "@/core/data/storage/persisted-value";
 import { useAppStatus } from "@/core/logic/app-status";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -95,7 +97,11 @@ export default function ExploreScreen() {
   const topPad = insets.top + (compact ? 8 : 14);
   const bottomPad = Math.max(insets.bottom, 16) + 8;
 
-  const [consentOpen, setConsentOpen] = useState(true);
+  // The acceptance lives on the device (core/data/storage/device-flags), so the sheet is shown
+  // once per install: after "Agree and continue" this screen opens straight on the role choice,
+  // and the landing screen is skipped too. Clearing the app's data brings both back.
+  const { value: alreadyAgreed, set: rememberAgreed } = usePersistedValue(legalAgreed);
+  const [consentOpen, setConsentOpen] = useState(!alreadyAgreed);
   const [agreed, setAgreed] = useState(false);
   const [role, setRole] = useState<Role | null>(null);
 
@@ -124,12 +130,17 @@ export default function ExploreScreen() {
   };
 
   // Hindi na kailangan ng `if (!agreed)` guard: disabled na ang button hangga't hindi naka-check.
-  const handleAgree = () => closeSheet(() => setConsentOpen(false));
+  const handleAgree = () => {
+    rememberAgreed(true);
+    closeSheet(() => setConsentOpen(false));
+  };
 
+  // Declining is only reachable before the flag is set, so the landing screen still exists behind
+  // us. `replace` (not back) keeps the stack correct when this screen was opened by a redirect.
   const handleDecline = () => {
     closeSheet(() => {
       setConsentOpen(false);
-      router.back();
+      router.replace("/");
     });
   };
 
@@ -157,15 +168,8 @@ export default function ExploreScreen() {
         <View style={s.blobA} />
         <View style={s.blobB} />
 
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={[s.back, { top: topPad }]}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="chevron-back" size={22} color={C.white} />
-        </Pressable>
+        {/* No back button: once the Terms are accepted there is no landing screen to return to
+            (A4). Declining inside the sheet is the only way back, and only on a first run. */}
 
         <View style={[s.logoRing, compact && s.logoRingCompact]}>
           <Image

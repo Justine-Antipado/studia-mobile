@@ -1,7 +1,7 @@
 // grades-tab.tsx — Course detail "Grades" tab: graded assignments + quiz attempts for this class.
 import { View } from "react-native";
 
-import { Badge, ListRow, ListState } from "@/shared/components/ui";
+import { Badge, FeedbackNote, ListRow, ListState } from "@/shared/components/ui";
 import { SPACE } from "@/shared/constants/tokens";
 import { scoreTone, toPercent } from "@/features/student/logic/format";
 import { useAssignments } from "@/features/student/hooks/use-assignments";
@@ -40,6 +40,7 @@ export function GradesTab({ classId }: { classId: string }) {
               title={a.title}
               subtitle={`${a.score}/${a.points} pts`}
               trailing={<Badge label={`${percent}%`} tone={scoreTone(percent)} />}
+              footer={<FeedbackNote feedback={a.feedback} variant="compact" />}
             />
           );
         })}
@@ -52,6 +53,7 @@ export function GradesTab({ classId }: { classId: string }) {
               title={q.title}
               subtitle={`${q.attempt!.score}/${q.attempt!.maxScore} pts`}
               trailing={<Badge label={`${percent}%`} tone={scoreTone(percent)} />}
+              footer={<FeedbackNote feedback={q.attempt!.feedback} variant="compact" />}
             />
           );
         })}

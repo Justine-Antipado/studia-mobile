@@ -20,6 +20,7 @@ import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useGate } from "@/core/logic/use-gate";
 import { FeatureGate } from "@/shared/components/ui/gate-views";
 import { useRouteIds } from "@/core/logic/route-params";
+import { useOpenFile } from "@/features/shared-screens/hooks/use-open-file";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { AttachmentRow } from "@/shared/components/ui/attachment-row";
 import { useLesson, useRegenerateSummary } from "@/features/student/hooks/use-lessons";
@@ -33,6 +34,7 @@ function secToLabel(sec: number): string {
 export default function StudentLessonViewer() {
   const { classId, id } = useRouteIds("classId", "id");
   const goBack = useSafeBack(classId ? { pathname: "/student/course-detail", params: { id: classId } } : "/student/courses");
+  const openFile = useOpenFile("student");
   const toast = useToast();
   const { data: lesson, loading, error, refetch } = useLesson(classId, id);
   const regenerateSummary = useRegenerateSummary(classId ?? "", id ?? "");
@@ -86,7 +88,7 @@ export default function StudentLessonViewer() {
               </View>
             ) : null}
 
-            {lesson.attachment ? <AttachmentRow attachment={lesson.attachment} /> : null}
+            {lesson.attachment ? <AttachmentRow attachment={lesson.attachment} onPress={() => openFile(lesson.attachment!.id)} /> : null}
 
             {lesson.processing === "processing" ? (
               <Badge label="AI is preparing the transcript and summary..." tone="gold" />

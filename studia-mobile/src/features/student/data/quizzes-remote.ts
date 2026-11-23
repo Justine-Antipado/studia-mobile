@@ -36,12 +36,15 @@ type AttemptRow = {
   score: number | null;
   max_score: number;
   graded_at: string | null;
+  feedback: string | null;
   answers: { question_id: string; response_index: number | null; response_text: string | null }[];
 };
 
 const SELECT =
   "id, class_id, title, time_limit_min, due_at, allow_late, closes_at, questions:quiz_questions(id, position, type, prompt, bloom, difficulty, points, options:quiz_options(position, body), key:quiz_question_keys(correct_index, correct_answer, rationale))";
-const ATTEMPT = "id, quiz_id, started_at, submitted_at, score, max_score, graded_at, answers:quiz_answers(question_id, response_index, response_text)";
+// G2: `feedback` was missing here, which is why the instructor's note never reached the student.
+// The column and the RLS policy on quiz_attempts already allowed it — only the select left it out.
+const ATTEMPT = "id, quiz_id, started_at, submitted_at, score, max_score, graded_at, feedback, answers:quiz_answers(question_id, response_index, response_text)";
 
 const keyOf = (k: QRow["key"]): Key | null => (Array.isArray(k) ? (k[0] ?? null) : k);
 
@@ -72,6 +75,8 @@ function toAttempt(a: AttemptRow | undefined): QuizAttempt | null {
     // Shown only once graded (an ungraded essay keeps the total pending).
     score: a.graded_at ? a.score : null,
     maxScore: a.max_score,
+    // Feedback belongs to the grade: before grading there is nothing to show.
+    feedback: a.graded_at ? (a.feedback?.trim() || null) : null,
   };
 }
 

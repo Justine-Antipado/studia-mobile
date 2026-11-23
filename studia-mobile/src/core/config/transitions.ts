@@ -3,6 +3,7 @@
 //   tab switch-> fade (handled by the Tabs navigator)
 //   create/upload sheet -> modal, slide_from_bottom
 // Reduce-motion is respected through useScreenAnimation(); durations come from tokens.
+import { Platform } from "react-native";
 import { useReducedMotion } from "react-native-reanimated";
 
 import { C } from "@/shared/constants/studia-colors";
@@ -10,13 +11,30 @@ import { DURATION } from "@/shared/constants/tokens";
 
 const CONTENT_STYLE = { backgroundColor: C.surface } as const;
 
-/** Root stack default: welcome/auth flow and the role groups. */
+/** Root stack default: the welcome / explore / auth flow (purple, full-bleed screens). */
 export const STACK_ROOT = {
   headerShown: false,
   animation: "fade",
-  animationDuration: DURATION.slow,
+  // D1: 320 ms of cross-fade is long enough to read as a flicker on Android, where both screens
+  // are composited while they overlap. The short fade keeps the polish without the flash.
+  animationDuration: DURATION.base,
   freezeOnBlur: true,
   contentStyle: { backgroundColor: C.lavenderSoft },
+} as const;
+
+/**
+ * The student / instructor groups. Two differences from STACK_ROOT, both D1:
+ *   - an opaque SURFACE background, so entering the group cannot flash the lavender of the auth
+ *     flow (or the window's black) in the frame before Home paints
+ *   - no cross-fade on Android: the group's first screen is a Tabs navigator that mounts during
+ *     the animation, and fading a mounting navigator is what made Home flicker. iOS keeps the fade.
+ */
+export const STACK_ROLE_GROUP = {
+  headerShown: false,
+  animation: Platform.OS === "android" ? "none" : "fade",
+  animationDuration: DURATION.base,
+  freezeOnBlur: true,
+  contentStyle: CONTENT_STYLE,
 } as const;
 
 /** Detail screens inside a role group (course-detail, grading, viewer...). */
@@ -36,11 +54,18 @@ export const MODAL_SHEET = {
   contentStyle: CONTENT_STYLE,
 } as const;
 
-/** Tab screens: no slide, keep them mounted so switching never refetches or rebuilds. */
+/**
+ * Tab screens. D1 + D2: the scenes had no background of their own, so each tab switch cross-faded
+ * two transparent layers and the window (black on most Android phones) showed through — that is
+ * the flicker, and the two half-transparent scenes on top of each other are what made the cards
+ * look dimmed. Now every scene is opaque, and the switch is instant instead of a cross-fade.
+ * `freezeOnBlur` is off as well: unfreezing a blurred tab cost a blank frame on focus.
+ */
 export const TAB_SCREEN = {
   headerShown: false,
-  animation: "fade",
-  freezeOnBlur: true,
+  animation: "none",
+  sceneStyle: CONTENT_STYLE,
+  freezeOnBlur: false,
   lazy: true,
 } as const;
 

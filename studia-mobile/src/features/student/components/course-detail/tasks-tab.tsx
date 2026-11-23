@@ -2,7 +2,7 @@
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { View } from "react-native";
 
-import { Badge, ListRow, ListState } from "@/shared/components/ui";
+import { Badge, FeedbackNote, ListRow, ListState } from "@/shared/components/ui";
 import { SPACE } from "@/shared/constants/tokens";
 import { dueLabel } from "@/features/student/logic/format";
 import { useAssignments } from "@/features/student/hooks/use-assignments";
@@ -41,6 +41,7 @@ export function TasksTab({ classId }: { classId: string }) {
             subtitle={dueLabel(a.dueAt)}
             onPress={() => router.push({ pathname: "/student/assignment-detail", params: { classId, id: a.id } })}
             trailing={<Badge label={STATUS_LABEL[a.status]} tone={STATUS_TONE[a.status]} />}
+            footer={<FeedbackNote feedback={a.feedback} variant="compact" />}
           />
         ))}
         {(quizzes.data ?? []).map((q) => (
@@ -57,6 +58,7 @@ export function TasksTab({ classId }: { classId: string }) {
               )
             }
             trailing={<Badge label={q.attempt ? "Submitted" : "Open"} tone={q.attempt ? "green" : "blue"} />}
+            footer={<FeedbackNote feedback={q.attempt?.feedback} variant="compact" />}
           />
         ))}
       </View>

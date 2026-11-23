@@ -13,6 +13,7 @@ import {
   PageTitle,
   SegmentedTabs,
   useToast,
+  type IconName,
 } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
@@ -26,6 +27,13 @@ import {
   usePlanner,
   useRegeneratePlanner,
 } from "@/features/student/hooks/use-planner";
+import type { PlannerEventKind } from "@/features/student/types/student";
+
+const EVENT_ICON: Record<PlannerEventKind, IconName> = {
+  assignment: "document-text-outline",
+  quiz: "help-circle-outline",
+  announcement: "megaphone-outline",
+};
 
 function tomorrow(): Date {
   const d = new Date();
@@ -56,6 +64,7 @@ export default function StudentPlanner() {
   const today = toLocalIso(new Date());
   const day = days.includes(selectedDay) ? selectedDay : days.includes(today) ? today : days[0] || "";
   const blocksForDay = (week?.blocks ?? []).filter((b) => b.dayIso === day).sort((a, b) => a.startHour - b.startHour);
+  const eventsForDay = (week?.events ?? []).filter((e) => e.dayIso === day);
 
   // Every planner write reports failure (offline, missing block) instead of failing silently.
   const run = async (pending: Promise<{ ok: boolean; error?: { message: string } }>, success?: string) => {
@@ -93,6 +102,24 @@ export default function StudentPlanner() {
           <View style={{ gap: SPACE.lg }}>
             <SegmentedTabs items={days} value={day} onChange={setSelectedDay} formatLabel={dayChipLabel} label="Days" />
             <Text style={TYPE.h2}>{dayLabel(day)}</Text>
+
+            {/* G6: what is actually happening on this day — due assignments and quizzes, and
+                announcements posted that day. Read-only: they come from the class. */}
+            {eventsForDay.length > 0 ? (
+              <View style={{ gap: SPACE.sm }}>
+                <Text style={TYPE.label}>On this day</Text>
+                {eventsForDay.map((e) => (
+                  <ListRow
+                    key={e.id}
+                    flat
+                    icon={EVENT_ICON[e.kind]}
+                    eyebrow={e.classCode}
+                    title={e.title}
+                    subtitle={e.timeLabel}
+                  />
+                ))}
+              </View>
+            ) : null}
 
             {blocksForDay.length === 0 ? (
               <Text style={TYPE.muted}>No study blocks for this day.</Text>

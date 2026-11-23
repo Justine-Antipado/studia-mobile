@@ -8,6 +8,11 @@ export { AppList } from "@/shared/components/ui/app-list";
 export { AttachmentRow } from "@/shared/components/ui/attachment-row";
 export { AppHeader } from "@/shared/components/ui/app-header";
 export {
+  AnnouncementCard,
+  type AnnouncementCardProps,
+} from "@/shared/components/ui/announcement-card";
+export { ArrowCard, type ArrowCardProps } from "@/shared/components/ui/arrow-card";
+export {
   AppImage,
   clearImageCache,
   prefetchImages,
@@ -22,8 +27,20 @@ export { Chip } from "@/shared/components/ui/chip";
 export { CommentComposer } from "@/shared/components/ui/comment-composer";
 export { CommentRow } from "@/shared/components/ui/comment-row";
 export { ConfirmDialog, type ConfirmDialogProps } from "@/shared/components/ui/confirm-dialog";
+export {
+  CustomDropdown,
+  toOptions,
+  type CustomDropdownProps,
+  type DropdownOption,
+} from "@/shared/components/ui/dropdown";
 export { EmptyState } from "@/shared/components/ui/empty-state";
-export { ErrorBoundary, ErrorFallback } from "@/shared/components/ui/error-boundary";
+export {
+  ErrorBoundary,
+  ErrorFallback,
+  type FallbackProps,
+} from "@/shared/components/ui/error-boundary";
+export { FeatureBoundary, FeatureFallback } from "@/shared/components/ui/feature-boundary";
+export { FeedbackNote } from "@/shared/components/ui/feedback-note";
 export { FormField, type FormFieldProps } from "@/shared/components/ui/form-field";
 export { Icon, ICON_SIZE, IconTile, type IconName, type IconSize } from "@/shared/components/ui/icon";
 export { ListRow, type ListRowProps } from "@/shared/components/ui/list-row";

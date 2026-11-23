@@ -11,13 +11,15 @@
     "icon": "./assets/images/studia-mobile-logo.png",
     "scheme": "studiamobile",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#F4F5F9",
     "ios": {
       "icon": "./assets/images/studia-mobile-logo.png",
       "bundleIdentifier": "com.group4.studiamobile"
     },
     "android": {
       "package": "com.group4.studiamobile",
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "backgroundColor": "#F4F5F9"
     },
     "plugins": [
       "expo-secure-store",

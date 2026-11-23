@@ -16,12 +16,25 @@ import {
 } from "@/features/auth/logic/auth-validation";
 import { OtpStep } from "@/features/shared-screens/components/otp-step";
 import { profileRepository, type ProfilePatch } from "@/features/shared-screens/data/profile-repository";
-import { ActionButton, Chip, FormField, PageTitle, useToast } from "@/shared/components/ui";
+import {
+  ActionButton,
+  CustomDropdown,
+  FormField,
+  PageTitle,
+  toOptions,
+  useToast,
+} from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 
 type Step = "form" | "otp";
+
+// Built once: the values are what the database stores, the labels only read better in the sheet.
+const COURSE_OPTIONS = toOptions(COURSES);
+const YEAR_OPTIONS = toOptions(YEARS, (y) => `Year ${y}`);
+const SECTION_OPTIONS = toOptions(SECTIONS, (s) => `Section ${s}`);
+const DEPARTMENT_OPTIONS = toOptions(DEPARTMENTS);
 
 export function AccountPersonalScreen({ role }: { role: Role }) {
   const user = useRoleUser(role);
@@ -88,43 +101,27 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
             keyboardType="phone-pad"
             error={errors.phone}
           />
+          {/* E2 / F6: dropdowns instead of chip rows — they stay one row tall however many
+              courses, sections or departments the campus adds. */}
           {role === "student" ? (
             <>
-              <Choice label="Course" items={COURSES} value={course} onChange={setCourse} />
-              <Choice label="Year" items={YEARS} value={year} onChange={setYear} />
-              <Choice label="Section" items={SECTIONS} value={section} onChange={setSection} />
+              <CustomDropdown label="Course" options={COURSE_OPTIONS} value={course} onChange={setCourse} />
+              <CustomDropdown label="Year" options={YEAR_OPTIONS} value={year} onChange={setYear} />
+              <CustomDropdown label="Section" options={SECTION_OPTIONS} value={section} onChange={setSection} />
             </>
           ) : (
-            <Choice label="Department" items={DEPARTMENTS} value={department} onChange={setDepartment} />
+            <CustomDropdown
+              label="Department"
+              options={DEPARTMENT_OPTIONS}
+              value={department}
+              onChange={setDepartment}
+            />
           )}
           <Text style={TYPE.caption}>Saving sends a verification code to your email.</Text>
           <ActionButton label="Save changes" icon="shield-checkmark-outline" loading={busy} onPress={sendCode} />
         </View>
       )}
     </Screen>
-  );
-}
-
-function Choice({
-  label,
-  items,
-  value,
-  onChange,
-}: {
-  label: string;
-  items: readonly string[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <View style={{ gap: SPACE.sm }}>
-      <Text style={TYPE.label}>{label}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm }}>
-        {items.map((i) => (
-          <Chip key={i} label={i} selected={value === i} onPress={() => onChange(i)} />
-        ))}
-      </View>
-    </View>
   );
 }
 

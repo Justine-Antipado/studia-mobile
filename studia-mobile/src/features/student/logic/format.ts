@@ -4,6 +4,7 @@
 export {
   PASSING_PERCENT,
   addDaysIso,
+  clockLabel,
   dayChipLabel,
   dayLabel,
   dueLabel,

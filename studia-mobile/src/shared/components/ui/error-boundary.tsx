@@ -11,7 +11,7 @@ import { IconTile } from "@/shared/components/ui/icon";
 import { C } from "@/shared/constants/studia-colors";
 import { RADIUS, SHADOW, SPACE, TYPE } from "@/shared/constants/tokens";
 
-type FallbackProps = { error: Error; retry: () => void; scope?: string };
+export type FallbackProps = { error: Error; retry: () => void; scope?: string };
 
 /** Shared fallback UI. Also used for expo-router's own ErrorBoundary / screenErrorBoundary. */
 export function ErrorFallback({ error, retry, scope }: FallbackProps) {
@@ -51,7 +51,13 @@ export function ErrorFallback({ error, retry, scope }: FallbackProps) {
   );
 }
 
-type Props = { children: ReactNode; scope?: string; onReset?: () => void };
+type Props = {
+  children: ReactNode;
+  scope?: string;
+  onReset?: () => void;
+  /** Replaces the full-screen fallback — e.g. FeatureBoundary's inline card. */
+  fallback?: (props: FallbackProps) => ReactNode;
+};
 type State = { error: Error | null };
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -76,7 +82,8 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
-    return <ErrorFallback error={error} retry={this.retry} scope={this.props.scope} />;
+    const props: FallbackProps = { error, retry: this.retry, scope: this.props.scope };
+    return this.props.fallback ? <>{this.props.fallback(props)}</> : <ErrorFallback {...props} />;
   }
 }
 

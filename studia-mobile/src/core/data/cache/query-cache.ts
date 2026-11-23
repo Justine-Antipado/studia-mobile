@@ -2,6 +2,7 @@
 // data instantly, then revalidate in the background when stale (stale-while-revalidate).
 // In-flight requests are deduped by key so the same fetch is never issued twice at once.
 import { CacheStore, MemoryCacheStore } from "@/core/data/cache/cache-store";
+import { PersistentCacheStore } from "@/core/data/cache/persistent-cache-store";
 
 export type CacheEntry<T> = { data: T; fetchedAt: number; staleAt: number };
 
@@ -76,8 +77,17 @@ export class QueryCache {
   }
 }
 
+/** Device-backed store behind the app cache, so a cold launch paints from the last known data. */
+const persistentStore = new PersistentCacheStore();
+
 /** One cache for the whole app — import this, never construct your own QueryCache. */
-export const queryCache = new QueryCache();
+export const queryCache = new QueryCache(persistentStore);
+
+/**
+ * Resolves once the persisted entries are in memory. The root layout awaits this with the session
+ * and the app status, so no screen renders empty while the device copy is still loading.
+ */
+export const cacheReady: Promise<void> = persistentStore.hydrate();
 
 /** Default TTLs by data shape. Pass one of these to useQuery, never a hand-typed number. */
 export const TTL = {

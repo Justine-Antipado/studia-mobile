@@ -21,6 +21,7 @@ import {
 } from "@/features/auth/logic/auth-validation";
 import {
   AuthError,
+  BLOCKED_MESSAGE,
   type AuthService,
   type OtpInfo,
   type OtpPurpose,
@@ -47,9 +48,18 @@ function toUser(p: ProfileDto): User {
     phone: p.phone ?? undefined,
     authProvider: p.authProvider,
     emailVerified: p.emailVerified,
-    status: p.status === "pending_approval" ? "pending_approval" : "active",
+    status: p.status,
     createdAt: p.createdAt,
   };
+}
+
+/**
+ * A deactivated account must never reach a screen, whichever door it came through. The server
+ * rejects it too; this is the client half, so a blocked user gets the real reason instead of the
+ * generic failure they used to see (A2).
+ */
+function assertNotBlocked(p: ProfileDto): void {
+  if (p.status === "inactive") throw new AuthError("ACCOUNT_INACTIVE", BLOCKED_MESSAGE);
 }
 
 const toSession = (profile: ProfileDto, s: SessionDto): Session => ({
@@ -130,6 +140,7 @@ export const remoteAuthService: AuthService = {
   async login(input) {
     assertValid(["email", "password"], input, input.role, false);
     const r = await post("login", { identifier: normalizeEmail(input.email), password: input.password, role: input.role }, schemas.login);
+    assertNotBlocked(r.profile); // before persist(): a blocked account must not get a stored session
     await persist(r.session);
     return toSession(r.profile, r.session);
   },
@@ -163,6 +174,7 @@ export const remoteAuthService: AuthService = {
     const r = await post("otp-verify", { email: normalizeEmail(email), purpose, code }, schemas.verify);
     switch (r.kind) {
       case "session":
+        assertNotBlocked(r.profile);
         await persist(r.session);
         return { kind: "session", session: toSession(r.profile, r.session) };
       case "needs_profile":
@@ -196,6 +208,7 @@ export const remoteAuthService: AuthService = {
       session.accessToken,
     );
     pending.delete(input.profileToken); // single use
+    assertNotBlocked(r.profile);
     if (r.profile.status === "pending_approval") {
       throw new AuthError("ACCOUNT_PENDING", "Your instructor account is waiting for administrator approval.");
     }

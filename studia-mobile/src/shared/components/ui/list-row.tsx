@@ -17,8 +17,14 @@ export type ListRowProps = {
   iconColor?: string;
   /** Replaces the icon tile (e.g. an Avatar). */
   leading?: ReactNode;
-  /** Replaces the chevron (e.g. a Badge or a score). */
+  /** Extra right-hand content (a Badge, a score). It sits BEFORE the chevron, not instead of it. */
   trailing?: ReactNode;
+  /**
+   * E1: a pressable row always ends in the chevron, so "this opens something" looks the same
+   * whether or not the row also carries a status badge. Pass false for a row that only selects
+   * (a dropdown option, a filter) and therefore navigates nowhere.
+   */
+  chevron?: boolean;
   /** Extra content under the row, inside the same card (progress bar, chips). */
   footer?: ReactNode;
   onPress?: () => void;
@@ -38,6 +44,7 @@ export const ListRow = memo(function ListRow({
   footer,
   onPress,
   flat = false,
+  chevron = true,
 }: ListRowProps) {
   const body = (
     <>
@@ -58,7 +65,8 @@ export const ListRow = memo(function ListRow({
             </Text>
           ) : null}
         </View>
-        {trailing ?? (onPress ? <Icon name="chevron-forward" size="md" color={C.muted} /> : null)}
+        {trailing}
+        {onPress && chevron ? <Icon name="chevron-forward" size="md" color={C.muted} /> : null}
       </View>
       {footer ? <View style={s.footer}>{footer}</View> : null}
     </>

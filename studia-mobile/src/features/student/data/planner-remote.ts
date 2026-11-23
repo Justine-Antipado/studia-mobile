@@ -6,8 +6,8 @@ import { db, guard, must, mustOk, myId } from "@/core/data/supabase/remote";
 import { taskId } from "@/features/student/data/tasks-remote";
 import { taskRepository } from "@/features/student/data/tasks-repository";
 import type { PlannerRepository } from "@/features/student/data/planner-repository";
-import type { PlannerBlock, PlannerExam, PlannerWeek, TaskKind } from "@/features/student/types/student";
-import { addDaysIso, toLocalIso } from "@/shared/utils/format";
+import type { PlannerBlock, PlannerEvent, PlannerExam, PlannerWeek, TaskKind } from "@/features/student/types/student";
+import { addDaysIso, clockLabel, toLocalIso } from "@/shared/utils/format";
 
 const WINDOW_DAYS = 7;
 const HOURS = [16, 17, 18, 19, 20, 15, 14];
@@ -42,6 +42,64 @@ const toBlock = (b: BlockRow): PlannerBlock => ({
   taskId: b.task_kind && b.task_ref_id ? taskId(b.task_kind, b.task_ref_id) : null,
   done: b.done,
 });
+
+/**
+ * G6: the real dates of the window — assignment and quiz due dates (from the same `student_tasks`
+ * view the To-do uses) and announcements posted in those days. The announcements query is scoped
+ * by RLS to the classes the student joined, so no class filter is needed here.
+ */
+async function windowEvents(startIso: string, endIso: string): Promise<PlannerEvent[]> {
+  const events: PlannerEvent[] = [];
+
+  const tasks = await taskRepository.list();
+  for (const t of tasks.ok ? tasks.value : []) {
+    const day = toLocalIso(new Date(t.dueAt));
+    if (day < startIso || day > endIso) continue;
+    events.push({
+      id: `due-${t.id}`,
+      dayIso: day,
+      kind: t.kind,
+      title: t.title,
+      classCode: t.classCode,
+      timeLabel: `Due ${clockLabel(t.dueAt)}`,
+    });
+  }
+
+  type AnnRow = { id: string; title: string; posted_at: string; class_id: string };
+  const anns = must(
+    await db()
+      .from("announcements")
+      .select("id, title, posted_at, class_id")
+      .is("deleted_at", null)
+      .gte("posted_at", `${startIso}T00:00:00`)
+      .order("posted_at", { ascending: true }),
+  ) as AnnRow[];
+
+  const classIds = [...new Set(anns.map((a) => a.class_id))];
+  const codes = new Map<string, string>();
+  if (classIds.length) {
+    const rows = must(await db().from("classes").select("id, subject_code").in("id", classIds)) as {
+      id: string;
+      subject_code: string;
+    }[];
+    rows.forEach((c) => codes.set(c.id, c.subject_code));
+  }
+
+  for (const a of anns) {
+    const day = toLocalIso(new Date(a.posted_at));
+    if (day < startIso || day > endIso) continue;
+    events.push({
+      id: `ann-${a.id}`,
+      dayIso: day,
+      kind: "announcement",
+      title: a.title,
+      classCode: codes.get(a.class_id) ?? "",
+      timeLabel: `Posted ${clockLabel(a.posted_at)}`,
+    });
+  }
+
+  return events.sort((x, y) => x.dayIso.localeCompare(y.dayIso) || x.timeLabel.localeCompare(y.timeLabel));
+}
 
 async function exams(me: string): Promise<PlannerExam[]> {
   const rows = must(await db().from("planner_exams").select("id, title, exam_date").eq("student_id", me).order("exam_date")) as {
@@ -120,6 +178,7 @@ async function view(me: string, weekId: string): Promise<PlannerWeek> {
   return {
     weekStartIso: start,
     exams: await exams(me),
+    events: await windowEvents(start, end),
     blocks: rows.map(toBlock).map((b) => ({ ...b, done: b.done || (b.taskId !== null && doneTasks.has(b.taskId)) })),
   };
 }

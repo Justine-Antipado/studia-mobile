@@ -94,6 +94,15 @@ export function hourLabel(hour: number): string {
   return `${h}${hour >= 12 ? "PM" : "AM"}`;
 }
 
+/** An ISO timestamp as a short wall clock ("11:59 PM"), in the campus time zone. */
+export function clockLabel(iso: string): string {
+  return new Date(iso).toLocaleTimeString(LOCALE, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: TIME_ZONE,
+  });
+}
+
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export const toPercent = (score: number, max: number) =>

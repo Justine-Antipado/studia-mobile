@@ -11,17 +11,19 @@ import * as Notifications from "expo-notifications";
 import { AndroidImportance } from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { getUser, useUser } from "@/core/data/storage/session-store";
 import { supabaseConfigured } from "@/core/data/supabase/client";
 import { db, mustOk } from "@/core/data/supabase/remote";
 import { reportError } from "@/core/logic/report-error";
 
-// Show pushes that arrive while the app is open (the Alerts feed also refreshes over Realtime).
+// While Studia is in the foreground the in-app toast announces the notification
+// (shared/components/ui/notification-toasts.tsx, fed by Realtime), so the OS banner is suppressed
+// to avoid showing the same thing twice. It still goes to the tray/notification list.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowBanner: true,
+    shouldShowBanner: AppState.currentState !== "active",
     shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
@@ -30,8 +32,24 @@ Notifications.setNotificationHandler({
 
 let registeredToken: string | null = null;
 
+/**
+ * Why this device has no push token, for the error sink. Push silently doing nothing was the
+ * hardest part of B1 to diagnose: every dead end now reports itself once.
+ */
+type PushBlocker = "simulator" | "permission-denied" | "no-project-id" | null;
+
+let lastBlocker: PushBlocker = null;
+
+function reportBlocker(blocker: Exclude<PushBlocker, null>): null {
+  if (lastBlocker !== blocker) {
+    lastBlocker = blocker;
+    reportError(new Error(`push disabled: ${blocker}`), { scope: "push.register" });
+  }
+  return null;
+}
+
 async function getPushToken(): Promise<string | null> {
-  if (!Device.isDevice) return null; // simulators have no push token
+  if (!Device.isDevice) return reportBlocker("simulator"); // simulators have no push token
 
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
@@ -41,19 +59,27 @@ async function getPushToken(): Promise<string | null> {
   }
 
   const current = await Notifications.getPermissionsAsync();
-  const granted = current.granted || (await Notifications.requestPermissionsAsync()).granted;
-  if (!granted) return null;
+  // Only ask when the OS still allows asking; on Android 13+ a second refusal is final.
+  const granted =
+    current.granted ||
+    (current.canAskAgain ? (await Notifications.requestPermissionsAsync()).granted : false);
+  if (!granted) return reportBlocker("permission-denied");
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  if (!projectId) return null;
+  if (!projectId) return reportBlocker("no-project-id");
+  lastBlocker = null;
   return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+}
+
+async function sendToken(token: string): Promise<void> {
+  mustOk(await db().rpc("register_push_token", { p_token: token, p_platform: Platform.OS === "ios" ? "ios" : "android" }));
+  registeredToken = token;
 }
 
 async function registerPushToken(): Promise<void> {
   const token = await getPushToken();
-  if (!token) return;
-  mustOk(await db().rpc("register_push_token", { p_token: token, p_platform: Platform.OS === "ios" ? "ios" : "android" }));
-  registeredToken = token;
+  if (!token || token === registeredToken) return;
+  await sendToken(token);
 }
 
 /** Detaches this phone from the signed-in account. Never throws: sign-out must always finish. */
@@ -77,6 +103,25 @@ export function usePushNotifications(): void {
   useEffect(() => {
     if (!enabled) return;
     registerPushToken().catch((e) => reportError(e, { scope: "push.register" }));
+
+    // Expo can rotate the token (reinstall, restored backup, FCM refresh). Without this the
+    // server keeps pushing to a dead token and the phone goes quiet for good.
+    const sub = Notifications.addPushTokenListener(({ data }) => {
+      if (typeof data !== "string" || data === registeredToken) return;
+      sendToken(data).catch((e) => reportError(e, { scope: "push.rotate" }));
+    });
+
+    // Permission can also be granted later, from Android settings: re-check on every return.
+    const app = AppState.addEventListener("change", (state) => {
+      if (state === "active" && !registeredToken) {
+        registerPushToken().catch((e) => reportError(e, { scope: "push.register" }));
+      }
+    });
+
+    return () => {
+      sub.remove();
+      app.remove();
+    };
   }, [enabled, role]);
 
   const last = Notifications.useLastNotificationResponse();

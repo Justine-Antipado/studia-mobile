@@ -12,8 +12,14 @@ import {
   useFonts,
 } from "@expo-google-fonts/poppins";
 
-import { queryCache } from "@/core/data/cache/query-cache";
-import { STACK_ROOT, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
+import { cacheReady, queryCache } from "@/core/data/cache/query-cache";
+import { deviceFlagsReady } from "@/core/data/storage/device-flags";
+import {
+  STACK_ROLE_GROUP,
+  STACK_ROOT,
+  STACK_SUBPAGE,
+  useScreenAnimation,
+} from "@/core/config/transitions";
 import { appStatusReady, useAppStatusSync } from "@/core/logic/app-status";
 import { sessionReady } from "@/features/auth/data/auth-service";
 import { useLiveUpdates } from "@/core/logic/live-updates";
@@ -21,6 +27,7 @@ import { usePushNotifications } from "@/core/logic/push-notifications";
 import { reportError } from "@/core/logic/report-error";
 import { AppGate } from "@/shared/components/ui/gate-views";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
+import { NotificationToasts } from "@/shared/components/ui/notification-toasts";
 import { ToastProvider } from "@/shared/components/ui/toast";
 
 SplashScreen.preventAutoHideAsync();
@@ -38,7 +45,9 @@ export default function RootLayout() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   useEffect(() => {
     // The splash also waits (at most a few seconds) for the maintenance status, so a closed app never flashes open.
-    void Promise.all([sessionReady, appStatusReady]).then(() => setSessionLoaded(true));
+    void Promise.all([sessionReady, appStatusReady, cacheReady, deviceFlagsReady]).then(() =>
+      setSessionLoaded(true),
+    );
   }, []);
 
   useAppStatusSync();
@@ -58,6 +67,7 @@ export default function RootLayout() {
   // Both honour the OS "reduce motion" setting.
   const root = useScreenAnimation(STACK_ROOT);
   const subpage = useScreenAnimation(STACK_SUBPAGE);
+  const roleGroup = useScreenAnimation(STACK_ROLE_GROUP);
 
   if (!ready) return null;
 
@@ -66,6 +76,8 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <ErrorBoundary scope="root" onReset={onReset}>
         <ToastProvider>
+          {/* Announces a Realtime notification in-app; must sit inside ToastProvider. */}
+          <NotificationToasts />
           <AppGate>
           <Stack screenOptions={root}>
             <Stack.Screen name="index" />
@@ -73,8 +85,8 @@ export default function RootLayout() {
             <Stack.Screen name="explore" options={subpage} />
             <Stack.Screen name="auth" options={subpage} />
 
-            <Stack.Screen name="student" />
-            <Stack.Screen name="instructor" />
+            <Stack.Screen name="student" options={roleGroup} />
+            <Stack.Screen name="instructor" options={roleGroup} />
           </Stack>
           </AppGate>
         </ToastProvider>

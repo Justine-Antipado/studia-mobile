@@ -8,12 +8,14 @@ import { clearAvatarCache } from "@/core/data/avatars";
 import { queryCache } from "@/core/data/cache/query-cache";
 import { endRemoteSession } from "@/core/data/supabase/end-session";
 import { setUser } from "@/core/data/storage/session-store";
+import { resetNotificationStream } from "@/core/logic/notification-stream";
 import { unregisterPushToken } from "@/core/logic/push-notifications";
 import { clearImageCache } from "@/shared/components/ui/app-image";
 
 /** Query cache + image memory/disk cache. Never touches the session itself. */
 export async function clearAllCaches(): Promise<void> {
   queryCache.clear();
+  resetNotificationStream(); // the next account must not inherit "already announced" ids
   clearAvatarCache();
   await clearImageCache();
 }

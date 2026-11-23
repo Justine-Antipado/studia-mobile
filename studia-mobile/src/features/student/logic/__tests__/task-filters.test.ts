@@ -1,4 +1,4 @@
-import { applyTaskFilter, DEFAULT_TASK_FILTER, matchesTab } from "@/features/student/logic/task-filters";
+import { matchesTab, tasksForTab } from "@/features/student/logic/task-filters";
 import type { Task } from "@/features/student/types/student";
 
 const HOUR = 3_600_000;
@@ -33,18 +33,14 @@ describe("task tabs", () => {
   });
 });
 
-describe("applyTaskFilter", () => {
+describe("tasksForTab", () => {
   const list = [task("b", 100), task("a", 50, { kind: "quiz", classId: "c2" }), task("c", 200)];
 
-  it("sorts soonest or latest first", () => {
-    const soonest = applyTaskFilter(list, "Upcoming", DEFAULT_TASK_FILTER).map((t) => t.id);
-    const latest = applyTaskFilter(list, "Upcoming", { ...DEFAULT_TASK_FILTER, sort: "latest" }).map((t) => t.id);
-    expect(soonest).toEqual(["a", "b", "c"]);
-    expect(latest).toEqual(["c", "b", "a"]);
+  it("keeps only the bucket's tasks, soonest due first", () => {
+    expect(tasksForTab(list, "Upcoming").map((t) => t.id)).toEqual(["a", "b", "c"]);
   });
 
-  it("filters by kind and class", () => {
-    expect(applyTaskFilter(list, "Upcoming", { ...DEFAULT_TASK_FILTER, kind: "quiz" }).map((t) => t.id)).toEqual(["a"]);
-    expect(applyTaskFilter(list, "Upcoming", { ...DEFAULT_TASK_FILTER, classId: "c1" })).toHaveLength(2);
+  it("excludes tasks of another bucket", () => {
+    expect(tasksForTab(list, "Done")).toHaveLength(0);
   });
 });

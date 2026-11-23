@@ -15,7 +15,6 @@ import { Stack } from "expo-router";
 
 import { MODAL_SHEET, STACK_SUBPAGE, useScreenAnimation } from "@/core/config/transitions";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
-import { RouteFeatureGate } from "@/shared/components/ui/gate-views";
 import { RoleGate } from "@/shared/components/ui/role-gate";
 import { singularScreenId } from "@/core/logic/screen-id";
 
@@ -48,6 +47,7 @@ const SUBPAGE_ROUTES = [
   "grade-submission",
   "grade-assignment",
   "gradebook",
+  "file-viewer",
 ] as const;
 
 export default function InstructorLayout() {
@@ -67,7 +67,8 @@ export default function InstructorLayout() {
             <Stack.Screen key={name} name={name} options={modal} dangerouslySingular={singularScreenId} />
           ))}
         </Stack>
-        <RouteFeatureGate />
+        {/* Per-feature maintenance is rendered by Screen inside the content area (B3), so it
+            no longer covers the header and the tab bar. */}
       </ErrorBoundary>
     </RoleGate>
   );
