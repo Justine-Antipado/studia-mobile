@@ -40,6 +40,16 @@
           "photosPermission": "Studia uses your photos so you can choose a profile picture.",
           "cameraPermission": "Studia uses the camera so you can take a profile picture."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": [
+              "arm64-v8a"
+            ]
+          }
+        }
       ]
     ],
     "extra": {
