@@ -1,7 +1,7 @@
 /**
  * One error shape for the whole app: { status, code, message, fieldErrors }.
- * Both the HTTP client and the mock backend throw ApiError, so UI code never
- * has to know which one is active.
+ * Every data module (remoteAuth, remoteAdmin, remoteCampus) throws ApiError, so UI code
+ * handles one error shape.
  */
 export const ERROR_CODES = {
   network: 'NETWORK_ERROR',
@@ -61,7 +61,7 @@ export class ApiError extends Error {
 export const codeForStatus = (status) =>
   CODE_BY_STATUS[status] ?? (status >= 500 ? ERROR_CODES.server : ERROR_CODES.unknown);
 
-/** Wrap anything thrown (including a plain Error from the mock) into an ApiError. */
+/** Wrap anything thrown (including a plain Error) into an ApiError. */
 export function toApiError(err) {
   if (err instanceof ApiError) return err;
   if (err?.name === 'AbortError') return new ApiError({ code: ERROR_CODES.aborted, retryable: false });
@@ -70,6 +70,6 @@ export function toApiError(err) {
 
 export const isAborted = (err) => err?.code === ERROR_CODES.aborted || err?.name === 'AbortError';
 
-/** Shorthand used by the mock backend: fail(422, 'Incorrect OTP.', { code: ... }) */
+/** Shorthand: fail(422, 'Incorrect OTP.', { code: ... }) */
 export const fail = (status, message, extra = {}) =>
   new ApiError({ status, code: extra.code ?? codeForStatus(status), message, ...extra });

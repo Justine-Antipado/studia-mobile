@@ -64,7 +64,7 @@ export function toListParams({ page = 1, pageSize = DEFAULT_PAGE_SIZE, sort, ord
   };
 }
 
-/** Apply q / sort / filters / paging in memory. Used by the mock backend only. */
+/** Apply q / sort / filters / paging in memory, for list endpoints that return the whole (campus-sized) list. */
 export function applyListParams(rows, { page = 1, pageSize = DEFAULT_PAGE_SIZE, sort, order = 'asc', q, filters = {}, searchKeys = [], match } = {}) {
   let out = [...rows];
 

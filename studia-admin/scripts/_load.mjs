@@ -14,7 +14,6 @@ import path from 'node:path';
 
 const DEFAULT_ENV = {
   VITE_API_URL: 'http://localhost/api',
-  VITE_USE_MOCK: 'true',
   VITE_APP_NAME: 'STUDIA Admin',
   VITE_SESSION_IDLE_MINUTES: '20',
 };

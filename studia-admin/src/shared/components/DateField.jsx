@@ -11,7 +11,7 @@ import Select from './Select';
  *
  * `value` is an ISO `YYYY-MM-DD` string, or `YYYY-MM-DDTHH:mm` with `withTime`,
  * which is exactly what the native date and datetime-local inputs produced, so
- * callers and the mock backend are unchanged.
+ * callers are unchanged.
  *
  * Keyboard: ←/→ a day, ↑/↓ a week, PageUp/PageDown a month, Home/End the ends
  * of the week, Enter picks, Esc closes.

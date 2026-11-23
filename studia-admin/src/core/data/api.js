@@ -1,93 +1,79 @@
 /**
  * API — the single gateway the UI talks to.
  *
- * It picks one of two interchangeable backends from VITE_USE_MOCK:
- *   mock/mockBackend.js  (in-memory, default)   http/httpBackend.js (real PHP API)
- * Both expose the same methods, shapes and ApiError, so components and feature
- * repositories never branch on the flag.
- *
- * As each feature gets built it moves its calls into
- * features/<name>/data/<name>Repository.js, which imports from this module.
+ * Everything is real: Supabase Auth through studia-api for sign-in (remoteAuth), and the admin's own
+ * Supabase session for every other call (remoteAdmin, remoteCampus). There is no mock backend and no
+ * data source switch. Feature repositories (features/<name>/data/<name>Repository.js) import from here.
  */
-import { env } from '../config/env';
-import { httpBackend } from './http/httpBackend';
-import { mockBackend } from './mock/mockBackend';
+import { remoteAdmin } from './remote/remoteAdmin';
 import { remoteAuth } from './remote/remoteAuth';
 import { remoteCampus } from './remote/remoteCampus';
 
-// Compared against the raw env value so Vite inlines it as a literal: in a
-// build with VITE_USE_MOCK=false the mock backend (and the admin password it
-// hard-codes) is tree-shaken out of the bundle rather than just unused.
-const backend = import.meta.env.VITE_USE_MOCK !== 'false' ? mockBackend : httpBackend;
-
-/** Exposed for the "Mock data" badge in the topbar — never for business logic. */
-export const isMockBackend = env.useMock;
-
 /* --- auth ---
- * Admin sign-in is always real: Supabase Auth through studia-api (role=admin, audit-logged server
- * side). There is no mock sign-in. The rest of the portal still follows VITE_USE_MOCK. */
-const authBackend = remoteAuth;
-export const login = (identifier, password) => authBackend.login(identifier, password);
-/** Second step of every admin login: the emailed 6-digit code. */
-export const verifyLoginOtp = (pendingToken, code) => authBackend.verifyLoginOtp(pendingToken, code);
-export const resendLoginOtp = (pendingToken) => authBackend.resendLoginOtp(pendingToken);
-export const logout = () => authBackend.logout();
+ * Admin sign-in: Supabase Auth through studia-api (role=admin, audit-logged server side). */
+export const login = (identifier, password) => remoteAuth.login(identifier, password);
+/** Second step of an admin login: the emailed 6-digit code (not wired server-side yet). */
+export const verifyLoginOtp = (pendingToken, code) => remoteAuth.verifyLoginOtp(pendingToken, code);
+export const resendLoginOtp = (pendingToken) => remoteAuth.resendLoginOtp(pendingToken);
+export const logout = () => remoteAuth.logout();
 /** False when the portal thinks it is signed in but Supabase has no session any more. */
-export const hasSupabaseSession = () => authBackend.hasSession();
+export const hasSupabaseSession = () => remoteAuth.hasSession();
 
 /* --- shell --- */
-export const getNavCounts = (options) => backend.getNavCounts(options);
+export const getNavCounts = (options) => remoteAdmin.getNavCounts(options);
 
 /* --- dashboard --- */
-export const getDashboard = (options) => backend.getDashboard(options);
+export const getDashboard = (options) => remoteAdmin.getDashboard(options);
 
 /* --- users --- */
-export const getUsers = (params, options) => backend.getUsers(params, options);
-export const getUser = (id, options) => backend.getUser(id, options);
-export const deleteUsers = (ids) => backend.deleteUsers(ids);
+export const getUsers = (params, options) => remoteAdmin.getUsers(params, options);
+export const getUser = (id, options) => remoteAdmin.getUser(id, options);
+export const deleteUsers = (ids) => remoteAdmin.deleteUsers(ids);
 
 /* --- classes --- */
-export const getClasses = (params, options) => backend.getClasses(params, options);
-export const getClass = (id, options) => backend.getClass(id, options);
-export const deleteClasses = (ids) => backend.deleteClasses(ids);
+export const getClasses = (params, options) => remoteAdmin.getClasses(params, options);
+export const getClass = (id, options) => remoteAdmin.getClass(id, options);
+export const deleteClasses = (ids) => remoteAdmin.deleteClasses(ids);
 
 /* --- content --- */
-export const getContent = (params, options) => backend.getContent(params, options);
-export const deleteContent = (ids) => backend.deleteContent(ids);
+export const getContent = (params, options) => remoteAdmin.getContent(params, options);
+export const deleteContent = (ids) => remoteAdmin.deleteContent(ids);
 
 /* --- assessments --- */
-export const getAssessments = (options) => backend.getAssessments(options);
+export const getAssessments = (options) => remoteAdmin.getAssessments(options);
 
-/* --- announcements --- */
-export const getAnnouncements = (params, options) => backend.getAnnouncements(params, options);
-export const deleteAnnouncements = (ids) => backend.deleteAnnouncements(ids);
+/* --- class announcements (moderation of the class streams) --- */
+export const getAnnouncements = (params, options) => remoteAdmin.getAnnouncements(params, options);
+export const deleteAnnouncements = (ids) => remoteAdmin.deleteAnnouncements(ids);
 
-/* Campus-wide announcements: always real (Supabase + the admin's session), they fan out to every user's Alerts. */
+/* Campus-wide announcements: they fan out to every user's Alerts tab (and phone, via push). */
 export const getCampusAnnouncements = (params) => remoteCampus.getCampusAnnouncements(params);
 export const createCampusAnnouncement = (input) => remoteCampus.createCampusAnnouncement(input);
 export const deleteCampusAnnouncements = (ids) => remoteCampus.deleteCampusAnnouncements(ids);
+/** { devices, users, configured }: can a campus announcement reach phones right now? */
+export const getPushStatus = (options) => remoteAdmin.getPushStatus(options);
 
 /* --- ai --- */
-export const getAiHealth = (options) => backend.getAiHealth(options);
-export const updateAiFeature = (feature, enabled) => backend.updateAiFeature(feature, enabled);
+export const getAiHealth = (options) => remoteAdmin.getAiHealth(options);
+export const updateAiFeature = (feature, enabled) => remoteAdmin.updateAiFeature(feature, enabled);
 
 /* --- reports --- */
-export const getReports = (options) => backend.getReports(options);
+export const getReports = (options) => remoteAdmin.getReports(options);
 
-/* --- notifications --- */
-export const getNotifications = (params, options) => backend.getNotifications(params, options);
-export const markNotificationRead = (id, read) => backend.markNotificationRead(id, read);
-export const markAllNotificationsRead = () => backend.markAllNotificationsRead();
+/* --- notifications (the admin's own inbox) --- */
+export const getNotifications = (params, options) => remoteAdmin.getNotifications(params, options);
+export const markNotificationRead = (id, read) => remoteAdmin.markNotificationRead(id, read);
+export const markAllNotificationsRead = () => remoteAdmin.markAllNotificationsRead();
 
-/* --- settings --- */
-export const getSettings = (options) => backend.getSettings(options);
-export const saveSettings = (patch) => backend.saveSettings(patch);
+/* --- settings (maintenance, AI, legal, email) --- */
+export const getSettings = (options) => remoteAdmin.getSettings(options);
+export const saveSettings = (patch) => remoteAdmin.saveSettings(patch);
 
 /* --- security --- */
-export const getAuditLog = (params, options) => backend.getAuditLog(params, options);
-export const getLoginAttempts = (params, options) => backend.getLoginAttempts(params, options);
+export const getAuditLog = (params, options) => remoteAdmin.getAuditLog(params, options);
+export const getLoginAttempts = (params, options) => remoteAdmin.getLoginAttempts(params, options);
 
 /* --- admin account --- */
-export const sendOtp = () => backend.sendOtp();
-export const verifyOtp = (code) => backend.verifyOtp(code);
-export const updatePassword = (code, pw) => backend.updatePassword(code, pw);
+export const sendOtp = () => remoteAdmin.sendOtp();
+export const verifyOtp = (code) => remoteAdmin.verifyOtp(code);
+export const updatePassword = (code, pw) => remoteAdmin.updatePassword(code, pw);

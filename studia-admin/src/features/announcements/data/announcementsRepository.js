@@ -10,3 +10,4 @@ export const deleteAnnouncements = (ids) => api.deleteAnnouncements(ids);
 export const getCampusAnnouncements = (params) => api.getCampusAnnouncements(params);
 export const createCampusAnnouncement = (input) => api.createCampusAnnouncement(input);
 export const deleteCampusAnnouncements = (ids) => api.deleteCampusAnnouncements(ids);
+export const getPushStatus = (options) => api.getPushStatus(options);

@@ -1,5 +1,5 @@
 // Phase 7: who did what, and when. Every delete and write this admin
-// performs is logged by the mock backend (see logAudit in mockBackend.js).
+// performs is written to audit_log by the database functions (migration 025).
 import { useMemo } from 'react';
 import * as securityRepo from '../data/securityRepository';
 import { formatDateTime } from '../../../core/logic/format';

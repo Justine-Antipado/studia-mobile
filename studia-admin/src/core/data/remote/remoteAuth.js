@@ -1,8 +1,7 @@
 /**
  * REMOTE AUTH — admin login/logout against Supabase Auth through studia-api.
  *
- * Same method names and return shape as mockBackend.login/logout, and the same ApiError, so the
- * Login page and AuthContext do not change.
+ * Same ApiError as every other data module, so the Login page and AuthContext stay simple.
  *
  *  - The password check, 5-fails/1-min lockout, role=admin gate and audit_log entry all happen in
  *    studia-api (POST /api/auth/login with role "admin"). The browser only holds the result.

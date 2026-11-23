@@ -76,7 +76,7 @@ export default function AiHealth() {
             <StatCard label="Requests this month" value={data.requestsTrend.at(-1)?.count ?? 0} />
             <StatCard label="Avg. latency" value={`${formatNumber(avgLatency)} ms`} />
             <StatCard label="Avg. error rate" value={formatPercent(avgErrorRate, 1)} />
-            <StatCard label="Quota used" value={formatPercent(quotaUsedPct)} />
+            <StatCard label="Daily quota used" value={formatPercent(quotaUsedPct)} />
           </div>
 
           <div className="two-col">
@@ -91,7 +91,7 @@ export default function AiHealth() {
           <div className="two-col">
             <Card
               title="Transcription queue"
-              subtitle={`${data.transcription.queued} queued · ~${data.transcription.avgProcessingSec}s avg. processing`}
+              subtitle={`${data.transcription.queued} queued${data.transcription.avgProcessingSec ? ` · ~${data.transcription.avgProcessingSec}s avg. processing` : ''}`}
             >
               {data.transcription.failures.length === 0 ? (
                 <p className="muted small">No transcription failures.</p>
@@ -135,11 +135,11 @@ export default function AiHealth() {
             <Card title="Feature switches" subtitle="Turn an AI feature off campus-wide without a deploy.">
               <FeatureToggles toggles={data.toggles} busyFeature={toggleBusy} onToggle={handleToggle} />
             </Card>
-            <Card title="Monthly quota & cost">
+            <Card title="Daily quota & cost">
               <div
                 className="meter"
                 role="progressbar"
-                aria-label="Monthly AI request quota used"
+                aria-label="Daily AI request quota used"
                 aria-valuenow={quotaUsedPct}
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -152,7 +152,7 @@ export default function AiHealth() {
                 />
               </div>
               <p className="muted small">
-                {formatNumber(data.quota.requestsUsed)} / {formatNumber(data.quota.requestsQuota)} requests used
+                {formatNumber(data.quota.requestsUsed)} / {formatNumber(data.quota.requestsQuota)} requests used today
               </p>
               <p className="muted small">Estimated cost this month: ${data.quota.costEstimateUsd.toFixed(2)}</p>
               <p className="muted small">Resets {formatDate(data.quota.resetsOn)}</p>

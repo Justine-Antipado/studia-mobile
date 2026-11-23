@@ -19,16 +19,6 @@ const int = (value, fallback) => {
 export const env = {
   /** Base URL of the PHP API, e.g. https://studia.omsu.edu.ph. Empty = same origin. */
   apiUrl: str(raw.VITE_API_URL, ''),
-  /**
-   * true -> the in-memory mock backend; false -> real HTTP. Components never
-   * read this.
-   *
-   * The rule is exactly "mock unless the value is the string false", and
-   * core/data/api.js and core/config/demo.js repeat that same comparison
-   * against the raw value so Vite can tree-shake the mock out of a real build.
-   * Keep the three in step; no other truthy spellings are supported.
-   */
-  useMock: raw.VITE_USE_MOCK !== 'false',
   supabaseUrl: str(raw.VITE_SUPABASE_URL, ''),
   supabaseAnonKey: str(raw.VITE_SUPABASE_ANON_KEY, ''),
   appName: str(raw.VITE_APP_NAME, 'STUDIA Admin'),
@@ -39,4 +29,4 @@ export const env = {
   isDev: !!raw.DEV,
 };
 
-export const { useMock: USE_MOCK, appName: APP_NAME } = env;
+export const { appName: APP_NAME } = env;

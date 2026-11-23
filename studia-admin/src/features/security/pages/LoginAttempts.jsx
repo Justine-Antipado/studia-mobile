@@ -1,5 +1,5 @@
-// Phase 7: failed logins, lockouts and IP addresses. mockBackend.login()
-// appends a real row here on every attempt, success or fail.
+// Phase 7: failed logins, lockouts and IP addresses, read from login_attempts (written by studia-api on
+// every sign-in attempt, success or fail).
 import { useMemo } from 'react';
 import * as securityRepo from '../data/securityRepository';
 import { formatDateTime } from '../../../core/logic/format';

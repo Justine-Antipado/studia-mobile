@@ -146,7 +146,7 @@ export default function UserDetail() {
 
           <Card className="danger-zone" title="Danger zone">
             <p className="muted">
-              Deleting this account permanently removes the profile, submissions and AI history. This cannot be undone.
+              Deleting this account permanently removes the profile, submissions and AI history. An instructor's classes are removed with the account. This cannot be undone.
             </p>
             <button type="button" className="btn btn-red" onClick={() => setConfirmOpen(true)}>
               <Icon.Trash /> Delete account
@@ -164,7 +164,7 @@ export default function UserDetail() {
         onConfirm={runDelete}
         onClose={() => setConfirmOpen(false)}
       >
-        <b>{user?.name}</b> will be permanently removed, together with their submissions and AI history. This cannot be undone.
+        <b>{user?.name}</b> will be permanently removed, together with their submissions and AI history (and their classes, for an instructor). This cannot be undone.
       </ConfirmDialog>
 
       <Toast message={toast.message} kind={toast.kind} onDone={clearToast} />

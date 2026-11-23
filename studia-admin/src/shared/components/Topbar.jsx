@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { isMockBackend } from '../../core/data/api';
 import { descriptionFor, findPage } from '../../core/config/navigation';
 import { Icon } from './Icon';
 
@@ -31,11 +30,6 @@ export default function Topbar({ onOpenNav, navOpen, unread = 0 }) {
       </div>
 
       <div className="topbar-right">
-        {isMockBackend && (
-          <span className="pill pill-warn" title="VITE_USE_MOCK=true — data is in-memory and resets on reload">
-            Mock data
-          </span>
-        )}
         <Link to="/notifications" className="icon-btn" aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}>
           <Icon.Bell />
           {unread > 0 && <span className="icon-btn-dot" aria-hidden="true" />}

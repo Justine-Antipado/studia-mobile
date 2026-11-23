@@ -36,6 +36,9 @@ export default function CampusPanel() {
     [JSON.stringify(params)]
   );
 
+  // Can a notice reach phones right now? (registered devices + the push function wired up)
+  const { data: push } = useAsync(() => announcementsRepo.getPushStatus().catch(() => null), []);
+
   const rows = data?.data ?? [];
   const pagination = usePagination({ page: query.page, pageSize: PAGE_SIZE, total: data?.meta.total ?? 0 });
   const selectedRows = rows.filter((a) => selected.has(a.id));
@@ -80,6 +83,13 @@ export default function CampusPanel() {
 
   return (
     <>
+      {push && (
+        <p className="small muted" role="status">
+          {push.configured
+            ? `Push is on: ${push.devices} phone${push.devices === 1 ? '' : 's'} registered across ${push.users} user${push.users === 1 ? '' : 's'}. Everyone still gets the notice in their Alerts tab.`
+            : 'Push delivery is not set up yet, so announcements only appear in the Alerts tab.'}
+        </p>
+      )}
       <div className="filters">
         <label className="field search">
           <span>Search</span>

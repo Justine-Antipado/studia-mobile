@@ -56,9 +56,14 @@ Supabase implementation. `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_
   purges the caches.
 - **AI features** (assistant chat, AI quiz generator) have no backend yet. They report that they are
   unavailable instead of faking answers. See `docs/dipanakaconnect-sa-db-audit.md`.
-- **Admin** (`studia-admin`) still runs on a mock: `src/core/data/api.js` is the only module UI code
-  may call, and it delegates to `core/data/mock/mockBackend.js`. The admin account is hard-coded
-  there (`admin` / `Studia@2026`); there is intentionally no register route.
+- **Admin** (`studia-admin`) is on the real database too, no mock. `src/core/data/api.js` is the only
+  module UI code may call. Sign-in goes through `remoteAuth.js` (Supabase Auth + `studia-api`); every
+  other page calls the `admin_*` SECURITY DEFINER functions of migration 025 through `remoteAdmin.js`
+  with the admin's own session (each function checks `private.is_admin()` and audit-logs writes).
+  Campus announcements are `remoteCampus.js`. Maintenance/AI/legal/email settings are the `settings`
+  table. Campus announcements fan out to `notifications`, which the `send-push` Edge Function
+  (deployed, wired via Vault secrets `push_function_url` + `push_webhook_secret`) forwards to phones.
+  There is no register route and no hard-coded admin login.
 
 `docs/api-contract.md` maps every repository method to the endpoint the backend has to build, and
 lists what the server must enforce itself (it must never trust client-side validation). When

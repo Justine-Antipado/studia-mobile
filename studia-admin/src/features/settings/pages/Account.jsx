@@ -1,8 +1,8 @@
 // Phase 7: profile + password change with the OTP flow (send, verify,
 // update). Fixes the phase-0 audit's 7.3 finding — the old strength() meter
 // enabled "Update password" at a score of 2/4; this uses the same five
-// all-required PASSWORD_RULES studia-mobile enforces, shown as a checklist,
-// and the mock re-checks isStrongPassword() server-side too.
+// all-required PASSWORD_RULES studia-mobile enforces, shown as a checklist;
+// studia-api re-checks the rule and the emailed code server-side.
 import { useEffect, useRef, useState } from 'react';
 import { useSettings } from '../hooks/useSettings';
 import * as settingsRepo from '../data/settingsRepository';
@@ -64,7 +64,7 @@ export default function Account() {
       setVerified(false);
       setDigits(Array(6).fill(''));
       setCooldown(RESEND_SECONDS);
-      showToast(`OTP sent to ${r.sentTo} (dev: ${r.devCode})`);
+      showToast(`A 6-digit code was sent to ${r.sentTo}.`);
       setTimeout(() => refs.current[0]?.focus(), 50);
     } catch (e) {
       showError(e);
