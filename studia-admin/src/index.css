@@ -919,11 +919,6 @@ tr.notif-unread, tr.notif-read { transition: background var(--motion-base) var(-
 .guide-list dt { font-weight: 700; margin-bottom: 2px; }
 .guide-list dd { margin: 0; color: var(--muted); font-weight: 400; line-height: 1.55; }
 
-/* ---------- Vulnerability findings (Security) ---------- */
-.finding-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
-.finding-category { font-size: var(--type-tiny); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-.finding-fix { margin: var(--space-2) 0 0; padding-top: var(--space-2); border-top: 1px solid var(--border); font-size: var(--type-small); }
-
 /* ---------- Login (glassmorphism) ---------- */
 .login-page {
   position: relative; min-height: 100vh; min-height: 100dvh;

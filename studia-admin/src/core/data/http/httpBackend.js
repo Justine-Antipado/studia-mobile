@@ -41,7 +41,6 @@ export const httpBackend = {
 
   getAnnouncements: (params = {}, options) =>
     http.get(`${BASE}/announcements`, { ...options, params: toListParams(params) }).then((r) => toList(r, params)),
-  createAnnouncement: (input) => http.post(`${BASE}/announcements`, toApi(input)).then(toUi),
   deleteAnnouncements: (ids) => http.post(`${BASE}/announcements/delete`, { ids }).then(toUi),
 
   getAiHealth: (options) => http.get(`${BASE}/ai`, options).then(toUi),
@@ -67,8 +66,6 @@ export const httpBackend = {
 
   getLoginAttempts: (params = {}, options) =>
     http.get(`${BASE}/security/login-attempts`, { ...options, params: toListParams(params) }).then((r) => toList(r, params)),
-
-  getVulnerabilities: (options) => http.get(`${BASE}/security/vulnerabilities`, options).then(toUi),
 
   sendOtp: () => http.post(`${BASE}/account/otp/send`).then(toUi),
   verifyOtp: (code) => http.post(`${BASE}/account/otp/verify`, { code }).then(() => true),

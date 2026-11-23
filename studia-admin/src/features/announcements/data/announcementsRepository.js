@@ -5,5 +5,4 @@
 import * as api from '../../../core/data/api';
 
 export const getAnnouncements = (params, options) => api.getAnnouncements(params, options);
-export const createAnnouncement = (input) => api.createAnnouncement(input);
 export const deleteAnnouncements = (ids) => api.deleteAnnouncements(ids);

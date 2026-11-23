@@ -6,11 +6,10 @@ import PageHeader from '../../../shared/components/PageHeader';
 import { Card } from '../../../shared/components/ui';
 
 const GUIDE = [
-  { q: 'Reading vs. writing', a: 'Users, classes, content and assessments are read and delete only here — those records are created in the mobile app. Announcements are the one area this portal can create content in.' },
+  { q: 'Reading vs. writing', a: 'Users, classes, content and assessments are read and delete only here — those records are created in the mobile app. Class announcements are posted by instructors in the mobile app, so here you can read and moderate them.' },
   { q: 'Deleting something permanent', a: 'Every permanent delete (a user, a class, a piece of content, an announcement) asks you to type DELETE first, and is recorded in Security → Audit log.' },
   { q: 'Tables on a small screen', a: 'Every list turns into stacked cards below about 720px, with the same actions available at the bottom of each card.' },
   { q: 'Staying signed in', a: 'The session times out after a period of inactivity, with a warning first. Signing out in one tab signs every open tab out too.' },
-  { q: 'Where security findings come from', a: 'Security → Vulnerabilities is a posture checklist — outdated dependencies, password/OTP policy, rate limiting, HTTPS, CSP, backup age and upload policy — read from the API (mock data for now).' },
   { q: 'Changing the admin password', a: 'Settings → Account walks through the OTP flow: send a code to the admin email, verify it, then set a password that meets all five rules.' },
 ];
 
