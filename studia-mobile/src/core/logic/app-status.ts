@@ -1,23 +1,28 @@
-// app-status.ts: the admin's maintenance window, required-update rule and legal text, read from the
-// public `app_status()` database function. Fetched at launch (the splash waits briefly for it), again
-// whenever the app returns to the foreground, and every minute while it is open, so a window the admin
-// opens or closes reaches phones without a restart.
+// app-status.ts: the legal text (terms of use, privacy notice) the admin posts in Settings → Legal,
+// read from the public `app_status()` database function. Fetched at launch (the splash waits briefly
+// for it), again whenever the app returns to the foreground, and every few minutes while it is open,
+// so text the admin updates reaches phones without a restart.
 //
-// Failing open on purpose: if the request fails (offline, Supabase down) the last known status stays,
-// and with none the app is not blocked: a network error must never lock everyone out.
-import Constants from "expo-constants";
+// Maintenance mode and the required-update rule used to come through here too, and blocked the app
+// from core/logic/maintenance.ts. That whole feature was removed along with the admin's Settings →
+// System tab; `app_status()` still returns inert `maintenance` and `update` objects so that app
+// builds released before the removal keep reading "nothing is blocked" (migration 040).
+//
+// Failing quietly on purpose: if the request fails (offline, Supabase down) the last known text
+// stays, and with none the screens that show it simply leave the section out.
 import { useEffect, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
+import { z } from "zod";
 
 import { getSupabase, supabaseConfigured } from "@/core/data/supabase/client";
 import { reportError } from "@/core/logic/report-error";
-import type { AppStatus } from "@/core/logic/maintenance";
 
-const POLL_MS = 60_000;
+const POLL_MS = 5 * 60_000;
 const FIRST_FETCH_WAIT_MS = 3_000;
 
-/** The version this build was released as (app.json `version`; bump it for every release). */
-export const INSTALLED_VERSION: string = Constants.expoConfig?.version ?? "0.0.0";
+export type AppStatus = {
+  legal: { terms: string; privacy: string; updatedAt: string | null };
+};
 
 let current: AppStatus | null = null;
 const listeners = new Set<() => void>();
@@ -31,15 +36,27 @@ const subscribe = (cb: () => void) => {
 
 type RpcClient = { rpc: (fn: string) => PromiseLike<{ data: unknown; error: { message: string } | null }> };
 
+/**
+ * The shape is checked, not assumed: this payload is built from admin-typed JSON in the `settings`
+ * table, and a surprise here would otherwise reach the screens that render it. `catch` rather than
+ * strict parsing, so a field the server adds later cannot blank out the text.
+ */
+const text = z.string().catch("");
+const StatusSchema = z.object({
+  legal: z
+    .object({ terms: text, privacy: text, updatedAt: z.string().nullable().catch(null) })
+    .catch({ terms: "", privacy: "", updatedAt: null }),
+});
+
 export async function refreshAppStatus(): Promise<void> {
   if (!supabaseConfigured) return;
   try {
     const { data, error } = await (getSupabase() as unknown as RpcClient).rpc("app_status");
     if (error) throw new Error(error.message);
-    if (data && typeof data === "object") {
-      current = data as AppStatus;
-      listeners.forEach((l) => l());
-    }
+    const parsed = StatusSchema.safeParse(data);
+    if (!parsed.success) throw new Error("app_status returned an unexpected shape");
+    current = { legal: parsed.data.legal };
+    listeners.forEach((l) => l());
   } catch (e) {
     reportError(e, { scope: "app-status.refresh" });
   }

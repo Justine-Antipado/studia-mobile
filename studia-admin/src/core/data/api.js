@@ -68,7 +68,7 @@ export const getNotifications = (params, options) => remoteAdmin.getNotification
 export const markNotificationRead = (id, read) => remoteAdmin.markNotificationRead(id, read);
 export const markAllNotificationsRead = () => remoteAdmin.markAllNotificationsRead();
 
-/* --- settings (maintenance, AI, legal, email) --- */
+/* --- settings (AI, legal, email) --- */
 export const getSettings = (options) => remoteAdmin.getSettings(options);
 export const saveSettings = (patch) => remoteAdmin.saveSettings(patch);
 

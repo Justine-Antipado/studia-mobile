@@ -129,7 +129,7 @@ export const NAV_GROUPS = [
         label: 'Settings',
         icon: 'Settings',
         title: 'Settings',
-        description: 'System and maintenance, legal text and the admin account.',
+        description: 'Legal text and the admin account.',
       },
       {
         path: ROUTES.help,

@@ -19,7 +19,6 @@ import { useRoleUser } from "@/core/data/storage/session-store";
 import type { Role } from "@/core/types/role";
 import { AppHeader } from "@/shared/components/ui/app-header";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
-import { RouteFeatureGate, useRouteFeatureBlocked } from "@/shared/components/ui/gate-views";
 import { OfflineBanner } from "@/shared/components/ui/offline-banner";
 import {
   PullToRefreshProvider,
@@ -98,15 +97,11 @@ export function Screen({
   // bottom inset, so this adds nothing there.
   const safeBottom = { paddingBottom: SPACE.xl + insets.bottom };
 
-  // Per-feature maintenance replaces the CONTENT of this screen only: the header above and the
-  // tab bar outside stay usable (B3). Nothing is fetched or rendered by the blocked screen.
-  const featureBlocked = useRouteFeatureBlocked();
-
   const body = (
     <ErrorBoundary scope={scope ?? role}>
       {/* One banner for the whole app: it renders nothing while online. */}
       {offlineBanner ? <OfflineBanner /> : null}
-      {featureBlocked ? <RouteFeatureGate /> : children}
+      {children}
     </ErrorBoundary>
   );
 

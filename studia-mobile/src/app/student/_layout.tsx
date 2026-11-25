@@ -54,8 +54,6 @@ export default function StudentLayout() {
             <Stack.Screen key={name} name={name} options={modal} dangerouslySingular={singularScreenId} />
           ))}
         </Stack>
-        {/* Per-feature maintenance is rendered by Screen inside the content area (B3), so it
-            no longer covers the header and the tab bar. */}
       </ErrorBoundary>
     </RoleGate>
   );

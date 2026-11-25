@@ -25,7 +25,6 @@ import { sessionReady } from "@/features/auth/data/auth-service";
 import { useLiveUpdates } from "@/core/logic/live-updates";
 import { usePushNotifications } from "@/core/logic/push-notifications";
 import { reportError } from "@/core/logic/report-error";
-import { AppGate } from "@/shared/components/ui/gate-views";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { NotificationToasts } from "@/shared/components/ui/notification-toasts";
 import { ToastProvider } from "@/shared/components/ui/toast";
@@ -44,7 +43,8 @@ export default function RootLayout() {
 
   const [sessionLoaded, setSessionLoaded] = useState(false);
   useEffect(() => {
-    // The splash also waits (at most a few seconds) for the maintenance status, so a closed app never flashes open.
+    // The splash also waits (at most a few seconds) for the legal text, so the welcome and explore
+    // screens do not render their Terms / Privacy sections empty and then fill them in.
     void Promise.all([sessionReady, appStatusReady, cacheReady, deviceFlagsReady]).then(() =>
       setSessionLoaded(true),
     );
@@ -78,7 +78,6 @@ export default function RootLayout() {
         <ToastProvider>
           {/* Announces a Realtime notification in-app; must sit inside ToastProvider. */}
           <NotificationToasts />
-          <AppGate>
           <Stack screenOptions={root}>
             <Stack.Screen name="index" />
             <Stack.Screen name="learn-more" options={subpage} />
@@ -88,7 +87,6 @@ export default function RootLayout() {
             <Stack.Screen name="student" options={roleGroup} />
             <Stack.Screen name="instructor" options={roleGroup} />
           </Stack>
-          </AppGate>
         </ToastProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

@@ -17,8 +17,6 @@ import {
 import { Screen } from "@/shared/components/ui/screen";
 import { C, OVERLAY } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
-import { useGate } from "@/core/logic/use-gate";
-import { FeatureGate } from "@/shared/components/ui/gate-views";
 import { useRouteIds } from "@/core/logic/route-params";
 import { useOpenFile } from "@/features/shared-screens/hooks/use-open-file";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
@@ -47,12 +45,11 @@ export default function StudentLessonViewer() {
   // A ready lesson with no summary yet is summarised automatically the first time it is opened
   // (the server caches it, so later students just read it). A failure leaves the manual button.
   const autoTried = useRef(false);
-  const summaryBlocked = !!useGate("ai.summarizer");
   useEffect(() => {
-    if (summaryBlocked || autoTried.current || !lesson || lesson.aiSummary || lesson.processing !== "ready") return;
+    if (autoTried.current || !lesson || lesson.aiSummary || lesson.processing !== "ready") return;
     autoTried.current = true;
     void regenerateSummary.run(undefined);
-  }, [lesson, regenerateSummary, summaryBlocked]);
+  }, [lesson, regenerateSummary]);
 
   // YouTube lines restart the in-app player at their timestamp; other sources have no player to seek.
   const [startSec, setStartSec] = useState(0);
@@ -96,7 +93,6 @@ export default function StudentLessonViewer() {
               <Badge label="No transcript could be fetched for this video. Ask your instructor to add one." tone="red" />
             ) : null}
 
-            <FeatureGate feature="ai.summarizer">
             {lesson.aiSummary ? (
               <Card>
                 <AiTag text="AI-generated summary" />
@@ -134,7 +130,6 @@ export default function StudentLessonViewer() {
                 </Card>
               ) : null
             )}
-            </FeatureGate>
 
             {lesson.transcript.length > 0 ? (
               <View style={{ gap: SPACE.md }}>
