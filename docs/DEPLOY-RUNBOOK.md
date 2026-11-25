@@ -15,8 +15,12 @@ deployed.** The live system is still running the pre-audit code.
 
 **`studia-api` and the migrations are all-or-nothing, and the database goes first.**
 
-The new `login.ts` calls `private.login_lock_state` and `private.record_login_attempt` on *every*
-sign-in, before the password is even checked. Those functions arrive in migrations 032 and 038. So:
+The new `login.ts` calls `login_lock_state` and `record_login_attempt` on *every* sign-in, before
+the password is even checked. The bodies arrive in migrations 032 and 038, which define them in
+schema `private` — and `private` is not exposed to PostgREST (`config.toml` exposes `public` and
+`graphql_public`), so `db.rpc("login_lock_state")` answered PGRST202 and the API returned 500 on
+every sign-in. **Migration 041 adds the `public` wrappers that make them callable** (service_role
+only). 032 and 038 without 041 are not enough. So:
 
 > Deploying `studia-api` before `supabase db push` makes **every login fail** — student, instructor
 > and admin. The app is dead until the migrations land.
@@ -27,7 +31,7 @@ The same coupling, in the other direction, for the mobile build:
 |---|---|---|
 | `person_names()` | 031 | the class Stream tab errors out |
 | `start_quiz()` | 033 | students cannot open a quiz at all |
-| `login_lock_state`, `record_login_attempt` | 032, 038 | **every login fails** |
+| `login_lock_state`, `record_login_attempt` | 032, 038 **and 041** | **every login fails** (500 UNKNOWN) |
 | `otp_send_wait`, `otp_codes.throttle_key` | 038 | every emailed code fails |
 | `spend_otp_attempt` | 032 | wrong-code handling fails |
 | `reserve_ai_request`, `save_material_summary` | 035 | AI chat, quiz generator, summaries fail |
@@ -66,7 +70,7 @@ curl -s https://studia-api-mu.vercel.app/api/health          # {"ok":true,...}
 
 ---
 
-## 2. Database (migrations 030 → 040)
+## 2. Database (migrations 030 → 041)
 
 ```bash
 cd c:\studia-mobile
@@ -74,7 +78,7 @@ git pull                                                     # make sure you are
 npx supabase@latest login
 npx supabase@latest link --project-ref chvibqjstucybirsmpwu
 npx supabase@latest migration list                           # shows what is already applied
-npx supabase@latest db push                                  # applies 030..040 in file order
+npx supabase@latest db push                                  # applies 030..041 in file order
 ```
 
 `db push` applies them in filename order and stops at the first failure. **If it stops, do not
@@ -90,6 +94,7 @@ set is the one state this plan does not cover; that is what the backup is for.
 | A new instructor sign-up waits for admin approval | anyone registering as an instructor | 030 |
 | Maintenance mode is off and cannot be turned on | nobody (it was off) | 040 |
 | The login lockout and OTP caps actually hold | only an attacker | 032, 038 |
+| Sign-in stops returning 500: the auth and AI RPCs become reachable | everyone | 041 |
 
 The "Classmate" regression is cosmetic and disappears when step 6 ships. If that is not acceptable
 for a demo, hold migration 031 back: move `supabase/migrations/20260101000031_classmate_name_privacy.sql`
