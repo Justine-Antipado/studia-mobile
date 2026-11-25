@@ -8,6 +8,7 @@ import { StyleSheet, View } from "react-native";
 
 import { AppList, FilterPillSheet, ListState, PageTitle, ProgressBar, type FilterGroup } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
+import { SPACE } from "@/shared/constants/tokens";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { TaskRow } from "@/features/student/components/task-row";
 import { useTasks, useToggleTask } from "@/features/student/hooks/use-tasks";
@@ -18,6 +19,8 @@ const FILTER_GROUPS: FilterGroup[] = [
   { key: "tab", title: "Show", options: TASK_TABS.map((t) => ({ value: t, label: t })) },
 ];
 const DEFAULT_FILTERS = { tab: "Today" };
+/** Stable empty list: the loading / error / empty states are drawn by ListState below the rows. */
+const NO_ROWS: Task[] = [];
 
 const EMPTY_MESSAGE: Record<TaskTab, string> = {
   Today: "Nothing due today. Check Upcoming for what is next.",
@@ -58,8 +61,10 @@ export default function StudentTodo() {
     [toggle, openTask],
   );
 
-  return (
-    <Screen role="student" scroll={false} scope="student/todo">
+  // The page chrome rides inside the list so the list itself starts at the top of the content
+  // area: pull-to-refresh then comes from directly under the header, exactly like Home.
+  const chrome = (
+    <View style={s.chrome}>
       <PageTitle title="To-do" onBack={goBack} />
       <ProgressBar
         value={tasks.length ? doneCount / tasks.length : 0}
@@ -71,24 +76,43 @@ export default function StudentTodo() {
         defaults={DEFAULT_FILTERS}
         onApply={(next) => setTab(next.tab as TaskTab)}
       />
+    </View>
+  );
 
-      <View style={s.fill}>
-        <ListState
-          loading={loading}
-          error={error}
-          empty={!loading && shown.length === 0}
-          onRetry={refetch}
-          emptyIcon="checkmark-done-outline"
-          emptyTitle="Nothing here"
-          emptyMessage={EMPTY_MESSAGE[tab]}
-        >
-          <AppList data={shown} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
-        </ListState>
-      </View>
+  return (
+    <Screen
+      role="student"
+      scroll={false}
+      scope="student/todo"
+      contentStyle={s.flush}
+      refreshing={loading}
+      onRefresh={refetch}
+    >
+      <AppList
+        data={loading || error ? NO_ROWS : shown}
+        renderRow={renderRow}
+        header={chrome}
+        footer={
+          <ListState
+            loading={loading}
+            error={error}
+            empty={!loading && shown.length === 0}
+            onRetry={refetch}
+            emptyIcon="checkmark-done-outline"
+            emptyTitle="Nothing here"
+            emptyMessage={EMPTY_MESSAGE[tab]}
+          >
+            {null}
+          </ListState>
+        }
+      />
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  fill: { flex: 1 },
+  // Screen's fixed padding is moved onto the list header so the scroll area (and the refresh
+  // spinner) starts flush under the header; the spacing on screen is unchanged.
+  flush: { paddingTop: 0 },
+  chrome: { paddingTop: SPACE.md + 2, paddingBottom: SPACE.md + 2, gap: SPACE.md + 2 },
 });

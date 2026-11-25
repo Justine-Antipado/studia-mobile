@@ -10,6 +10,9 @@ import { plural } from "@/features/instructor/logic/format";
 import { useInstructorClasses } from "@/features/instructor/hooks/use-classes";
 import type { InstructorClass } from "@/features/instructor/types/instructor";
 
+/** Stable empty list: the loading / error / empty states are drawn by ListState below the rows. */
+const NO_ROWS: InstructorClass[] = [];
+
 export default function InstructorClassesScreen() {
   const router = useSafeRouter();
   const { data, loading, error, refetch } = useInstructorClasses();
@@ -34,32 +37,53 @@ export default function InstructorClassesScreen() {
     [openClass],
   );
 
-  return (
-    <Screen role="instructor" scroll={false} scope="instructor/classes">
+  // The page chrome rides inside the list so the list itself starts at the top of the content
+  // area: pull-to-refresh then comes from directly under the header, exactly like Home.
+  const chrome = (
+    <View style={s.chrome}>
       <PageTitle
         title="Classes"
         trailing={<ActionButton label="Create" icon="add" onPress={openCreate} />}
       />
+    </View>
+  );
 
-      <View style={s.fill}>
-        <ListState
-          loading={loading}
-          error={error}
-          empty={!loading && classes.length === 0}
-          onRetry={refetch}
-          emptyIcon="school-outline"
-          emptyTitle="No classes yet"
-          // F7: no second "Create class" button down here — the header action is always in reach
-          // and two buttons for one action is what the empty state used to add.
-          emptyMessage="Use Create above to add your first class."
-        >
-          <AppList data={classes} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
-        </ListState>
-      </View>
+  return (
+    <Screen
+      role="instructor"
+      scroll={false}
+      scope="instructor/classes"
+      contentStyle={s.flush}
+      refreshing={loading}
+      onRefresh={refetch}
+    >
+      <AppList
+        data={loading || error ? NO_ROWS : classes}
+        renderRow={renderRow}
+        header={chrome}
+        footer={
+          <ListState
+            loading={loading}
+            error={error}
+            empty={!loading && classes.length === 0}
+            onRetry={refetch}
+            emptyIcon="school-outline"
+            emptyTitle="No classes yet"
+            // F7: no second "Create class" button down here — the header action is always in reach
+            // and two buttons for one action is what the empty state used to add.
+            emptyMessage="Use Create above to add your first class."
+          >
+            {null}
+          </ListState>
+        }
+      />
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  fill: { flex: 1, gap: SPACE.lg },
+  // Screen's fixed padding is moved onto the list header so the scroll area (and the refresh
+  // spinner) starts flush under the header; the spacing on screen is unchanged.
+  flush: { paddingTop: 0 },
+  chrome: { paddingTop: SPACE.md + 2, paddingBottom: SPACE.md + 2, gap: SPACE.md + 2 },
 });

@@ -1,10 +1,9 @@
 // screen.tsx — header + content wrapper used by EVERY screen.
 // Responsibilities: app header, offline banner, safe scroll area, keyboard-safe content,
 // pull-to-refresh, centered max-width content on tablets, and an ErrorBoundary around the body.
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   KeyboardAvoidingView,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -15,12 +14,18 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { queryCache } from "@/core/data/cache/query-cache";
+import { useAnyQueryFetching } from "@/core/data/repository/inflight";
 import { useRoleUser } from "@/core/data/storage/session-store";
 import type { Role } from "@/core/types/role";
 import { AppHeader } from "@/shared/components/ui/app-header";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { RouteFeatureGate, useRouteFeatureBlocked } from "@/shared/components/ui/gate-views";
 import { OfflineBanner } from "@/shared/components/ui/offline-banner";
+import {
+  PullToRefreshProvider,
+  refreshControlFor,
+  type PullToRefresh,
+} from "@/shared/components/ui/pull-to-refresh";
 import { C } from "@/shared/constants/studia-colors";
 import { SPACE } from "@/shared/constants/tokens";
 import { MAX_CONTENT_WIDTH, useResponsive } from "@/shared/hooks/use-responsive";
@@ -31,7 +36,7 @@ type Props = {
   scroll?: boolean;
   /** Hide the app header (full-bleed screens such as quiz taking). */
   header?: boolean;
-  /** Pull-to-refresh (scroll screens only). */
+  /** Pull-to-refresh. Declared here for EVERY screen, scrolling or not — see pull-to-refresh.tsx. */
   refreshing?: boolean;
   onRefresh?: () => void;
   /** Label used in crash reports for this screen. */
@@ -58,10 +63,20 @@ export function Screen({
   // refetch in the background (the data on screen stays until the new data arrives). A screen that
   // passes its own onRefresh keeps it; full-bleed screens (header={false}, e.g. quiz taking) don't.
   const [pulling, setPulling] = useState(false);
+  const fetching = useAnyQueryFetching();
+  // The fallback spinner follows the real reload, exactly like a screen that passes its own
+  // onRefresh: it stops once nothing is fetching any more. The short settle gives the refetches
+  // that clearing the cache triggers time to start before "nothing is fetching" counts.
+  useEffect(() => {
+    if (!pulling || fetching) return;
+    const settle = setTimeout(() => setPulling(false), SETTLE_MS);
+    return () => clearTimeout(settle);
+  }, [pulling, fetching]);
+  // ...and a hard cap, so a request that never answers cannot spin forever.
   useEffect(() => {
     if (!pulling) return;
-    const t = setTimeout(() => setPulling(false), 900);
-    return () => clearTimeout(t);
+    const cap = setTimeout(() => setPulling(false), MAX_SPIN_MS);
+    return () => clearTimeout(cap);
   }, [pulling]);
   const pullToReload = useCallback(() => {
     setPulling(true);
@@ -69,6 +84,12 @@ export function Screen({
   }, []);
   const refresh = onRefresh ?? (header ? pullToReload : undefined);
   const spinning = onRefresh ? refreshing : pulling;
+  // The single descriptor: the ScrollView below uses it directly, and a screen that owns its
+  // scrolling (scroll={false}) gets the same one through the context, so both spin identically.
+  const pull = useMemo<PullToRefresh | null>(
+    () => (refresh ? { refreshing: !!spinning, onRefresh: refresh } : null),
+    [refresh, spinning],
+  );
   const { isTablet } = useResponsive();
   const insets = useSafeAreaInsets();
   const inner: StyleProp<ViewStyle> = [s.inner, { maxWidth: isTablet ? MAX_CONTENT_WIDTH : 640 }];
@@ -112,28 +133,27 @@ export function Screen({
             bounces={!!refresh}
             alwaysBounceVertical={false}
             overScrollMode={refresh ? "always" : "never"}
-            refreshControl={
-              refresh ? (
-                <RefreshControl
-                  refreshing={!!spinning}
-                  onRefresh={refresh}
-                  colors={[C.primary]}
-                  tintColor={C.primary}
-                />
-              ) : undefined
-            }
+            refreshControl={refreshControlFor(pull)}
           >
             <View style={inner}>{body}</View>
           </ScrollView>
         ) : (
-          <View style={[s.flex, s.fixed, safeBottom, contentStyle]}>
-            <View style={[s.flex, inner]}>{body}</View>
-          </View>
+          // The screen owns its scrolling, so its AppList picks the refresh up from here.
+          <PullToRefreshProvider value={pull}>
+            <View style={[s.flex, s.fixed, safeBottom, contentStyle]}>
+              <View style={[s.flex, inner]}>{body}</View>
+            </View>
+          </PullToRefreshProvider>
         )}
       </KeyboardAvoidingView>
     </View>
   );
 }
+
+/** Grace period for the cache-clear refetches to register before the spinner may stop. */
+const SETTLE_MS = 200;
+/** withRetry can take ~3 attempts with backoff; past this the spinner gives up regardless. */
+const MAX_SPIN_MS = 15_000;
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.surface },

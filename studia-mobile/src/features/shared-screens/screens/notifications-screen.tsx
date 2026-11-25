@@ -24,6 +24,8 @@ import { FONT, HIT_SLOP, SPACE, TYPE } from "@/shared/constants/tokens";
 /** "Read" joins All and Unread; the three live in the Filters sheet. */
 type Filter = "all" | "unread" | "read";
 const DEFAULT_FILTERS = { show: "all" };
+/** Stable empty list: the loading / error / empty states are drawn by ListState below the rows. */
+const NO_ROWS: NotificationItem[] = [];
 
 export function NotificationsScreen({ role }: { role: Role }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -87,8 +89,10 @@ export function NotificationsScreen({ role }: { role: Role }) {
     [onRowPress],
   );
 
-  return (
-    <Screen role={role} scroll={false} scope={`${role}/notifications`}>
+  // The page chrome rides inside the list so the list itself starts at the top of the content
+  // area: pull-to-refresh then comes from directly under the header, exactly like Home.
+  const chrome = (
+    <View style={s.chrome}>
       <PageTitle
         title="Alerts"
         trailing={
@@ -111,20 +115,36 @@ export function NotificationsScreen({ role }: { role: Role }) {
         defaults={DEFAULT_FILTERS}
         onApply={(next) => setFilter(next.show as Filter)}
       />
+    </View>
+  );
 
-      <View style={s.fill}>
-        <ListState
-          loading={loading}
-          error={error}
-          empty={!loading && shown.length === 0}
-          onRetry={refetch}
-          emptyIcon="notifications-off-outline"
-          emptyTitle={emptyCopy[filter].title}
-          emptyMessage={emptyCopy[filter].message}
-        >
-          <AppList data={shown} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
-        </ListState>
-      </View>
+  return (
+    <Screen
+      role={role}
+      scroll={false}
+      scope={`${role}/notifications`}
+      contentStyle={s.flush}
+      refreshing={loading}
+      onRefresh={refetch}
+    >
+      <AppList
+        data={loading || error ? NO_ROWS : shown}
+        renderRow={renderRow}
+        header={chrome}
+        footer={
+          <ListState
+            loading={loading}
+            error={error}
+            empty={!loading && shown.length === 0}
+            onRetry={refetch}
+            emptyIcon="notifications-off-outline"
+            emptyTitle={emptyCopy[filter].title}
+            emptyMessage={emptyCopy[filter].message}
+          >
+            {null}
+          </ListState>
+        }
+      />
 
       <BottomSheet visible={!!opened} title={opened?.tag ?? "Notification"} onClose={() => setOpenId(null)}>
         {opened ? (
@@ -143,6 +163,9 @@ export function NotificationsScreen({ role }: { role: Role }) {
 const s = StyleSheet.create({
   markAll: { color: C.primary, fontSize: 12.5, fontFamily: FONT.semibold },
   unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.primary },
-  fill: { flex: 1, gap: SPACE.lg },
+  // Screen's fixed padding is moved onto the list header so the scroll area (and the refresh
+  // spinner) starts flush under the header; the spacing on screen is unchanged.
+  flush: { paddingTop: 0 },
+  chrome: { paddingTop: SPACE.md + 2, paddingBottom: SPACE.md + 2, gap: SPACE.md + 2 },
   detail: { gap: SPACE.sm, alignItems: "flex-start" },
 });

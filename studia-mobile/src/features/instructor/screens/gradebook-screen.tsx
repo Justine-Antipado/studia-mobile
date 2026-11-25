@@ -35,6 +35,9 @@ const DEFAULT_FILTERS = { class: ALL_CLASSES };
 
 type Row = StudentOverall & { id: string };
 
+/** Stable empty list: the loading / error / empty states are drawn by ListState below the rows. */
+const NO_ROWS: Row[] = [];
+
 export default function GradebookScreen() {
   const router = useSafeRouter();
   const goBack = useSafeBack("/instructor/assessments");
@@ -85,8 +88,10 @@ export default function GradebookScreen() {
 
   const openGrading = useCallback(() => router.push("/instructor/grading"), [router]);
 
-  return (
-    <Screen role="instructor" scroll={false} scope="instructor/gradebook">
+  // The page chrome rides inside the list so the list itself starts at the top of the content
+  // area: pull-to-refresh then comes from directly under the header, exactly like Home.
+  const chrome = (
+    <View style={s.chrome}>
       <PageTitle title="Gradebook" subtitle="Overall, weighted by points." onBack={goBack} />
 
       {presetClassId ? null : (
@@ -112,25 +117,44 @@ export default function GradebookScreen() {
           onPress={openGrading}
         />
       </View>
+    </View>
+  );
 
-      <View style={s.fill}>
-        <ListState
-          loading={book.loading}
-          error={book.error}
-          onRetry={book.refetch}
-          empty={!book.loading && rows.length === 0}
-          emptyIcon="bar-chart-outline"
-          emptyTitle="No grades yet"
-          emptyMessage="Create an assignment or quiz and grade submissions to see them here."
-        >
-          <AppList data={rows} renderRow={renderRow} refreshing={book.loading} onRefresh={book.refetch} />
-        </ListState>
-      </View>
+  return (
+    <Screen
+      role="instructor"
+      scroll={false}
+      scope="instructor/gradebook"
+      contentStyle={s.flush}
+      refreshing={book.loading}
+      onRefresh={book.refetch}
+    >
+      <AppList
+        data={book.loading || book.error ? NO_ROWS : rows}
+        renderRow={renderRow}
+        header={chrome}
+        footer={
+          <ListState
+            loading={book.loading}
+            error={book.error}
+            onRetry={book.refetch}
+            empty={!book.loading && rows.length === 0}
+            emptyIcon="bar-chart-outline"
+            emptyTitle="No grades yet"
+            emptyMessage="Create an assignment or quiz and grade submissions to see them here."
+          >
+            {null}
+          </ListState>
+        }
+      />
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
   statRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.md },
-  fill: { flex: 1 },
+  // Screen's fixed padding is moved onto the list header so the scroll area (and the refresh
+  // spinner) starts flush under the header; the spacing on screen is unchanged.
+  flush: { paddingTop: 0 },
+  chrome: { paddingTop: SPACE.md + 2, paddingBottom: SPACE.md + 2, gap: SPACE.md + 2 },
 });

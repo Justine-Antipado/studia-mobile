@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 
 import { AppList, FilterPillSheet, ListRow, ListState, PageTitle, type FilterGroup } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
+import { SPACE } from "@/shared/constants/tokens";
 import { useRouteId } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { plural, timeAgo } from "@/features/instructor/logic/format";
@@ -13,6 +14,8 @@ import type { Submission } from "@/features/instructor/types/instructor";
 
 const ALL_QUIZZES = "all";
 const DEFAULT_FILTERS = { quiz: ALL_QUIZZES };
+/** Stable empty list: the loading / error / empty states are drawn by ListState below the rows. */
+const NO_ROWS: Submission[] = [];
 
 export default function GradingScreen() {
   const router = useSafeRouter();
@@ -68,8 +71,10 @@ export default function GradingScreen() {
     [openSubmission],
   );
 
-  return (
-    <Screen role="instructor" scroll={false} scope="instructor/grading">
+  // The page chrome rides inside the list so the list itself starts at the top of the content
+  // area: pull-to-refresh then comes from directly under the header, exactly like Home.
+  const chrome = (
+    <View style={s.chrome}>
       <PageTitle title="Needs Grading" subtitle={`${plural(pending.length, "submission")} waiting, oldest first`} onBack={goBack} />
 
       {quizzes.length > 1 ? (
@@ -80,16 +85,35 @@ export default function GradingScreen() {
           onApply={(next) => setFilter(next.quiz === ALL_QUIZZES ? null : next.quiz)}
         />
       ) : null}
+    </View>
+  );
 
-      <View style={s.fill}>
-        <ListState loading={loading} error={error} onRetry={refetch} empty={!loading && pending.length === 0} emptyIcon="checkmark-done-outline" emptyTitle="All caught up" emptyMessage="Every submission has been graded.">
-          <AppList data={visible} renderRow={renderRow} refreshing={loading} onRefresh={refetch} />
-        </ListState>
-      </View>
+  return (
+    <Screen
+      role="instructor"
+      scroll={false}
+      scope="instructor/grading"
+      contentStyle={s.flush}
+      refreshing={loading}
+      onRefresh={refetch}
+    >
+      <AppList
+        data={loading || error ? NO_ROWS : visible}
+        renderRow={renderRow}
+        header={chrome}
+        footer={
+          <ListState loading={loading} error={error} onRetry={refetch} empty={!loading && pending.length === 0} emptyIcon="checkmark-done-outline" emptyTitle="All caught up" emptyMessage="Every submission has been graded.">
+            {null}
+          </ListState>
+        }
+      />
     </Screen>
   );
 }
 
 const s = StyleSheet.create({
-  fill: { flex: 1 },
+  // Screen's fixed padding is moved onto the list header so the scroll area (and the refresh
+  // spinner) starts flush under the header; the spacing on screen is unchanged.
+  flush: { paddingTop: 0 },
+  chrome: { paddingTop: SPACE.md + 2, paddingBottom: SPACE.md + 2, gap: SPACE.md + 2 },
 });

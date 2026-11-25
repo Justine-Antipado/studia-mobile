@@ -6,16 +6,16 @@
 // contentContainerStyle is a new value on every render, which re-renders every visible row and
 // makes React.memo on the row components pointless. Here those props are module-level constants
 // and the caller passes `renderRow`, which it wraps in its own useCallback.
+//
+// Pull-to-refresh is NOT a prop of this list: it comes from Screen through pull-to-refresh.tsx,
+// so there is one spinner, one look, one place it is pulled from.
 import { memo, useCallback, type ReactElement } from "react";
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  View,
-  type ListRenderItemInfo,
-} from "react-native";
+import { FlatList, StyleSheet, View, type ListRenderItemInfo } from "react-native";
 
-import { C } from "@/shared/constants/studia-colors";
+import {
+  refreshControlFor,
+  useScreenPullToRefresh,
+} from "@/shared/components/ui/pull-to-refresh";
 import { SPACE } from "@/shared/constants/tokens";
 
 type Identifiable = { id: string };
@@ -24,8 +24,6 @@ type Props<T extends Identifiable> = {
   data: readonly T[];
   /** Wrap this in useCallback in the calling screen, or the rows re-render on every keystroke. */
   renderRow: (item: T) => ReactElement | null;
-  refreshing?: boolean;
-  onRefresh?: () => void;
   /** Pagination: called once per end-of-list; the hook decides whether another page exists. */
   onEndReached?: () => void;
   header?: ReactElement | null;
@@ -42,14 +40,16 @@ const Separator = memo(function Separator() {
 function AppListInner<T extends Identifiable>({
   data,
   renderRow,
-  refreshing,
-  onRefresh,
   onEndReached,
   header,
   footer,
   rowHeight,
   horizontal = false,
 }: Props<T>) {
+  // Pull-to-refresh is never declared here: the screen declares it on Screen, which hands the
+  // one RefreshControl down. That keeps every spinner identical and anchored under the header.
+  const pull = useScreenPullToRefresh();
+
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<T>) => renderRow(item),
     [renderRow],
@@ -78,16 +78,7 @@ function AppListInner<T extends Identifiable>({
       showsHorizontalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={!!refreshing}
-            onRefresh={onRefresh}
-            colors={REFRESH_COLORS}
-            tintColor={C.primary}
-          />
-        ) : undefined
-      }
+      refreshControl={horizontal ? undefined : refreshControlFor(pull)}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.4}
       getItemLayout={rowHeight ? getItemLayout : undefined}
@@ -102,7 +93,6 @@ function AppListInner<T extends Identifiable>({
 }
 
 const keyExtractor = (item: Identifiable) => item.id;
-const REFRESH_COLORS = [C.primary];
 
 /** Generic components lose their type parameter through memo(), so the cast restores it. */
 export const AppList = memo(AppListInner) as typeof AppListInner;

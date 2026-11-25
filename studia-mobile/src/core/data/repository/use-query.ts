@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toAppError, withRetry, type AppError, type Result } from "@/core/data/errors/app-error";
 import { queryCache, TTL } from "@/core/data/cache/query-cache";
+import { inflight } from "@/core/data/repository/inflight";
 
 export type QueryState<T> = {
   data: T | undefined;
@@ -47,20 +48,27 @@ export function useQuery<T>(
       if (!key || !enabled) return;
       const gen = ++generation.current;
       if (!background) setLoading(true);
-      const result = await withRetry(() =>
-        fetcher()
-          .then((r) => r)
-          .catch((e) => ({ ok: false as const, error: toAppError(e) })),
-      );
-      if (gen !== generation.current) return; // a newer request/unmount won the race
-      if (result.ok) {
-        queryCache.set(key, result.value, ttlMs);
-        setData(result.value);
-        setError(null);
-      } else {
-        setError(result.error);
+      // Counted for the whole app so Screen's pull-to-refresh can spin for exactly as long as
+      // the reload it started — see core/data/repository/inflight.ts.
+      inflight.start();
+      try {
+        const result = await withRetry(() =>
+          fetcher()
+            .then((r) => r)
+            .catch((e) => ({ ok: false as const, error: toAppError(e) })),
+        );
+        if (gen !== generation.current) return; // a newer request/unmount won the race
+        if (result.ok) {
+          queryCache.set(key, result.value, ttlMs);
+          setData(result.value);
+          setError(null);
+        } else {
+          setError(result.error);
+        }
+        setLoading(false);
+      } finally {
+        inflight.done();
       }
-      setLoading(false);
     },
     [key, enabled, fetcher, ttlMs],
   );
