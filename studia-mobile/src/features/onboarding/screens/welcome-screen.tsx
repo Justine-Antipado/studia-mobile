@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { legalAgreed, onboardingDone } from "@/core/data/storage/device-flags";
 import { usePersistedValue } from "@/core/data/storage/persisted-value";
+import { useUser } from "@/core/data/storage/session-store";
+import { HOME_ROUTE } from "@/core/logic/use-role-guard";
 import { AppButton } from "@/shared/components/ui/app-button";
 import { C, SPLASH_GRADIENT } from "@/shared/constants/studia-colors";
 
@@ -34,6 +36,12 @@ export default function WelcomeScreen() {
   // read before the splash hides, so this screen cannot flash first.
   const { value: agreed } = usePersistedValue(legalAgreed);
 
+  // A still-valid session opens straight on that account's own home: no landing screen, no role
+  // choice, no login form. The root layout awaits sessionReady before it renders anything, so the
+  // user is already known here and this cannot flash. Signing out clears the session, and the app
+  // then starts on the role choice with an empty login form — never naming the account that left.
+  const user = useUser();
+
   // push (not replace) so Back returns to the welcome screen.
   const handleGetStarted = () => {
     void onboardingDone.set(true);
@@ -41,6 +49,7 @@ export default function WelcomeScreen() {
   };
   const handleLearnMore = () => router.push("/learn-more");
 
+  if (user) return <Redirect href={HOME_ROUTE[user.role]} />;
   if (agreed) return <Redirect href="/explore" />;
 
   return (

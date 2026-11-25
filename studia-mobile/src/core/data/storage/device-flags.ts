@@ -4,6 +4,7 @@
 // They belong to the device, not to an account: signing out keeps them, and they disappear only
 // when the user clears the app's data in Android app info (Settings > Apps > Studia > Storage).
 // That is why sign-out.ts does not touch them — see core/logic/sign-out.ts.
+import { deviceStore, STORAGE_PREFIX } from "@/core/data/storage/key-value-store";
 import { PersistedValue, parseBoolean } from "@/core/data/storage/persisted-value";
 
 /** The Terms and Privacy sheet was read and accepted on this device. */
@@ -21,27 +22,14 @@ export const onboardingDone = new PersistedValue<boolean>(
 );
 
 /**
- * Who signed in last on this phone, so the login form can be prefilled and the Google button can
- * name the account. Email only — never a password, never a token.
+ * PRIVACY: this device used to remember the last account that signed in here ("auth.lastLogin.v1":
+ * email + provider + role), which the login form used to prefill the email field and to label the
+ * Google button "Continue as <email>". That showed one user's address to the next person who
+ * opened the app on a shared or lost phone, so the hint is gone and the key is deleted on launch
+ * for installs that still carry it. Do not reintroduce a login hint here.
  */
-export type LoginHint = { email: string; provider: "password" | "google"; role: "student" | "instructor" };
-
-const parseLoginHint = (raw: unknown): LoginHint | null | undefined => {
-  if (raw === null) return null;
-  if (typeof raw !== "object") return undefined;
-  const r = raw as Record<string, unknown>;
-  const { email, provider, role } = r;
-  if (typeof email !== "string" || !email.includes("@")) return undefined;
-  if (provider !== "password" && provider !== "google") return undefined;
-  if (role !== "student" && role !== "instructor") return undefined;
-  return { email, provider, role };
-};
-
-export const lastLogin = new PersistedValue<LoginHint | null>(
-  "auth.lastLogin.v1",
-  null,
-  parseLoginHint,
-);
+const purgeLoginHint = (): Promise<void> =>
+  deviceStore.remove(`${STORAGE_PREFIX}auth.lastLogin.v1`).catch(() => undefined);
 
 /**
  * Resolves once every flag has been read from the device. The root layout awaits this with the
@@ -50,5 +38,5 @@ export const lastLogin = new PersistedValue<LoginHint | null>(
 export const deviceFlagsReady: Promise<void> = Promise.all([
   legalAgreed.load(),
   onboardingDone.load(),
-  lastLogin.load(),
+  purgeLoginHint(),
 ]).then(() => undefined);

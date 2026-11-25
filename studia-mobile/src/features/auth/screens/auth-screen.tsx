@@ -28,7 +28,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { lastLogin } from "@/core/data/storage/device-flags";
 import { setUser } from "@/core/data/storage/session-store";
 import { profileRepository } from "@/features/shared-screens/data/profile-repository";
 import { toProfile } from "@/features/auth/logic/user-profile";
@@ -196,22 +195,15 @@ export default function Auth() {
   const topPad = insets.top + (compact ? 8 : 14);
   const bottomPad = Math.max(insets.bottom, 16) + 8;
 
-  // A1: the phone remembers the last account that signed in here (email + provider, never a
-  // password). The login form opens prefilled and the Google button names the account, so a
-  // returning user types nothing. Google itself never hands out a password, so reusing the Google
-  // credential for the password form is impossible; this removes the retyping instead.
-  const hint = lastLogin.peek();
-  const sameRoleHint = hint && hint.role === role ? hint : null;
-
+  // PRIVACY: this form never remembers who signed in here last. A phone can be shared or lost, so
+  // neither the email field nor the Google button may name the previous account — whoever opens
+  // the login screen sees an empty form. A still-valid session is restored silently at launch and
+  // goes straight to that account's home (features/onboarding/screens/welcome-screen.tsx), so a
+  // returning user does not pass through here at all.
   const [mode, setMode] = useState<Mode>("login");
-  const [form, setForm] = useState<Form>(() =>
-    sameRoleHint ? { ...EMPTY_FORM, email: sameRoleHint.email } : EMPTY_FORM,
-  );
+  const [form, setForm] = useState<Form>(EMPTY_FORM);
 
-  const googleLabel =
-    mode === "login" && sameRoleHint?.provider === "google"
-      ? `Continue as ${sameRoleHint.email}`
-      : "Continue with Google";
+  const googleLabel = "Continue with Google";
   const [errors, setErrors] = useState<FieldErrors>({});
   const [active, setActive] = useState<FieldKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -350,7 +342,6 @@ export default function Auth() {
   const onAuthenticated = (session: Session) => {
     // The session token is persisted by the Supabase client (core/data/supabase/secure-storage.ts).
     const { user } = session;
-    void lastLogin.set({ email: user.email, provider: user.authProvider, role: user.role });
     setUser(toProfile(user));
     void profileRepository.loadAvatar(); // saved photo comes from the database
     router.replace(HOME_ROUTES[user.role ?? role]);
