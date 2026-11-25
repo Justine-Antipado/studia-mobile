@@ -21,7 +21,6 @@ type CommentRow = {
   body: string;
   posted_at: string;
   author_id: string | null;
-  author: { full_name: string } | null;
 };
 type AnnRow = {
   id: string;
@@ -34,16 +33,41 @@ type AnnRow = {
 };
 
 const SELECT =
-  "id, class_id, title, body, pinned, posted_at, comments:announcement_comments(id, body, posted_at, author_id, author:users!announcement_comments_author_id_fkey(full_name))";
+  "id, class_id, title, body, pinned, posted_at, comments:announcement_comments(id, body, posted_at, author_id)";
+const COMMENT_SELECT = "id, body, posted_at, author_id";
 
 async function ownerOf(classId: string): Promise<string | null> {
   const row = must(await db().from("classes").select("instructor_id").eq("id", classId).maybeSingle()) as { instructor_id: string } | null;
   return row?.instructor_id ?? null;
 }
 
-function toComment(c: CommentRow, ownerId: string | null, me: string): Comment {
+/**
+ * Display names of the comment authors, from `person_names` (migration 031).
+ *
+ * The author's name is NOT embedded in the announcement query any more: the row policy that allowed
+ * a student to read a classmate's `users` row also exposed that classmate's email and phone, so it
+ * was dropped. `person_names` returns the name alone, for the people the caller studies with. An id
+ * it does not answer for (someone who has left the class, a deleted account) falls back to the
+ * generic label in `toComment`, exactly as a missing name did before.
+ */
+const NAME_BATCH = 200; // person_names answers for at most 200 ids per call
+
+async function namesOf(ids: readonly (string | null)[]): Promise<Map<string, string>> {
+  const unique = Array.from(new Set(ids.filter((id): id is string => !!id)));
+  const out = new Map<string, string>();
+  for (let i = 0; i < unique.length; i += NAME_BATCH) {
+    const rows = (must(await db().rpc("person_names", { p_ids: unique.slice(i, i + NAME_BATCH) })) ?? []) as {
+      id: string;
+      name: string;
+    }[];
+    for (const r of rows) out.set(r.id, r.name);
+  }
+  return out;
+}
+
+function toComment(c: CommentRow, ownerId: string | null, me: string, names: Map<string, string>): Comment {
   const byOwner = !!c.author_id && c.author_id === ownerId;
-  const name = c.author?.full_name;
+  const name = c.author_id ? names.get(c.author_id) : undefined;
   return {
     id: c.id,
     author: name ? (byOwner ? `Prof. ${name}` : name) : byOwner ? "Instructor" : "Classmate",
@@ -55,7 +79,7 @@ function toComment(c: CommentRow, ownerId: string | null, me: string): Comment {
   };
 }
 
-function toView(a: AnnRow, ownerId: string | null, me: string): AnnouncementView {
+function toView(a: AnnRow, ownerId: string | null, me: string, names: Map<string, string>): AnnouncementView {
   return {
     id: a.id,
     classId: a.class_id,
@@ -65,9 +89,12 @@ function toView(a: AnnRow, ownerId: string | null, me: string): AnnouncementView
     pinned: a.pinned,
     comments: (a.comments ?? [])
       .sort((x, y) => x.posted_at.localeCompare(y.posted_at))
-      .map((c) => toComment(c, ownerId, me)),
+      .map((c) => toComment(c, ownerId, me, names)),
   };
 }
+
+const authorIds = (rows: readonly AnnRow[]): (string | null)[] =>
+  rows.flatMap((a) => (a.comments ?? []).map((c) => c.author_id));
 
 export function listAnnouncements(classId: string): Promise<Result<AnnouncementView[]>> {
   return guard(async () => {
@@ -84,7 +111,10 @@ export function listAnnouncements(classId: string): Promise<Result<AnnouncementV
         .order("pinned", { ascending: false })
         .order("posted_at", { ascending: false }),
     ]);
-    return (must(rows) as unknown as AnnRow[]).map((a) => toView(a, owner, me));
+    const list = must(rows) as unknown as AnnRow[];
+    // One round trip for every author on the screen, after the rows are in.
+    const names = await namesOf(authorIds(list));
+    return list.map((a) => toView(a, owner, me, names));
   });
 }
 
@@ -96,7 +126,8 @@ export function getAnnouncement(classId: string, id: string): Promise<Result<Ann
       db().from("announcements").select(SELECT).eq("id", id).eq("class_id", classId).is("deleted_at", null).maybeSingle(),
     ]);
     const a = must(row) as unknown as AnnRow | null;
-    return a ? toView(a, owner, me) : null;
+    if (!a) return null;
+    return toView(a, owner, me, await namesOf(authorIds([a])));
   });
 }
 
@@ -134,10 +165,12 @@ export function addComment(classId: string, id: string, text: string): Promise<R
       db()
         .from("announcement_comments")
         .insert({ announcement_id: id, author_id: me, body: text.trim() })
-        .select("id, body, posted_at, author_id, author:users!announcement_comments_author_id_fkey(full_name)")
+        .select(COMMENT_SELECT)
         .single(),
     ]);
-    return toComment(must(row) as unknown as CommentRow, owner, me);
+    const c = must(row) as unknown as CommentRow;
+    // The author is the caller, and person_names always answers for the caller themselves.
+    return toComment(c, owner, me, await namesOf([c.author_id]));
   }, "This announcement no longer exists.");
 }
 

@@ -55,6 +55,11 @@ export default endpoint(Body, async ({ action, data }, req) => {
     await db.storage.from("avatars").remove([path]).catch(() => undefined);
     throw error;
   }
-  if (profile.avatar_path) await db.storage.from("avatars").remove([profile.avatar_path]).catch(() => undefined);
+  // The new photo is already the one on the profile, so a failure here costs nothing but a leftover
+  // object in the bucket. Say which one, or the orphans accumulate with no way to find them.
+  if (profile.avatar_path) {
+    const { error: rmErr } = await db.storage.from("avatars").remove([profile.avatar_path]);
+    if (rmErr) console.error("[avatar] orphaned previous object", profile.avatar_path);
+  }
   return { url: await signed(db, path) };
 });

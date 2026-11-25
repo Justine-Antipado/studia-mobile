@@ -30,7 +30,16 @@ export const secureStorage = {
       return null;
     }
   },
+  /**
+   * Write the chunks first and the count LAST, and clear the count before touching anything.
+   *
+   * The count is what getItem trusts, so while the chunks are being replaced it must not point at
+   * them. Clearing it first means an interrupted write reads as "nothing stored" (signed out) instead
+   * of as a session stitched together from one old chunk and one new one — which would be a token
+   * that parses but does not work.
+   */
   async setItem(key: string, value: string): Promise<void> {
+    await SecureStore.deleteItemAsync(countKey(key)).catch(() => undefined);
     await removeChunks(key);
     const n = Math.ceil(value.length / CHUNK);
     for (let i = 0; i < n; i++) {
