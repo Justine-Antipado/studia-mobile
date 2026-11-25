@@ -33,7 +33,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (identifier, password) => {
     const result = await api.login(identifier, password);
     if (result?.otpRequired) return result;
-    // A data source without the OTP step (or a future trusted-device path).
+    // Reached only if the server stops requiring a code (a future trusted-device path). The normal
+    // admin path returns otpRequired above and the session is opened by verifyOtp.
     setSession({ token: result.token, admin: result.admin });
     return result;
   }, []);

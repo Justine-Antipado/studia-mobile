@@ -42,6 +42,9 @@ export default function UserDetail() {
   const { toast, showToast, showError, clearToast } = useToast();
 
   const isActive = user?.status === 'Active';
+  // A new instructor account that has never been usable, as opposed to one switched off later
+  // (migration 030). Same call to approve as to reactivate; different decision, different wording.
+  const isPending = user?.status === 'Pending';
   const ownedClasses = impact?.classesOwned ?? 0;
   const owners = useMemo(
     () => (instructors?.data ?? []).filter((i) => i.id !== id).map((i) => ({ value: i.id, label: i.name })),
@@ -192,14 +195,20 @@ export default function UserDetail() {
           </div>
 
           <Card className="danger-zone" title="Account access">
-            {isActive ? (
+            {isActive && (
               <p className="muted">
                 Deactivating blocks sign-in and signs the person out everywhere. Nothing is deleted
                 {user.role === 'Instructor' ? ': their classes and every student&apos;s work in them stay intact' : ''}. You can reactivate at any time.
               </p>
-            ) : (
-              <p className="muted">This account is deactivated and cannot sign in.</p>
             )}
+            {isPending && (
+              <p className="muted">
+                This account signed up as an instructor and is waiting for your approval. It cannot sign in yet.
+                Approve it only if {user.name} really is teaching staff — an instructor can create classes, publish
+                lessons, grade work and see their students&apos; details.
+              </p>
+            )}
+            {!isActive && !isPending && <p className="muted">This account is deactivated and cannot sign in.</p>}
             <div className="row-actions">
               {isActive ? (
                 <button type="button" className="btn btn-primary" onClick={() => setDialog('deactivate')}>
@@ -207,7 +216,7 @@ export default function UserDetail() {
                 </button>
               ) : (
                 <button type="button" className="btn btn-primary" onClick={() => setDialog('reactivate')}>
-                  <Icon.Check /> Reactivate account
+                  <Icon.Check /> {isPending ? 'Approve account' : 'Reactivate account'}
                 </button>
               )}
               {user.role === 'Instructor' && ownedClasses > 0 && (
@@ -246,14 +255,25 @@ export default function UserDetail() {
 
       <ConfirmDialog
         open={dialog === 'reactivate'}
-        title={`Reactivate ${user?.name ?? 'this user'}?`}
-        confirmLabel="Reactivate"
+        title={isPending ? `Approve ${user?.name ?? 'this user'} as an instructor?` : `Reactivate ${user?.name ?? 'this user'}?`}
+        confirmLabel={isPending ? 'Approve' : 'Reactivate'}
         tone="primary"
         busy={busy}
-        onConfirm={() => run(() => usersRepo.setUsersActive([id], true), 'Account reactivated.')}
+        onConfirm={() =>
+          run(() => usersRepo.setUsersActive([id], true), isPending ? 'Account approved.' : 'Account reactivated.')
+        }
         onClose={close}
       >
-        <b>{user?.name}</b> will be able to sign in again.
+        {isPending ? (
+          <>
+            <b>{user?.name}</b> will be able to sign in and start teaching: creating classes, publishing lessons,
+            setting assessments and seeing the details of students who join.
+          </>
+        ) : (
+          <>
+            <b>{user?.name}</b> will be able to sign in again.
+          </>
+        )}
       </ConfirmDialog>
 
       <ConfirmDialog

@@ -2,12 +2,15 @@
 import { z } from "zod";
 import { adminClient, anonClient } from "../../src/lib/clients.js";
 import { ApiError, clientIp, endpoint } from "../../src/lib/http.js";
-import { assertCanSendOtp, assertGoogleFlowStarted, getProfileByEmail, recordOtpSent } from "../../src/lib/auth-core.js";
+import { assertCanSendOtp, assertFlowStarted, getProfileByEmail, recordOtpSent } from "../../src/lib/auth-core.js";
 import { OTP, isCampusEmail, normalizeEmail } from "../../src/lib/policy.js";
 
 const Body = z.object({
   email: z.string().max(254).transform(normalizeEmail),
-  purpose: z.enum(["signup", "reset", "google_login", "google_signup"]),
+  // admin_login: the resend of the admin's second-factor code. Like the google_* purposes it is only
+  // allowed for a flow that already passed its credential check, so this is not a way to mail codes
+  // to an address you merely know.
+  purpose: z.enum(["signup", "reset", "google_login", "google_signup", "admin_login"]),
 });
 
 export default endpoint(Body, async ({ email, purpose }, req) => {
@@ -43,7 +46,7 @@ export default endpoint(Body, async ({ email, purpose }, req) => {
     const { error } = await anonClient().auth.resend({ type: "signup", email });
     if (error) throw error;
   } else {
-    await assertGoogleFlowStarted(db, email, purpose);
+    await assertFlowStarted(db, email, purpose);
     const { error } = await anonClient().auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
     if (error) throw error;
   }

@@ -1,8 +1,12 @@
 // Phase 4: rebuilt on DataTable with URL-synced filters, server-shaped paging
-// and sort, and a user detail page. The pending/approve/block/unblock flow is
-// gone — status is Active/Inactive, set in the mobile app; this page is read
-// and deactivate only (View, Export, Deactivate per row; bulk via selection). Permanent delete lives on
-// the profile page, where the admin first sees what would be lost.
+// and sort, and a user detail page. Accounts are created in the mobile app, so this page is read,
+// approve and deactivate (View, Export, Approve/Deactivate per row; bulk via selection). Permanent
+// delete lives on the profile page, where the admin first sees what would be lost.
+//
+// Status is Active / Pending / Inactive. "Pending" is a new instructor account: migration 030 refuses
+// to trust a client that says `role: instructor`, so the account exists but cannot sign in until it is
+// approved here. Approving and reactivating are the same call — admin_set_user_active(ids, true) —
+// only the wording differs, because what the admin is deciding is different.
 import { useMemo, useState } from 'react';
 import UserFilters from '../components/UserFilters';
 import { useNavigate } from 'react-router-dom';
@@ -84,8 +88,10 @@ export default function Users() {
   const rows = data?.data ?? [];
   const pagination = usePagination({ page: query.page, pageSize: PAGE_SIZE, total: data?.meta.total ?? 0 });
   const selectedRows = rows.filter((u) => selected.has(u.id));
-  // Only active accounts can be deactivated; a deactivated one is reactivated instead.
+  // Only active accounts can be deactivated; a pending one is approved and a deactivated one
+  // reactivated instead (both are admin_set_user_active(ids, true)).
   const activeSelected = selectedRows.filter((u) => u.status === 'Active');
+  const pendingSelected = selectedRows.filter((u) => u.status === 'Pending');
   const deleteTargets = rows.filter((u) => deleteIds?.includes(u.id));
 
   const runDelete = async () => {
@@ -108,13 +114,25 @@ export default function Users() {
     }
   };
 
-  const reactivate = async (u) => {
+  /** Approve (pending) or reactivate (deactivated): one call, two sentences. */
+  const activate = async (users) => {
+    if (!users.length) return;
+    const approving = users.every((u) => u.status === 'Pending');
+    const verb = approving ? 'approved' : 'reactivated';
+    setBusy(true);
     try {
-      await usersRepo.setUsersActive([u.id], true);
-      showToast(`${u.name} reactivated.`);
+      await usersRepo.setUsersActive(users.map((u) => u.id), true);
+      showToast(users.length === 1 ? `${users[0].name} ${verb}.` : `${users.length} accounts ${verb}.`);
+      setSelected((prev) => {
+        const next = new Set(prev);
+        users.forEach((u) => next.delete(u.id));
+        return next;
+      });
       reload();
     } catch (e) {
       showError(e);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -149,12 +167,17 @@ export default function Users() {
     <>
       <PageHeader
         title="Users"
-        subtitle="Students and instructors registered in the mobile app. Accounts are created there, so this page is read and deactivate only."
+        subtitle="Students and instructors registered in the mobile app. New instructor accounts wait here for your approval before they can sign in."
         actions={
           <>
             <button type="button" className="btn btn-ghost" disabled={!rows.length} onClick={() => exportCsv(rows)}>
               <Icon.Download /> Export CSV
             </button>
+            {pendingSelected.length > 0 && (
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => activate(pendingSelected)}>
+                <Icon.Check /> Approve ({pendingSelected.length})
+              </button>
+            )}
             <button
               type="button"
               className="btn btn-red"
@@ -219,7 +242,12 @@ export default function Users() {
                   {u.status === 'Active' ? (
                     <ActionButton icon="Close" label="Deactivate" tone="danger" onClick={() => setDeleteIds([u.id])} />
                   ) : (
-                    <ActionButton icon="Check" label="Reactivate" tone="primary" onClick={() => reactivate(u)} />
+                    <ActionButton
+                      icon="Check"
+                      label={u.status === 'Pending' ? 'Approve' : 'Reactivate'}
+                      tone="primary"
+                      onClick={() => activate([u])}
+                    />
                   )}
                 </ActionRow>
               )}

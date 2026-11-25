@@ -5,6 +5,8 @@ import { COURSES, DEPARTMENTS, SECTIONS, YEARS } from '../../../core/logic/valid
 const STATUS_OPTIONS = [
   { value: 'All', label: 'All statuses' },
   { value: 'Active', label: 'Active', dot: 'green' },
+  // A new instructor account waiting for approval (migration 030). Nobody can sign in with it yet.
+  { value: 'Pending', label: 'Pending approval', dot: 'amber' },
   { value: 'Inactive', label: 'Inactive', dot: 'grey' },
 ];
 const withAll = (all, values, labelFor = (v) => String(v)) => [

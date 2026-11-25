@@ -57,10 +57,22 @@ function cors(req: VercelRequest, res: VercelResponse): void {
   }
 }
 
+/**
+ * The caller's IP, as recorded in login_attempts, otp_codes and audit_log.
+ *
+ * `x-forwarded-for` is a list the client can start: anything it sends arrives on the LEFT, and the
+ * platform appends the real peer on the right. Taking the leftmost value therefore records whatever
+ * the caller typed, which would let an attacker forge the IP in the admin's security views. Vercel's
+ * own `x-vercel-forwarded-for` cannot be spoofed, so prefer it and fall back to the RIGHTMOST
+ * `x-forwarded-for` hop, which is the one the platform added.
+ */
 export const clientIp = (req: VercelRequest): string | null => {
+  const vercel = req.headers["x-vercel-forwarded-for"];
+  const trusted = Array.isArray(vercel) ? vercel[0] : vercel;
+  if (trusted?.trim()) return trusted.split(",").pop()?.trim() || null;
   const f = req.headers["x-forwarded-for"];
   const raw = Array.isArray(f) ? f[0] : f;
-  return raw?.split(",")[0]?.trim() || null;
+  return raw?.split(",").pop()?.trim() || null;
 };
 
 export const bearer = (req: VercelRequest): string => {

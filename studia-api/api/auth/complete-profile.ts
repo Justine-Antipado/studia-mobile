@@ -31,8 +31,13 @@ const Body = z
     }
   });
 
-/** Flip to "pending_approval" once an admin approval screen exists (mock: REQUIRE_INSTRUCTOR_APPROVAL). */
-const REQUIRE_INSTRUCTOR_APPROVAL = false;
+/**
+ * A Google sign-up that asks to be an instructor waits for an admin, exactly like a password sign-up
+ * (migration 030 applies the same rule in private.handle_new_user). This is the only place `role` is
+ * ever set from a request, so without it the Google door would still hand out instructor accounts.
+ * The admin approves from the portal's Users page, which calls admin_set_user_active(ids, true).
+ */
+const REQUIRE_INSTRUCTOR_APPROVAL = true;
 
 export default endpoint(Body, async (b, req) => {
   const db = adminClient();
@@ -63,7 +68,12 @@ export default endpoint(Body, async (b, req) => {
     .eq("profile_completed", false) // single use even under concurrent calls
     .select("*")
     .single();
-  if (upErr) throw upErr;
+  // The guard above is what makes this single-use; the loser of a concurrent call matches no row and
+  // PostgREST reports PGRST116. That is this endpoint's "already done", not a server fault.
+  if (upErr) {
+    if (upErr.code === "PGRST116") throw new ApiError("EMAIL_TAKEN", "An account with this email already exists.");
+    throw upErr;
+  }
 
   return { profile: toProfileDto(updated, data.user) };
 });

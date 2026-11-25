@@ -1,14 +1,23 @@
 /**
- * TOKEN STORE — the only module that holds the access token.
+ * TOKEN STORE — the portal's own "who is signed in" marker.
  *
- * Decision (documented in docs/api-contract.md): the token lives in memory, and
- * only a short "session marker" is mirrored to localStorage so that a page
- * reload and other tabs know a session exists. When the PHP backend can set an
- * httpOnly, SameSite=Strict cookie, drop the mirror entirely and switch
- * client.js to `credentials: 'include'`: nothing else in the app changes.
+ * What this module holds is in memory, with a small marker mirrored to
+ * localStorage so a reload and other tabs know a session exists. The marker also
+ * gives multi-tab logout sync for free: clearing it in one tab fires a `storage`
+ * event in the others.
  *
- * The marker also gives us multi-tab logout sync for free: clearing it in one
- * tab fires a `storage` event in the others.
+ * DO NOT read this as "the admin's tokens are not persisted". They are. Every
+ * database call runs as the admin through supabase-js, which is created with
+ * `persistSession: true` in ../remote/remoteAuth.js and therefore keeps the
+ * ACCESS and REFRESH tokens in localStorage under `studia-admin-auth`. So an XSS
+ * on this origin yields persistent admin access to the whole campus database,
+ * not a short-lived in-memory token — which is why the CSP in
+ * ../../../../vercel.json names its connect-src hosts instead of allowing
+ * `https:`, and why this portal wants a second factor (docs/api-contract.md
+ * specifies the admin OTP endpoints; the server half is not built yet).
+ *
+ * An httpOnly, SameSite=Strict cookie is not available while the portal and
+ * studia-api sit on different domains.
  */
 const MARKER_KEY = 'studia_admin_session';
 

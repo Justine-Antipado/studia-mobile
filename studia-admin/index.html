@@ -9,8 +9,12 @@
       The CSP allows only our own assets plus the Google Fonts stylesheet.
       'unsafe-inline' for styles is needed because theme.js writes CSS variables
       onto :root; inline scripts are NOT allowed.
-      In production prefer sending these as real HTTP headers (Apache/Nginx),
-      because frame-ancestors and some directives are ignored in a meta tag.
+
+      THIS META TAG IS THE FALLBACK, NOT THE POLICY. A meta CSP cannot carry
+      frame-ancestors (so it cannot stop the portal being framed), and there is no
+      X-Frame-Options in a meta tag either. The real policy is the headers block in
+      vercel.json; keep the two in step, and keep connect-src there narrow —
+      'https:' would let injected script post the admin's tokens anywhere.
     -->
     <meta name="robots" content="noindex, nofollow" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />

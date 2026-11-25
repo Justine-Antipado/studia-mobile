@@ -8,6 +8,7 @@ import {
   lockState,
   normalizePhone,
   resendWaitSec,
+  throttleKey,
   type Attempt,
 } from "./policy.js";
 
@@ -69,4 +70,27 @@ test("otp: 30 s resend and 5 attempts", () => {
   assert.deepEqual(afterWrongCode(0), { attempts: 1, left: 4, locked: false });
   assert.deepEqual(afterWrongCode(4), { attempts: 5, left: 0, locked: true });
   assert.equal(afterWrongCode(5).locked, true);
+});
+
+test("throttle key: one gmail mailbox cannot be re-spelled into extra allowance", () => {
+  // Gmail ignores dots and anything after a +, so these are all the same inbox.
+  const canonical = "juanreyes@gmail.com";
+  for (const spelling of [
+    "juanreyes@gmail.com",
+    "juan.reyes@gmail.com",
+    "j.u.a.n.r.e.y.e.s@gmail.com",
+    "juanreyes+studia@gmail.com",
+    "Juan.Reyes+anything@Gmail.com",
+    "  juan.reyes@gmail.com  ",
+  ]) {
+    assert.equal(throttleKey(spelling), canonical, spelling);
+  }
+  // googlemail.com is the same service under another name.
+  assert.equal(throttleKey("juan.reyes@googlemail.com"), "juanreyes@googlemail.com");
+  // Different people stay different.
+  assert.notEqual(throttleKey("juan@gmail.com"), throttleKey("juana@gmail.com"));
+  // Other domains keep dots: elsewhere they are significant.
+  assert.equal(throttleKey("juan.reyes@omsu.edu.ph"), "juan.reyes@omsu.edu.ph");
+  // Not an address: returned as-is, so an admin username still keys on itself.
+  assert.equal(throttleKey("admin"), "admin");
 });

@@ -12,6 +12,7 @@ export function Avatar({ name, size = 36 }) {
 /** Status / role words -> badge tone. Unknown words fall back to lavender. */
 const STATUS_CLASS = {
   Active: 'badge-green',
+  Pending: 'badge-orange',
   Inactive: 'badge-grey',
   Archived: 'badge-grey',
   Published: 'badge-green',

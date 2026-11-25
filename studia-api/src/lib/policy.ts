@@ -9,6 +9,28 @@ export const EMAIL_RE = /^[a-z0-9._+-]{1,64}@gmail\.com$/;
 export const normalizeEmail = (v: string): string => v.trim().toLowerCase();
 export const isCampusEmail = (v: string): boolean => EMAIL_RE.test(normalizeEmail(v));
 
+/**
+ * The one mailbox an address really reaches, for keying rate limits only.
+ *
+ * Gmail ignores dots and anything after a `+`, so `a.b@gmail.com`, `ab@gmail.com` and
+ * `ab+x@gmail.com` are one inbox but three different strings. Keyed on the literal address, the
+ * hourly OTP cap and the login lockout could be multiplied by writing the same address differently.
+ *
+ * NOT for storing, comparing identities, or sending: `users.email` and Supabase Auth hold the address
+ * as the person typed it, and that is the one the mail goes to. This is only the throttle key.
+ */
+export function throttleKey(v: string): string {
+  const email = normalizeEmail(v);
+  const at = email.lastIndexOf("@");
+  if (at < 1) return email;
+  const domain = email.slice(at + 1);
+  let name = email.slice(0, at);
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    name = name.split("+")[0]!.replace(/\./g, "");
+  }
+  return `${name}@${domain}`;
+}
+
 const PW_RULES: readonly RegExp[] = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/];
 export const isStrongPassword = (p: string): boolean =>
   p.length >= 8 && p.length <= 64 && PW_RULES.every((r) => r.test(p));
