@@ -21,6 +21,7 @@ import {
   type PublicRole,
 } from "../../src/lib/auth-core.js";
 import { normalizeEmail } from "../../src/lib/policy.js";
+import { env } from "../../src/lib/env.js";
 
 const Body = z.object({
   identifier: z.string().min(1).max(254).transform(normalizeEmail),
@@ -91,7 +92,9 @@ export default endpoint(Body, async ({ identifier, password, role }, req) => {
   // emailed code to change their own phone number. The session Supabase just minted is thrown away;
   // the client receives one only after otp-verify accepts the code (purpose "admin_login"), the same
   // shape as Google sign-in uses in google-start.ts.
-  if (role === "admin") {
+  // env.adminOtpEnabled() is the escape hatch: ADMIN_OTP=off falls through to the password-only path
+  // below, for when the sign-in code cannot be delivered and nobody can reach the portal.
+  if (role === "admin" && env.adminOtpEnabled()) {
     await revokeSession(db, session.access_token);
     await Promise.all([
       attempt(true, profile.id),
@@ -114,6 +117,9 @@ export default endpoint(Body, async ({ identifier, password, role }, req) => {
   await Promise.all([
     attempt(true, profile.id),
     db.from("users").update({ last_active_at: new Date().toISOString() }).eq("id", profile.id),
+    // Only reachable for an admin with ADMIN_OTP=off; say so in the audit trail rather than record
+    // the same "Administrator signed in" as a two-factor sign-in.
+    role === "admin" ? auditAdmin(db, profile, "Administrator signed in (sign-in code disabled)", ip) : Promise.resolve(),
   ]);
 
   return { session: toSessionDto(session), profile: toProfileDto(profile, data.user) };
