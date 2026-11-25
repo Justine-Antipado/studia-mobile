@@ -1,53 +1,67 @@
 // Per-user AI quota (each call spends the shared free-tier allowance) and request logging in
 // `ai_requests`. Both use the service role: clients cannot write that table.
-import type { Db } from "./clients.js";
+//
+// The slot is RESERVED before the provider is called and the row is finished afterwards. Counting
+// first and inserting the log row after the answer came back meant a call was invisible for the
+// seconds it took, so parallel requests all passed the same check and one user could drain the
+// campus-wide free tier. See migration 035 (private.reserve_ai_request).
+import { untyped, type Db } from "./clients.js";
 import { ApiError } from "./http.js";
 import type { Completion } from "./ai.js";
 
 type Feature = "chat" | "quiz_synthesizer" | "summarizer";
+type SourceType = "material" | "chat" | "class" | "quiz" | "planner";
 
 const PER_HOUR: Record<Feature, number> = { chat: 40, quiz_synthesizer: 12, summarizer: 20 };
 
-export async function assertAiQuota(db: Db, userId: string, feature: Feature): Promise<void> {
-  const since = new Date(Date.now() - 3_600_000).toISOString();
-  const { count, error } = await db
-    .from("ai_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("feature", feature)
-    .gte("created_at", since);
-  if (error) throw error;
-  if ((count ?? 0) >= PER_HOUR[feature]) {
-    throw new ApiError("RATE_LIMITED", "You have used the AI a lot this hour. Please try again later.", {
-      retryAfterSec: 600,
-    });
+const overQuota = () =>
+  new ApiError("RATE_LIMITED", "You have used the AI a lot this hour. Please try again later.", {
+    retryAfterSec: 600,
+  });
+
+/**
+ * Takes this call's slot for the hour, or throws RATE_LIMITED. Returns the reservation to settle with
+ * `settleAi`; null when the row could not be created, which never blocks the answer.
+ */
+export async function reserveAi(
+  db: Db,
+  userId: string,
+  feature: Feature,
+  source?: { type: SourceType; id?: string },
+): Promise<string | null> {
+  const { data, error } = await untyped(db).rpc("reserve_ai_request", {
+    p_user_id: userId,
+    p_feature: feature,
+    p_limit: PER_HOUR[feature],
+    p_source_type: source?.type ?? null,
+    p_source_id: source?.id ?? null,
+  });
+  if (error) {
+    if (error.code === "22023") throw overQuota();
+    // Bookkeeping must not be the reason an answer fails; the hourly cap is best-effort if the
+    // reservation itself is broken.
+    console.error("[ai] reserve failed", error.code ?? "unknown");
+    return null;
   }
+  return (data as string | null) ?? null;
 }
 
-export async function logAi(
+/** Writes the outcome onto the reserved row. Never throws: logging may not break the answer. */
+export async function settleAi(
   db: Db,
-  row: {
-    userId: string;
-    feature: Feature;
-    ok: boolean;
-    sourceType?: "material" | "chat" | "class" | "quiz" | "planner";
-    sourceId?: string;
-    result?: Completion;
-    errorCode?: string;
-  },
+  id: string | null,
+  outcome: { ok: boolean; result?: Completion; errorCode?: string },
 ): Promise<void> {
+  if (!id) return;
   await db
     .from("ai_requests")
-    .insert({
-      user_id: row.userId,
-      feature: row.feature,
-      status: row.ok ? "ok" : "error",
-      source_type: row.sourceType ?? null,
-      source_id: row.sourceId ?? null,
-      latency_ms: row.result?.latencyMs ?? null,
-      tokens_in: row.result?.tokensIn ?? null,
-      tokens_out: row.result?.tokensOut ?? null,
-      error_code: row.errorCode ?? null,
+    .update({
+      status: outcome.ok ? "ok" : "error",
+      latency_ms: outcome.result?.latencyMs ?? null,
+      tokens_in: outcome.result?.tokensIn ?? null,
+      tokens_out: outcome.result?.tokensOut ?? null,
+      error_code: outcome.errorCode ?? null,
     })
-    .then(undefined, () => undefined); // logging must never break the answer
+    .eq("id", id)
+    .then(undefined, () => undefined);
 }

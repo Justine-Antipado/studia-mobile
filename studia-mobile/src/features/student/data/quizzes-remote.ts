@@ -3,7 +3,7 @@
 // multiple choice / identification on the server and leaves essays for the instructor.
 import { appError, type Result } from "@/core/data/errors/app-error";
 import { db, guard, must, myId } from "@/core/data/supabase/remote";
-import type { QuizRepository } from "@/features/student/data/quizzes-repository";
+import type { QuizRepository, QuizStart } from "@/features/student/data/quizzes-repository";
 import type { BloomLevel, Difficulty, Quiz, QuizAnswer, QuizAttempt, QuizQuestion, QuizQuestionType } from "@/features/student/types/student";
 
 type Key = { correct_index: number | null; correct_answer: string | null; rationale: string | null };
@@ -115,6 +115,16 @@ export class RemoteQuizRepository implements QuizRepository {
 
   get(classId: string, id: string): Promise<Result<Quiz | null>> {
     return guard(async () => (await load(classId, id))[0] ?? null);
+  }
+
+  startAttempt(quizId: string): Promise<Result<QuizStart>> {
+    return guard(async () => {
+      const row = must(await db().rpc("start_quiz", { p_quiz_id: quizId })) as {
+        attemptId: string;
+        secondsLeft: number | null;
+      };
+      return { attemptId: row.attemptId, secondsLeft: row.secondsLeft ?? null };
+    }, "This quiz is no longer available.");
   }
 
   submitAttempt(classId: string, quizId: string, answers: QuizAnswer[]): Promise<Result<QuizAttempt>> {

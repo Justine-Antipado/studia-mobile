@@ -6,25 +6,24 @@ import type { Result } from "@/core/data/errors/app-error";
 import { ok } from "@/core/data/errors/app-error";
 import { callAi } from "@/core/data/supabase/ai-api";
 
-export type ChatTurn = { from: "user" | "ai"; text: string };
 export type ChatReply = { threadId: string; reply: string };
 
 export interface AiChatRepository {
-  /** Sends `message` with the recent `history` (oldest first). `threadId` groups one conversation. */
-  send(input: { threadId: string | null; message: string; history: ChatTurn[] }): Promise<Result<ChatReply>>;
+  /**
+   * Sends `message`; `threadId` groups one conversation.
+   *
+   * The history is NOT sent: the server reads the thread back from `ai_chat_messages`. Passing it
+   * from here meant the request could claim the AI had said something it never said, and the claim
+   * was then stored as part of the conversation.
+   */
+  send(input: { threadId: string | null; message: string }): Promise<Result<ChatReply>>;
 }
 
 const Reply = z.object({ threadId: z.string(), reply: z.string() });
 
-const MAX_HISTORY = 12;
-
 class RemoteAiChatRepository implements AiChatRepository {
-  async send({ threadId, message, history }: { threadId: string | null; message: string; history: ChatTurn[] }) {
-    const res = await callAi(
-      "chat",
-      { ...(threadId ? { threadId } : {}), message, history: history.slice(-MAX_HISTORY) },
-      Reply,
-    );
+  async send({ threadId, message }: { threadId: string | null; message: string }) {
+    const res = await callAi("chat", { ...(threadId ? { threadId } : {}), message }, Reply);
     return res.ok ? ok(res.value) : res;
   }
 }

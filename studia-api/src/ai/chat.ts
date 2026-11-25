@@ -4,18 +4,21 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { complete, type ChatMsg } from "../lib/ai.js";
-import { assertAiQuota, logAi } from "../lib/ai-guard.js";
+import { reserveAi, settleAi } from "../lib/ai-guard.js";
 import { adminClient } from "../lib/clients.js";
 import { ApiError, endpoint } from "../lib/http.js";
 import { requireMe } from "../lib/me.js";
 
+const HISTORY_TURNS = 12;
+
 const Body = z.object({
   threadId: z.string().min(8).max(64).optional(),
   message: z.string().trim().min(1).max(2000),
-  history: z
-    .array(z.object({ from: z.enum(["user", "ai"]), text: z.string().max(4000) }))
-    .max(12)
-    .default([]),
+  // Accepted and ignored. The conversation is read from ai_chat_messages instead: a client-supplied
+  // history let the caller forge what "the AI already said" and steer it past its own rules, and the
+  // forgery was then stored as if it had happened. Kept in the schema so app builds that still send
+  // it are not rejected; drop it once those are retired.
+  history: z.array(z.object({ from: z.enum(["user", "ai"]), text: z.string().max(4000) })).max(12).optional(),
 });
 
 const BASE_RULES =
@@ -33,10 +36,9 @@ const ROLE_RULES = {
   admin: "The user is an administrator. Keep answers short and practical.",
 } as const;
 
-export default endpoint(Body, async ({ threadId, message, history }, req) => {
+export default endpoint(Body, async ({ threadId, message }, req) => {
   const db = adminClient();
   const { user, profile } = await requireMe(db, req);
-  await assertAiQuota(db, user.id, "chat");
 
   const role = profile.role as keyof typeof ROLE_RULES;
   const classes = await classContext(db, user.id, role);
@@ -49,29 +51,47 @@ export default endpoint(Body, async ({ threadId, message, history }, req) => {
     .filter(Boolean)
     .join("\n");
 
+  const thread = threadId ?? randomUUID();
   const messages: ChatMsg[] = [
     { role: "system", content: system },
-    ...history.map<ChatMsg>((m) => ({ role: m.from === "ai" ? "assistant" : "user", content: m.text })),
+    ...(await loadHistory(db, user.id, thread)),
     { role: "user", content: message },
   ];
 
-  const thread = threadId ?? randomUUID();
+  const reservation = await reserveAi(db, user.id, "chat", { type: "chat", id: thread });
   let result;
   try {
     result = await complete({ messages, maxTokens: 1500, temperature: 0.5 });
   } catch (e) {
-    await logAi(db, { userId: user.id, feature: "chat", ok: false, sourceType: "chat", sourceId: thread, errorCode: e instanceof ApiError ? e.code : "UNKNOWN" });
+    await settleAi(db, reservation, { ok: false, errorCode: e instanceof ApiError ? e.code : "UNKNOWN" });
     throw e;
   }
 
-  await db.from("ai_chat_messages").insert([
+  const { error } = await db.from("ai_chat_messages").insert([
     { user_id: user.id, thread_id: thread, sender: "user", body: message },
     { user_id: user.id, thread_id: thread, sender: "ai", body: result.text.slice(0, 20000) },
   ]);
-  await logAi(db, { userId: user.id, feature: "chat", ok: true, sourceType: "chat", sourceId: thread, result });
+  // The answer is already produced, so this is not worth failing the request over -- but a lost write
+  // means the next turn in this thread loses its context, so it must not pass unnoticed.
+  if (error) console.error("[ai] chat history insert failed", error.code ?? "unknown");
+  await settleAi(db, reservation, { ok: true, result });
 
   return { threadId: thread, reply: result.text };
 });
+
+/** The last few turns of this thread, from the server's own record of them. */
+async function loadHistory(db: ReturnType<typeof adminClient>, userId: string, thread: string): Promise<ChatMsg[]> {
+  const { data } = await db
+    .from("ai_chat_messages")
+    .select("sender, body")
+    .eq("user_id", userId) // a thread id is client-chosen, so scope it to its owner
+    .eq("thread_id", thread)
+    .order("created_at", { ascending: false })
+    .limit(HISTORY_TURNS);
+  return (data ?? [])
+    .reverse()
+    .map<ChatMsg>((m) => ({ role: m.sender === "ai" ? "assistant" : "user", content: m.body }));
+}
 
 async function classContext(db: ReturnType<typeof adminClient>, userId: string, role: string): Promise<string> {
   type C = { subject_code: string; title: string };

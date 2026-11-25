@@ -1,6 +1,6 @@
 // quiz-take-screen.tsx — modal: timer, progress, then instant rationale on the result screen.
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Text, View } from "react-native";
 
 import { ActionButton, ConfirmDialog, EmptyState, ListState, PageTitle, ProgressBar, useToast } from "@/shared/components/ui";
@@ -9,18 +9,14 @@ import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
 import { useForceBack, useSafeBack } from "@/shared/hooks/use-safe-back";
 import { QuizQuestionCard } from "@/features/student/components/quiz-question-card";
+import { quizRepository } from "@/features/student/data/quizzes-repository";
 import { useQuiz, useSubmitQuizAttempt } from "@/features/student/hooks/use-quizzes";
 import type { QuizAnswer } from "@/features/student/types/student";
 
-// When each quiz's countdown began. Module-level so leaving the screen and coming back resumes the
-// SAME clock instead of handing out a fresh full timer.
-const startedAt = new Map<string, number>();
-
-function remainingSeconds(quizId: string, limitMin: number): number {
-  const began = startedAt.get(quizId) ?? Date.now();
-  startedAt.set(quizId, began);
-  return Math.max(0, Math.ceil(limitMin * 60 - (Date.now() - began) / 1000));
-}
+// The countdown is the server's, not this device's. `start_quiz` (migration 033) stamps started_at
+// from the database clock and returns the seconds left, so reopening the screen -- or the whole app --
+// resumes the same clock, and submit_quiz measures the limit against the same row. The old
+// module-level Map handed out a fresh full timer after a restart, and nothing checked it on submit.
 
 export default function StudentQuizTake() {
   const { classId, quizId } = useRouteIds("classId", "quizId");
@@ -33,13 +29,27 @@ export default function StudentQuizTake() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
 
-  // Start the countdown once, when this quiz first loads — adjusted during render, per
-  // https://react.dev/learn/you-might-not-need-an-effect, not in a useEffect.
-  const [timerStartedFor, setTimerStartedFor] = useState<string | null>(null);
-  if (quiz && quiz.id !== timerStartedFor) {
-    setTimerStartedFor(quiz.id);
-    setSecondsLeft(quiz.timeLimitMin && !quiz.closed ? remainingSeconds(quiz.id, quiz.timeLimitMin) : null);
-  }
+  // Open (or resume) the attempt on the server once per quiz, and take the countdown from its answer.
+  // A ref, not state: it only guards the call, and nothing renders from it.
+  const startedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!quiz || quiz.closed || quiz.id === startedFor.current) return;
+    startedFor.current = quiz.id;
+    let cancelled = false;
+    void quizRepository.startAttempt(quiz.id).then((res) => {
+      if (cancelled) return;
+      if (res.ok) setSecondsLeft(res.value.secondsLeft);
+      // Could not open the attempt (no attempts left, quiz closed, offline): say so and leave, rather
+      // than let the student answer into something the server will refuse.
+      else {
+        toast.show(res.error.message, { tone: "red" });
+        router.back();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [quiz, toast, router]);
 
   const answeredCount = Object.values(answers).filter((v) => v !== null && v !== "").length;
 
@@ -49,7 +59,6 @@ export default function StudentQuizTake() {
       const list: QuizAnswer[] = quiz.questions.map((q) => ({ questionId: q.id, response: answers[q.id] ?? null }));
       const result = await submitAttempt.run(list);
       if (result.ok) {
-        if (quizId) startedAt.delete(quizId);
         router.replace({ pathname: "/student/quiz-result", params: { classId, quizId, attemptId: result.value.id } });
       } else {
         toast.show(result.error.message, { tone: "red" });

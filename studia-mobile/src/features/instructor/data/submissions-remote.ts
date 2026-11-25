@@ -16,6 +16,7 @@ type Attempt = {
   graded_at: string | null;
   feedback: string;
   late: boolean;
+  over_time: boolean;
   student: { full_name: string } | null;
   quiz: { title: string; class: { subject_code: string } | null } | null;
   answers: { question_id: string; response_index: number | null; response_text: string | null }[];
@@ -23,7 +24,7 @@ type Attempt = {
 type Question = { id: string; quiz_id: string; position: number; type: string; prompt: string; options: { position: number; body: string }[] };
 
 const SELECT =
-  "id, quiz_id, submitted_at, score, max_score, graded_at, feedback, late, student:users!quiz_attempts_student_id_fkey(full_name), quiz:quizzes(title, class:classes(subject_code)), answers:quiz_answers(question_id, response_index, response_text)";
+  "id, quiz_id, submitted_at, score, max_score, graded_at, feedback, late, over_time, student:users!quiz_attempts_student_id_fkey(full_name), quiz:quizzes(title, class:classes(subject_code)), answers:quiz_answers(question_id, response_index, response_text)";
 
 async function load(filter: { quizId?: string; id?: string }): Promise<Submission[]> {
   let q = db().from("quiz_attempts").select(SELECT).not("submitted_at", "is", null).order("submitted_at", { ascending: false });
@@ -54,6 +55,7 @@ async function load(filter: { quizId?: string; id?: string }): Promise<Submissio
       gradedAt: a.graded_at,
       feedback: a.feedback ?? "",
       late: a.late,
+      overTime: a.over_time ?? false,
       answers: qs
         .filter((x) => x.type === "essay" || x.type === "identification")
         .map((x) => {

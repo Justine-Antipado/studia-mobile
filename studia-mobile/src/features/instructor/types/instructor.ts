@@ -128,6 +128,11 @@ export type Submission = {
   feedback: string;
   /** Turned in after the due date. */
   late: boolean;
+  /**
+   * Submitted past the quiz's time limit, measured from the server-recorded start (migration 033).
+   * The answers are still scored: what an over-time attempt is worth is the instructor's call.
+   */
+  overTime: boolean;
   answers: { prompt: string; response: string }[];
 };
 

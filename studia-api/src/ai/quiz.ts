@@ -2,7 +2,7 @@
 // shows them for review and saves them through the normal save_quiz path (nothing is stored here).
 import { z } from "zod";
 import { complete, parseJson, type Completion } from "../lib/ai.js";
-import { assertAiQuota, logAi } from "../lib/ai-guard.js";
+import { reserveAi, settleAi } from "../lib/ai-guard.js";
 import { adminClient } from "../lib/clients.js";
 import { ApiError, endpoint } from "../lib/http.js";
 import { requireMe } from "../lib/me.js";
@@ -36,7 +36,7 @@ export default endpoint(Body, async ({ topic, count, difficulty }, req) => {
   const db = adminClient();
   const { user, profile } = await requireMe(db, req);
   if (profile.role !== "instructor") throw new ApiError("UNAUTHORIZED", "Only instructors can generate quizzes.");
-  await assertAiQuota(db, user.id, "quiz_synthesizer");
+  const reservation = await reserveAi(db, user.id, "quiz_synthesizer", { type: "quiz" });
 
   const prompt = `Topic: """${topic}"""\nNumber of questions: ${count}\nDifficulty: ${difficulty}`;
   let last: Completion | undefined;
@@ -54,15 +54,15 @@ export default endpoint(Body, async ({ topic, count, difficulty }, req) => {
       last = result;
       const questions = parse(result.text, count);
       if (questions.length > 0) {
-        await logAi(db, { userId: user.id, feature: "quiz_synthesizer", ok: true, sourceType: "quiz", result });
+        await settleAi(db, reservation, { ok: true, result });
         return { questions };
       }
     } catch (e) {
-      await logAi(db, { userId: user.id, feature: "quiz_synthesizer", ok: false, sourceType: "quiz", errorCode: e instanceof ApiError ? e.code : "UNKNOWN" });
+      await settleAi(db, reservation, { ok: false, errorCode: e instanceof ApiError ? e.code : "UNKNOWN" });
       throw e;
     }
   }
-  await logAi(db, { userId: user.id, feature: "quiz_synthesizer", ok: false, sourceType: "quiz", result: last, errorCode: "BAD_OUTPUT" });
+  await settleAi(db, reservation, { ok: false, result: last, errorCode: "BAD_OUTPUT" });
   throw new ApiError("AI_UNAVAILABLE", "The AI could not produce a usable quiz. Try a clearer topic or fewer questions.");
 });
 

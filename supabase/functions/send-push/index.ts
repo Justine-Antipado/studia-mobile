@@ -8,6 +8,20 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 // Kinds that are not worth an email (internal / noisy).
 const NO_EMAIL = new Set(["ai", "job", "storage"]);
 
+/**
+ * A campus announcement fans out to one notification per active user (migration 022), and this
+ * function runs once per notification -- so emailing them means one SMTP message per student for a
+ * single announcement. Gmail allows a few hundred a day, so one campus-wide post would blow the
+ * quota and then silently take down email for everything else that day, class announcements included.
+ * Push and the in-app Alerts tab still deliver every one of them.
+ *
+ * The marker is the `meta` that migration 022 sets, which no other notification uses. Set
+ * EMAIL_CAMPUS_ANNOUNCEMENTS=true to email them anyway (safe only on a Workspace account with
+ * headroom for the whole campus).
+ */
+const CAMPUS_META = "Campus announcement";
+const emailCampus = (Deno.env.get("EMAIL_CAMPUS_ANNOUNCEMENTS") ?? "").toLowerCase() === "true";
+
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false },
 });
@@ -20,25 +34,32 @@ const mailer = SMTP_USER && SMTP_PASS
 
 type Notif = { id: string; user_id: string; kind: string; title: string; body: string; link_params: { meta?: string } | null };
 
-function sameSecret(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
+// Compare fixed-length digests, so neither the comparison nor an early return tells the caller
+// anything about the secret -- not even its length.
+const encoder = new TextEncoder();
+async function sameSecret(a: string, b: string): Promise<boolean> {
+  const [da, dbg] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(a)),
+    crypto.subtle.digest("SHA-256", encoder.encode(b)),
+  ]);
+  const x = new Uint8Array(da);
+  const y = new Uint8Array(dbg);
   let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
   return diff === 0;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-async function sendPush(n: Notif): Promise<void> {
-  const { data: tokens } = await supabase.from("push_tokens").select("token").eq("user_id", n.user_id);
-  if (!tokens?.length) return;
+const EXPO_BATCH = 100; // Expo rejects a request carrying more than 100 messages
 
+async function sendBatch(n: Notif, tokens: readonly string[]): Promise<string[]> {
   const res = await fetch(EXPO_PUSH_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify(
-      tokens.map((t) => ({
-        to: t.token,
+      tokens.map((token) => ({
+        to: token,
         title: n.title,
         body: n.body || undefined,
         sound: "default",
@@ -51,15 +72,40 @@ async function sendPush(n: Notif): Promise<void> {
   if (!res.ok) throw new Error(`expo ${res.status}`);
 
   // Drop tokens Expo says no longer exist (app uninstalled) so they are not retried forever.
-  const { data: tickets } = (await res.json()) as { data?: { status: string; details?: { error?: string } }[] };
-  const dead = (tickets ?? [])
-    .map((tk, i) => (tk.status === "error" && tk.details?.error === "DeviceNotRegistered" ? tokens[i].token : null))
-    .filter((t): t is string => t !== null);
+  // Tickets come back positionally, but never index into `tokens` on trust: a short or reshaped
+  // array would otherwise throw here and lose the whole push for everyone in the batch.
+  const body = (await res.json().catch(() => null)) as { data?: { status?: string; details?: { error?: string } }[] } | null;
+  const tickets = Array.isArray(body?.data) ? body.data : [];
+  const dead: string[] = [];
+  tickets.forEach((tk, i) => {
+    const token = tokens[i];
+    if (token && tk?.status === "error" && tk.details?.error === "DeviceNotRegistered") dead.push(token);
+  });
+  return dead;
+}
+
+async function sendPush(n: Notif): Promise<void> {
+  const { data: rows } = await supabase.from("push_tokens").select("token").eq("user_id", n.user_id);
+  const tokens = (rows ?? []).map((r) => r.token);
+  if (!tokens.length) return;
+
+  const dead: string[] = [];
+  const failures: unknown[] = [];
+  for (let i = 0; i < tokens.length; i += EXPO_BATCH) {
+    // One bad batch must not cost the others their notification.
+    try {
+      dead.push(...(await sendBatch(n, tokens.slice(i, i + EXPO_BATCH))));
+    } catch (e) {
+      failures.push(e);
+    }
+  }
   if (dead.length) await supabase.from("push_tokens").delete().in("token", dead);
+  if (failures.length) throw new Error(`expo: ${failures.length} of ${Math.ceil(tokens.length / EXPO_BATCH)} batches failed`);
 }
 
 async function sendEmail(n: Notif): Promise<void> {
   if (!mailer || NO_EMAIL.has(n.kind)) return;
+  if (!emailCampus && n.link_params?.meta === CAMPUS_META) return;
   const { data: user } = await supabase.from("users").select("email, full_name, status, deleted_at, role").eq("id", n.user_id).maybeSingle();
   // The admin inbox (registrations, failures) is read in the portal; do not email it.
   if (!user || user.role === "admin" || user.status !== "active" || user.deleted_at) return;
@@ -79,7 +125,7 @@ async function sendEmail(n: Notif): Promise<void> {
 
 Deno.serve(async (req) => {
   const secret = Deno.env.get("PUSH_WEBHOOK_SECRET") ?? "";
-  if (req.method !== "POST" || !secret || !sameSecret(req.headers.get("x-webhook-secret") ?? "", secret)) {
+  if (req.method !== "POST" || !secret || !(await sameSecret(req.headers.get("x-webhook-secret") ?? "", secret))) {
     return new Response("forbidden", { status: 403 });
   }
 

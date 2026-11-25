@@ -10,8 +10,8 @@
 import { z } from "zod";
 import { complete, parseJson, type Completion } from "../lib/ai.js";
 import { completeNative, type NativePart } from "../lib/ai-native.js";
-import { assertAiQuota, logAi } from "../lib/ai-guard.js";
-import { adminClient } from "../lib/clients.js";
+import { reserveAi, settleAi } from "../lib/ai-guard.js";
+import { adminClient, untyped } from "../lib/clients.js";
 import { ApiError, endpoint } from "../lib/http.js";
 import { extractOfficeText } from "../lib/material-text.js";
 import { requireMe } from "../lib/me.js";
@@ -76,13 +76,16 @@ export default endpoint(Body, async ({ materialId, regenerate }, req) => {
   });
 
   if (existing && !regenerate) return shape(existing);
+  // A courtesy pre-check so a student who is out of re-runs does not wait for the AI first. The cap
+  // itself is counted in save_material_summary (migration 035), under a row lock: reading the count
+  // here and writing read+1 later let two parallel re-runs both spend the same one.
   if (existing && regenerate && !isOwner && existing.regen_count >= MAX_REGENS) {
     throw new ApiError("CONFLICT", `You can regenerate this summary ${MAX_REGENS} times. The limit was reached.`);
   }
 
   const source = await loadSource(db, material, materialId);
 
-  await assertAiQuota(db, user.id, "summarizer");
+  const reservation = await reserveAi(db, user.id, "summarizer", { type: "material", id: materialId });
   let result: Completion | undefined;
   let parsed;
   try {
@@ -109,40 +112,40 @@ export default endpoint(Body, async ({ materialId, regenerate }, req) => {
       if (out.success) parsed = out.data;
     }
   } catch (e) {
-    await logAi(db, { userId: user.id, feature: "summarizer", ok: false, sourceType: "material", sourceId: materialId, errorCode: e instanceof ApiError ? e.code : "UNKNOWN" });
+    await settleAi(db, reservation, { ok: false, errorCode: e instanceof ApiError ? e.code : "UNKNOWN" });
     throw e;
   }
   if (!parsed) {
-    await logAi(db, { userId: user.id, feature: "summarizer", ok: false, sourceType: "material", sourceId: materialId, result, errorCode: "BAD_OUTPUT" });
+    await settleAi(db, reservation, { ok: false, result, errorCode: "BAD_OUTPUT" });
     throw new ApiError("AI_UNAVAILABLE", "The AI could not summarise this lesson. Please try again.");
   }
 
-  const regen = existing ? (isOwner ? existing.regen_count : existing.regen_count + 1) : 0;
-  const { error } = await db.from("material_summaries").upsert(
-    {
-      material_id: materialId,
-      mode: "bullets",
-      source_version: 1,
-      tldr: parsed.tldr.slice(0, 500),
-      bullets: parsed.bullets.map((b) => b.slice(0, 300)),
-      regen_count: regen,
-      generated_at: new Date().toISOString(),
-    },
-    { onConflict: "material_id,mode,source_version" },
-  );
-  if (error) throw error;
+  // Summary, regeneration count and objectives in one transaction. Doing it in three round trips
+  // meant a failed objectives insert wiped them while this endpoint still answered 200 with them,
+  // and two concurrent re-runs could leave two rows per position (migration 035).
+  const countRegen = !!existing && regenerate && !isOwner;
+  const { data: regen, error } = await untyped(db).rpc("save_material_summary", {
+    p_material_id: materialId,
+    p_tldr: parsed.tldr.slice(0, 500),
+    p_bullets: parsed.bullets.map((b) => b.slice(0, 300)),
+    p_objectives: parsed.objectives.map((o) => o.slice(0, 500)),
+    p_count_regen: countRegen,
+  });
+  if (error) {
+    await settleAi(db, reservation, { ok: false, result, errorCode: "SAVE_FAILED" });
+    // 22023 is save_material_summary's own "you are out of re-runs", with its wording.
+    if (error.code === "22023") {
+      throw new ApiError("CONFLICT", error.message ?? `You can regenerate this summary ${MAX_REGENS} times.`);
+    }
+    throw error;
+  }
 
-  await db.from("material_objectives").delete().eq("material_id", materialId);
-  await db
-    .from("material_objectives")
-    .insert(parsed.objectives.map((body, position) => ({ material_id: materialId, position, body: body.slice(0, 500) })));
-
-  await logAi(db, { userId: user.id, feature: "summarizer", ok: true, sourceType: "material", sourceId: materialId, result });
+  await settleAi(db, reservation, { ok: true, result });
   return {
     tldr: parsed.tldr.slice(0, 500),
     bullets: parsed.bullets,
     objectives: parsed.objectives,
-    regensLeft: Math.max(0, MAX_REGENS - regen),
+    regensLeft: Math.max(0, MAX_REGENS - ((regen as number | null) ?? 0)),
   };
 });
 

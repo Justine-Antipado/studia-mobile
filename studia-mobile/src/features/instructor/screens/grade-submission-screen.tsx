@@ -74,6 +74,7 @@ function GradeForm({ submission }: { submission: Submission }) {
         </Text>
       </View>
       {submission.late ? <Badge label="Late" tone="orange" /> : null}
+      {submission.overTime ? <Badge label="Over time" tone="orange" /> : null}
       {graded ? <Badge label={`Graded ${submission.score}/${max}`} tone={scoreTone(toPercent(submission.score ?? 0, max))} /> : null}
 
       {submission.answers.length === 0 ? (

@@ -59,7 +59,6 @@ export function AiAssistantScreen({ role }: { role: Role }) {
       setSending(true);
       const stamp = Date.now();
       const pendingId = `${stamp}-ai`;
-      const history = messages.filter((m) => m.id.indexOf("err") < 0).map((m) => ({ from: m.from, text: m.text }));
       setMessages((prev) => [
         ...prev,
         { id: String(stamp), from: "user", text: q },
@@ -67,7 +66,8 @@ export function AiAssistantScreen({ role }: { role: Role }) {
       ]);
       if (!textToSend) setInput("");
 
-      const res = await aiChatRepository.send({ threadId: threadId.current, message: q, history });
+      // No history: the server keeps the thread (ai_chat_messages) and reads it back itself.
+      const res = await aiChatRepository.send({ threadId: threadId.current, message: q });
       sendingRef.current = false;
       if (!alive.current) return;
       setSending(false);
@@ -76,7 +76,8 @@ export function AiAssistantScreen({ role }: { role: Role }) {
       const id = res.ok ? pendingId : `${stamp}-err`;
       setMessages((prev) => prev.map((m) => (m.id === pendingId ? { id, from: "ai", text } : m)));
     },
-    [input, messages],
+    // `messages` is no longer read here (the server owns the thread), only updated functionally.
+    [input],
   );
 
   return (
