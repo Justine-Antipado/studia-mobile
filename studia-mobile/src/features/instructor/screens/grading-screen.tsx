@@ -3,14 +3,16 @@ import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { AppList, Chip, ListRow, ListState, PageTitle } from "@/shared/components/ui";
+import { AppList, FilterPillSheet, ListRow, ListState, PageTitle, type FilterGroup } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
-import { SPACE } from "@/shared/constants/tokens";
 import { useRouteId } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { plural, timeAgo } from "@/features/instructor/logic/format";
 import { useAllSubmissions } from "@/features/instructor/hooks/use-submissions";
 import type { Submission } from "@/features/instructor/types/instructor";
+
+const ALL_QUIZZES = "all";
+const DEFAULT_FILTERS = { quiz: ALL_QUIZZES };
 
 export default function GradingScreen() {
   const router = useSafeRouter();
@@ -37,6 +39,17 @@ export default function GradingScreen() {
     [pending, active],
   );
 
+  const filterGroups = useMemo<FilterGroup[]>(
+    () => [
+      {
+        key: "quiz",
+        title: "Quiz",
+        options: [{ value: ALL_QUIZZES, label: "All quizzes" }, ...quizzes.map((q) => ({ value: q.id, label: q.label }))],
+      },
+    ],
+    [quizzes],
+  );
+
   const openSubmission = useCallback(
     (id: string) => router.push({ pathname: "/instructor/grade-submission", params: { id } }),
     [router],
@@ -60,10 +73,12 @@ export default function GradingScreen() {
       <PageTitle title="Needs Grading" subtitle={`${plural(pending.length, "submission")} waiting, oldest first`} onBack={goBack} />
 
       {quizzes.length > 1 ? (
-        <View style={s.chipRow}>
-          <Chip label="All" selected={active === null} onPress={() => setFilter(null)} />
-          {quizzes.map((q) => <Chip key={q.id} label={q.label} selected={active === q.id} onPress={() => setFilter(q.id)} />)}
-        </View>
+        <FilterPillSheet
+          groups={filterGroups}
+          value={{ quiz: active ?? ALL_QUIZZES }}
+          defaults={DEFAULT_FILTERS}
+          onApply={(next) => setFilter(next.quiz === ALL_QUIZZES ? null : next.quiz)}
+        />
       ) : null}
 
       <View style={s.fill}>
@@ -76,6 +91,5 @@ export default function GradingScreen() {
 }
 
 const s = StyleSheet.create({
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
   fill: { flex: 1 },
 });

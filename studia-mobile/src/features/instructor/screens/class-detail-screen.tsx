@@ -1,6 +1,6 @@
 // class-detail-screen.tsx — tabs: Stream · Materials · Assessments · People · Grades (docs/ROUTE-MAP.md).
 import { FeatureGate } from "@/shared/components/ui/gate-views";
-import { ListState, PageTitle, CustomDropdown, toOptions } from "@/shared/components/ui";
+import { ListState, PageTitle, HorizontalChipBar } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { useRouteEnum, useRouteId } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
@@ -12,9 +12,6 @@ import { StreamTab } from "@/features/instructor/components/class-detail/stream-
 import { useInstructorClass } from "@/features/instructor/hooks/use-classes";
 
 const TABS = ["Stream", "Materials", "Assessments", "People", "Grades"] as const;
-// E5 / F2 / F5 / G5: the section picker is a dropdown, so it stays one row whatever the labels
-// are and never scrolls a chip out of reach.
-const TAB_OPTIONS = toOptions(TABS);
 type Tab = (typeof TABS)[number];
 
 export default function InstructorClassDetailScreen() {
@@ -39,7 +36,7 @@ export default function InstructorClassDetailScreen() {
       >
         {cls ? (
           <>
-            <CustomDropdown variant="nav" sheetTitle="Go to" options={TAB_OPTIONS} value={tab} onChange={setTab} />
+            <HorizontalChipBar items={TABS} value={tab} onChange={setTab} label="Sections" />
             {tab === "Stream" && (
               <FeatureGate feature="announcements">
                 <StreamTab classId={cls.id} />

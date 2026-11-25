@@ -11,7 +11,7 @@ import {
   ListRow,
   ListState,
   PageTitle,
-  SegmentedTabs,
+  HorizontalChipBar,
   useToast,
   type IconName,
 } from "@/shared/components/ui";
@@ -100,7 +100,7 @@ export default function StudentPlanner() {
       <ListState loading={loading} error={error} empty={!loading && !week} onRetry={refetch} emptyIcon="calendar-outline" emptyTitle="No plan yet">
         {week ? (
           <View style={{ gap: SPACE.lg }}>
-            <SegmentedTabs items={days} value={day} onChange={setSelectedDay} formatLabel={dayChipLabel} label="Days" />
+            <HorizontalChipBar items={days} value={day} onChange={setSelectedDay} formatLabel={dayChipLabel} label="Days" />
             <Text style={TYPE.h2}>{dayLabel(day)}</Text>
 
             {/* G6: what is actually happening on this day — due assignments and quizzes, and

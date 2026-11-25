@@ -41,6 +41,12 @@ export {
 } from "@/shared/components/ui/error-boundary";
 export { FeatureBoundary, FeatureFallback } from "@/shared/components/ui/feature-boundary";
 export { FeedbackNote } from "@/shared/components/ui/feedback-note";
+export {
+  FilterPillSheet,
+  type FilterGroup,
+  type FilterOption,
+  type FilterValues,
+} from "@/shared/components/ui/filter-pill-sheet";
 export { FormField, type FormFieldProps } from "@/shared/components/ui/form-field";
 export { Icon, ICON_SIZE, IconTile, type IconName, type IconSize } from "@/shared/components/ui/icon";
 export { ListRow, type ListRowProps } from "@/shared/components/ui/list-row";
@@ -52,7 +58,7 @@ export { QuickAction } from "@/shared/components/ui/quick-action";
 export { RoleGate } from "@/shared/components/ui/role-gate";
 export { Screen } from "@/shared/components/ui/screen";
 export { SectionHeader } from "@/shared/components/ui/section-header";
-export { SegmentedTabs } from "@/shared/components/ui/segmented-tabs";
+export { HorizontalChipBar } from "@/shared/components/ui/horizontal-chip-bar";
 export { VideoLinkCard } from "@/shared/components/ui/video-link-card";
 export { Skeleton, SkeletonList, SkeletonRow } from "@/shared/components/ui/skeleton";
 export { StatCard } from "@/shared/components/ui/stat-card";

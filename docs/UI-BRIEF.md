@@ -108,7 +108,7 @@ Business rules:
 
 1. RESPONSIVE: use use-responsive (compact <360, tablet >=600). No hard-coded widths/heights. Use flex, maxWidth (MAX_CONTENT_WIDTH), safe-area insets, and fontScale-safe text (numberOfLines, flexShrink). On tablets use centered content or 2 columns where it fits. All forms must be keyboard-safe (KeyboardAvoidingView / ScrollView with keyboardShouldPersistTaps).
 
-2. NO REDUNDANCY: extract repeated UI into shared/components/ui (Card, ListRow, Badge, EmptyState, SectionHeader, Chip, Avatar, ProgressBar, FormField, ConfirmDialog, BottomSheet, Skeleton, Toast, SegmentedTabs). One source of truth for colors, spacing, radius and typography (tokens). Remove duplicates from existing screens where possible.
+2. NO REDUNDANCY: extract repeated UI into shared/components/ui (Card, ListRow, Badge, EmptyState, SectionHeader, Chip, Avatar, ProgressBar, FormField, ConfirmDialog, BottomSheet, Skeleton, Toast, HorizontalChipBar, FilterPillSheet). One source of truth for colors, spacing, radius and typography (tokens). Remove duplicates from existing screens where possible.
 
 3. MAINTAINABLE: max 250 lines per file. Split into each feature's components/ hooks/ logic/ types/. Strict TS, no `any`. Every feature has an index barrel. Update the README of every folder you touch (1-3 lines).
 

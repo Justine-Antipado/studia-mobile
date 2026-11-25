@@ -4,7 +4,7 @@ import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { ActionButton, Badge, Icon, ListRow, ListState, PageTitle, CustomDropdown, toOptions, StatCard } from "@/shared/components/ui";
+import { ActionButton, Badge, Icon, ListRow, ListState, PageTitle, HorizontalChipBar, StatCard } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
 import type { Tone } from "@/shared/constants/studia-colors";
@@ -15,9 +15,6 @@ import { useAllSubmissions } from "@/features/instructor/hooks/use-submissions";
 import type { QuizStatus } from "@/features/instructor/types/instructor";
 
 const TABS = ["Quizzes", "To Grade", "Gradebook"] as const;
-// E5 / F2 / F5 / G5: the section picker is a dropdown, so it stays one row whatever the labels
-// are and never scrolls a chip out of reach.
-const TAB_OPTIONS = toOptions(TABS);
 type Tab = (typeof TABS)[number];
 const STATUS_TONE: Record<QuizStatus, Tone> = { draft: "primary", published: "green" };
 const STATUS_LABEL: Record<QuizStatus, string> = { draft: "Draft", published: "Published" };
@@ -40,7 +37,7 @@ export default function InstructorAssessmentsScreen() {
   return (
     <Screen role="instructor" scope="instructor/assessments">
       <PageTitle title="Assessments" />
-      <CustomDropdown variant="nav" sheetTitle="Go to" options={TAB_OPTIONS} value={tab} onChange={setTab} />
+      <HorizontalChipBar items={TABS} value={tab} onChange={setTab} label="Sections" />
 
       {tab === "Quizzes" ? (
         <View style={{ gap: SPACE.lg }}>

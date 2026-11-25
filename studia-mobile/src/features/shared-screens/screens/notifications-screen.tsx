@@ -12,7 +12,7 @@ import {
 import { BottomSheet } from "@/shared/components/ui/bottom-sheet";
 import { AppList } from "@/shared/components/ui/app-list";
 import { Badge } from "@/shared/components/ui/badge";
-import { CustomDropdown, type DropdownOption } from "@/shared/components/ui/dropdown";
+import { FilterPillSheet, type FilterGroup } from "@/shared/components/ui/filter-pill-sheet";
 import { ListRow } from "@/shared/components/ui/list-row";
 import { ListState } from "@/shared/components/ui/list-state";
 import { PageTitle } from "@/shared/components/ui/page-title";
@@ -21,8 +21,9 @@ import type { NotificationItem } from "@/features/shared-screens/types/shared-sc
 import { C } from "@/shared/constants/studia-colors";
 import { FONT, HIT_SLOP, SPACE, TYPE } from "@/shared/constants/tokens";
 
-/** E4: "Read" joins All and Unread, and the three live in a dropdown instead of a chip strip. */
+/** "Read" joins All and Unread; the three live in the Filters sheet. */
 type Filter = "all" | "unread" | "read";
+const DEFAULT_FILTERS = { show: "all" };
 
 export function NotificationsScreen({ role }: { role: Role }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -36,11 +37,17 @@ export function NotificationsScreen({ role }: { role: Role }) {
   }, [items, filter]);
 
   // Counts live on the options so the dropdown says how much each filter holds.
-  const filterOptions = useMemo<DropdownOption<Filter>[]>(
+  const filterGroups = useMemo<FilterGroup[]>(
     () => [
-      { value: "all", label: "All alerts", meta: String(items.length) },
-      { value: "unread", label: "Unread", meta: String(unreadCount) },
-      { value: "read", label: "Read", meta: String(items.length - unreadCount) },
+      {
+        key: "show",
+        title: "Show",
+        options: [
+          { value: "all", label: "All alerts", meta: String(items.length) },
+          { value: "unread", label: "Unread", meta: String(unreadCount) },
+          { value: "read", label: "Read", meta: String(items.length - unreadCount) },
+        ],
+      },
     ],
     [items.length, unreadCount],
   );
@@ -98,13 +105,11 @@ export function NotificationsScreen({ role }: { role: Role }) {
         }
       />
 
-      <CustomDropdown
-        variant="nav"
-        icon="funnel-outline"
-        sheetTitle="Show"
-        options={filterOptions}
-        value={filter}
-        onChange={setFilter}
+      <FilterPillSheet
+        groups={filterGroups}
+        value={{ show: filter }}
+        defaults={DEFAULT_FILTERS}
+        onApply={(next) => setFilter(next.show as Filter)}
       />
 
       <View style={s.fill}>

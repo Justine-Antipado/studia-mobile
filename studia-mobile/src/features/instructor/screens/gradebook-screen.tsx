@@ -1,7 +1,7 @@
 // gradebook-screen.tsx — grades for assignments AND quizzes: one row per student, overall
 // percentage weighted by points (a 50-point exam counts more than a 5-point quiz).
 //
-// F1: the class comes from a dropdown (chips did not scale past a handful of classes) and the
+// F1: the class comes from the Filters sheet (chips did not scale past a handful of classes) and the
 // per-item "Show: All / one assignment" filter is gone — the Assessments tab and the grading queue
 // already cover that. Opened from a class (classId param) there is no picker at all: the class is
 // the scope, so there is nothing left to filter.
@@ -12,12 +12,12 @@ import { StyleSheet, View } from "react-native";
 import {
   AppList,
   Badge,
-  CustomDropdown,
   ListRow,
   ListState,
   PageTitle,
+  FilterPillSheet,
   StatCard,
-  type DropdownOption,
+  type FilterGroup,
 } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE } from "@/shared/constants/tokens";
@@ -30,6 +30,8 @@ import { overallByStudent, statsOf, type StudentOverall } from "@/features/instr
 
 /** "All classes" is an option of the dropdown, not a filter control of its own. */
 const ALL_CLASSES = "all";
+
+const DEFAULT_FILTERS = { class: ALL_CLASSES };
 
 type Row = StudentOverall & { id: string };
 
@@ -49,14 +51,16 @@ export default function GradebookScreen() {
     [entries],
   );
 
-  const classOptions = useMemo<DropdownOption<string>[]>(
+  const filterGroups = useMemo<FilterGroup[]>(
     () => [
-      { value: ALL_CLASSES, label: "All classes" },
-      ...(classes.data ?? []).map((c) => ({
-        value: c.id,
-        label: `${c.code} · ${c.section}`,
-        description: c.title,
-      })),
+      {
+        key: "class",
+        title: "Class",
+        options: [
+          { value: ALL_CLASSES, label: "All classes" },
+          ...(classes.data ?? []).map((c) => ({ value: c.id, label: `${c.code} · ${c.section}` })),
+        ],
+      },
     ],
     [classes.data],
   );
@@ -86,13 +90,11 @@ export default function GradebookScreen() {
       <PageTitle title="Gradebook" subtitle="Overall, weighted by points." onBack={goBack} />
 
       {presetClassId ? null : (
-        <CustomDropdown
-          variant="nav"
-          icon="school-outline"
-          sheetTitle="Class"
-          options={classOptions}
-          value={picked}
-          onChange={setPicked}
+        <FilterPillSheet
+          groups={filterGroups}
+          value={{ class: picked }}
+          defaults={DEFAULT_FILTERS}
+          onApply={(next) => setPicked(next.class)}
         />
       )}
 

@@ -22,12 +22,15 @@ export function BottomSheet({
   onClose,
   children,
   scroll = true,
+  height,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
   scroll?: boolean;
+  /** Fixed sheet height (dp). Without it the sheet fits its content up to 85% of the screen. */
+  height?: number;
 }) {
   const insets = useSafeAreaInsets();
 
@@ -44,7 +47,7 @@ export function BottomSheet({
         behavior="padding"
         style={s.anchor}
       >
-        <View style={[s.sheet, { paddingBottom: Math.max(insets.bottom, SPACE.lg) }]}>
+        <View style={[s.sheet, height ? { height } : null, { paddingBottom: Math.max(insets.bottom, SPACE.lg) }]}>
           <View style={s.grabber} />
           <View style={s.head}>
             <Text style={[TYPE.h2, s.title]} numberOfLines={1}>
@@ -70,7 +73,7 @@ export function BottomSheet({
               {children}
             </ScrollView>
           ) : (
-            <View style={s.body}>{children}</View>
+            <View style={[s.body, height ? s.bodyFixed : null]}>{children}</View>
           )}
         </View>
       </KeyboardAvoidingView>
@@ -108,4 +111,5 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   body: { gap: SPACE.md + 2, paddingTop: SPACE.lg, paddingBottom: SPACE.sm },
+  bodyFixed: { flex: 1 },
 });

@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useCallback } from "react";
 
 import { FeatureGate } from "@/shared/components/ui/gate-views";
-import { ListState, PageTitle, CustomDropdown, toOptions } from "@/shared/components/ui";
+import { ListState, PageTitle, HorizontalChipBar } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { useRouteEnum, useRouteId } from "@/core/logic/route-params";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
@@ -15,9 +15,6 @@ import { TasksTab } from "@/features/student/components/course-detail/tasks-tab"
 import { useClass } from "@/features/student/hooks/use-classes";
 
 const TABS = ["Stream", "Lessons", "Tasks", "Grades", "People"] as const;
-// E5 / F2 / F5 / G5: the section picker is a dropdown, so it stays one row whatever the labels
-// are and never scrolls a chip out of reach.
-const TAB_OPTIONS = toOptions(TABS);
 type Tab = (typeof TABS)[number];
 
 export default function StudentCourseDetail() {
@@ -44,7 +41,7 @@ export default function StudentCourseDetail() {
       >
         {course ? (
           <>
-            <CustomDropdown variant="nav" sheetTitle="Go to" options={TAB_OPTIONS} value={tab} onChange={setTab} />
+            <HorizontalChipBar items={TABS} value={tab} onChange={setTab} label="Sections" />
             {tab === "Stream" && (
               <FeatureGate feature="announcements">
                 <StreamTab classId={course.id} />

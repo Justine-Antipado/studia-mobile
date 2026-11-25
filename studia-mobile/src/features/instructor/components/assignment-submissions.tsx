@@ -5,7 +5,7 @@ import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { Badge, Chip, ListRow, ListState, SectionHeader } from "@/shared/components/ui";
+import { Badge, FilterPillSheet, ListRow, ListState, SectionHeader, type FilterGroup } from "@/shared/components/ui";
 import type { Tone } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { timeAgo } from "@/features/instructor/logic/format";
@@ -17,6 +17,7 @@ import type {
 
 const FILTERS = ["All", "Submitted", "Late", "Missing", "Graded"] as const;
 type Filter = (typeof FILTERS)[number];
+const DEFAULT_FILTERS = { status: "All" };
 
 const STATUS: Record<AssignmentSubmissionStatus, { label: string; tone: Tone }> = {
   missing: { label: "Missing", tone: "red" },
@@ -49,6 +50,16 @@ export function AssignmentSubmissions({
   const shown = useMemo(() => rows.filter((r) => matches(r, filter)), [rows, filter]);
 
   const count = useCallback((f: Filter) => rows.filter((r) => matches(r, f)).length, [rows]);
+  const filterGroups = useMemo<FilterGroup[]>(
+    () => [
+      {
+        key: "status",
+        title: "Status",
+        options: FILTERS.map((f) => ({ value: f, label: f, meta: String(count(f)) })),
+      },
+    ],
+    [count],
+  );
 
   const open = (s: AssignmentSubmission) =>
     router.push({
@@ -62,11 +73,12 @@ export function AssignmentSubmissions({
       <Text style={TYPE.muted}>
         {`Submitted ${count("Submitted")} · Late ${count("Late")} · Missing ${count("Missing")} · Graded ${count("Graded")}`}
       </Text>
-      <View style={s.chips}>
-        {FILTERS.map((f) => (
-          <Chip key={f} label={`${f} (${count(f)})`} selected={filter === f} onPress={() => setFilter(f)} />
-        ))}
-      </View>
+      <FilterPillSheet
+        groups={filterGroups}
+        value={{ status: filter }}
+        defaults={DEFAULT_FILTERS}
+        onApply={(next) => setFilter(next.status as Filter)}
+      />
 
       <ListState
         loading={loading}
@@ -106,6 +118,5 @@ export function AssignmentSubmissions({
 
 const s = StyleSheet.create({
   wrap: { gap: SPACE.sm },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm },
   list: { gap: SPACE.sm },
 });

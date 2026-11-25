@@ -6,7 +6,7 @@ import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { AppList, CustomDropdown, ListState, PageTitle, ProgressBar, toOptions } from "@/shared/components/ui";
+import { AppList, FilterPillSheet, ListState, PageTitle, ProgressBar, type FilterGroup } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { TaskRow } from "@/features/student/components/task-row";
@@ -14,7 +14,10 @@ import { useTasks, useToggleTask } from "@/features/student/hooks/use-tasks";
 import { TASK_TABS, tasksForTab, type TaskTab } from "@/features/student/logic/task-filters";
 import type { Task } from "@/features/student/types/student";
 
-const TAB_OPTIONS = toOptions(TASK_TABS);
+const FILTER_GROUPS: FilterGroup[] = [
+  { key: "tab", title: "Show", options: TASK_TABS.map((t) => ({ value: t, label: t })) },
+];
+const DEFAULT_FILTERS = { tab: "Today" };
 
 const EMPTY_MESSAGE: Record<TaskTab, string> = {
   Today: "Nothing due today. Check Upcoming for what is next.",
@@ -62,13 +65,11 @@ export default function StudentTodo() {
         value={tasks.length ? doneCount / tasks.length : 0}
         label={`${doneCount}/${tasks.length} done`}
       />
-      <CustomDropdown
-        variant="nav"
-        icon="list-outline"
-        sheetTitle="Show"
-        options={TAB_OPTIONS}
-        value={tab}
-        onChange={setTab}
+      <FilterPillSheet
+        groups={FILTER_GROUPS}
+        value={{ tab }}
+        defaults={DEFAULT_FILTERS}
+        onApply={(next) => setTab(next.tab as TaskTab)}
       />
 
       <View style={s.fill}>

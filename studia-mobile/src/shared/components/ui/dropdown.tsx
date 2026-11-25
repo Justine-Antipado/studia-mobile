@@ -1,5 +1,5 @@
 // dropdown.tsx — CustomDropdown: the ONE dropdown of the app. Replaces chip rows and
-// SegmentedTabs wherever the choice is a single value out of a list that can grow (class pickers,
+// chip rows wherever the choice is a single value out of a list that can grow (class pickers,
 // sub-navigation, question type / Bloom / difficulty, personal-info fields, alert filters).
 //   variant="field" — form control: label above, bordered box, helper/error underneath
 //   variant="nav"   — compact pill used as in-screen sub-navigation (Stream / Lessons / …)

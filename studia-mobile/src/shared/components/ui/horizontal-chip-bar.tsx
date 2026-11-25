@@ -1,4 +1,4 @@
-// segmented-tabs.tsx — in-screen tab strip (Stream · Lessons · Tasks · Grades · People).
+// horizontal-chip-bar.tsx — in-screen sub-page strip (Stream · Lessons · Tasks · Grades · People).
 // Stays inside the screen's content width (no negative-margin bleed, which clipped the last chip
 // and overlapped siblings). Scrolls horizontally when the labels do not fit and keeps the selected item in view: the
 // offset comes from each chip's measured position (onLayout), not from an assumed chip width,
@@ -19,7 +19,7 @@ type Props<T extends string> = {
   label?: string;
 };
 
-export function SegmentedTabs<T extends string>({
+export function HorizontalChipBar<T extends string>({
   items,
   value,
   onChange,
@@ -69,6 +69,7 @@ export function SegmentedTabs<T extends string>({
             label={formatLabel ? formatLabel(item) : item}
             selected={item === value}
             role="tab"
+            compact
             onPress={() => select(item)}
           />
         </View>
@@ -78,6 +79,7 @@ export function SegmentedTabs<T extends string>({
 }
 
 const s = StyleSheet.create({
-  scroll: { flexGrow: 0 },
+  // flexGrow 0 + no wrap: the strip is one row of fixed-height chips that scrolls sideways.
+  scroll: { flexGrow: 0, flexShrink: 0 },
   content: { gap: SPACE.sm, alignItems: "center", paddingRight: SPACE.lg },
 });

@@ -13,14 +13,17 @@ export const Chip = memo(function Chip({
   onPress,
   disabled,
   role = "button",
+  compact = false,
 }: {
   label: string;
   selected?: boolean;
   icon?: IconName;
   onPress?: () => void;
   disabled?: boolean;
-  /** "tab" inside SegmentedTabs, so the selection is announced as a tab, not a toggle. */
+  /** "tab" inside HorizontalChipBar, so the selection is announced as a tab, not a toggle. */
   role?: "button" | "tab";
+  /** Tighter height and padding for chip bars; same colors and states. */
+  compact?: boolean;
 }) {
   return (
     <Pressable
@@ -30,7 +33,7 @@ export const Chip = memo(function Chip({
       accessibilityRole={role}
       accessibilityLabel={label}
       accessibilityState={{ selected, disabled: !!disabled }}
-      style={({ pressed }) => [s.chip, selected && s.on, pressed && !disabled && s.pressed]}
+      style={({ pressed }) => [s.chip, compact && s.compact, selected && s.on, pressed && !disabled && s.pressed]}
     >
       {icon ? <Icon name={icon} size="sm" color={selected ? C.white : C.primaryDark} /> : null}
       <Text style={[s.text, selected && s.textOn]} numberOfLines={1}>
@@ -51,7 +54,16 @@ const s = StyleSheet.create({
     borderRadius: RADIUS.pill,
     backgroundColor: C.lavenderSoft,
   },
-  on: { backgroundColor: C.primary },
+  // Chip bars: tighter, with the outline the Filters pill uses (forms keep the plain chip).
+  compact: {
+    borderWidth: 1,
+    borderColor: C.lavender,
+    minHeight: 30,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs + 1,
+    gap: SPACE.xs,
+  },
+  on: { backgroundColor: C.primary, borderColor: C.primary },
   pressed: { opacity: 0.9 },
   text: { color: C.primaryDark, fontSize: 13, fontFamily: FONT.semibold },
   textOn: { color: C.white },
