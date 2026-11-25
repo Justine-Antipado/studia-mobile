@@ -8,25 +8,15 @@
       "source": "/(.*)",
       "headers": [
         {
-          "//": "The CSP that counts. index.html carries the same policy in a <meta> tag, which browsers ignore for frame-ancestors (and which cannot be relied on generally), so this header is what actually protects the portal. connect-src names the two origins the app talks to instead of all of https:, because the admin's access and refresh tokens live in localStorage (supabase-js persistSession) and a blanket https: would let injected script post them anywhere. Update the two hosts if the Supabase project or the API domain changes.",
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; base-uri 'self'; object-src 'none'; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self'; connect-src 'self' https://chvibqjstucybirsmpwu.supabase.co wss://chvibqjstucybirsmpwu.supabase.co https://studia-api-mu.vercel.app; form-action 'self'; frame-ancestors 'none'"
         },
-        {
-          "//": "frame-ancestors above covers modern browsers; this is the older equivalent and costs nothing. Without either, an admin action such as deleting a user can be clickjacked through an iframe.",
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
+        { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        {
-          "//": "A private portal has no business being indexed, and the meta tag only reaches crawlers that render HTML.",
-          "key": "X-Robots-Tag",
-          "value": "noindex, nofollow"
-        },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
         {
-          "//": "Nothing in the portal uses these.",
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=(), payment=()"
         }

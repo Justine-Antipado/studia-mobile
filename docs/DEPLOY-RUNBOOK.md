@@ -177,7 +177,26 @@ Supabase → Auth → Rate Limits.
 
 ## 5. Admin site and the push function
 
-**Admin site (Vercel):** deploy. No environment change. Verify:
+**Admin site (Vercel):** deploy. No environment change.
+
+> **Two deployment failures bit this step on 2026-11-26; both are fixed, but know the symptoms.**
+>
+> 1. **`vercel.json` schema validation.** The file used `"//"` keys as comments. Vercel validates
+>    `vercel.json` against a strict schema and rejects unknown properties, so every Git-triggered
+>    build failed with ``headers[0].headers[0] should NOT have additional property `//` `` — which
+>    meant the security headers below had **never once reached production**. The keys are gone and
+>    their reasoning now lives in [`studia-admin/README.md`](../studia-admin/README.md). Do not add
+>    them back.
+> 2. **"The commit author did not have contributing access."** The Hobby plan will not build a
+>    commit authored by someone other than the Vercel project owner while the repo is private.
+>    Local git commits as `Oustinn11252005 <justinemagpantay39@gmail.com>`; the Vercel account is
+>    `justineantipado10-9065`. Deploy from the CLI, which authenticates as you and skips the check:
+>
+>    ```bash
+>    cd studia-admin && npx vercel --prod
+>    ```
+
+Verify:
 
 - Settings has **Legal** and **Account** tabs and no System tab.
 - Users → status filter has **Pending approval**, and a pending instructor shows an **Approve**

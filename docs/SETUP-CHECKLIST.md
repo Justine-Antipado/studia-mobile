@@ -14,8 +14,15 @@ Legend: `[x]` done, `[ ]` still to do. **YOU** = manual step (login, secret, bil
 ## 3. Supabase projects (region: Singapore `ap-southeast-1` unless changed)
 - [x] Organization `imsgvpobrjnbcgdlkjyf`, region Singapore
 - [x] `studia-dev` = chvibqjstucybirsmpwu (old Tokyo project deleted)
-- [x] `studia-prod` = xvjahswctcarvblxgjmd (Singapore). Production Vercel env vars point to it
-- [ ] **YOU** `supabase link --project-ref xvjahswctcarvblxgjmd` then `supabase db push --remote`, then re-link to dev (chvibqjstucybirsmpwu)
+- [x] ~~`studia-prod` = xvjahswctcarvblxgjmd (Singapore). Production Vercel env vars point to it~~
+      **ABANDONED 2026-11-26.** There is no production project: `studia-dev`
+      (chvibqjstucybirsmpwu) is the only database, and it is what launches. Every config already
+      points at it — all three `eas.json` profiles including `production`, the CSP `connect-src`
+      in `studia-admin/vercel.json`, and the deployed admin bundle (verified). The claim that
+      "production Vercel env vars point to it" was never true of the admin site and is struck.
+      **Still to confirm by hand:** Vercel -> `studia-api` -> Environment Variables ->
+      `SUPABASE_URL` must read `https://chvibqjstucybirsmpwu.supabase.co`.
+- [x] ~~**YOU** `supabase link --project-ref xvjahswctcarvblxgjmd` then `supabase db push --remote`, then re-link to dev~~ — struck, see above. Do not push to studia-prod.
 - [x] `supabase init` + `supabase link` to studia-dev
 - [x] `supabase db push --remote` (6 migrations) and types in `shared-types/database.types.ts`
 - [ ] Auth: apply migration 010 (Gmail-only) with `supabase db push --remote`, then enable Google provider: see docs/AUTH-SETUP.md (Phase 3)
