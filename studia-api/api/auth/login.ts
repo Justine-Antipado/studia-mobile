@@ -29,8 +29,7 @@ const Body = z.object({
   role: z.enum(["student", "instructor", "admin"]),
 });
 
-const BAD_CREDENTIALS =
-  "Incorrect email or password. If you signed up with Google, use “Continue with Google”.";
+const BAD_CREDENTIALS = "Incorrect email or password";
 
 async function resolveEmail(db: Db, identifier: string, role: PublicRole): Promise<string | null> {
   if (identifier.includes("@")) return identifier;

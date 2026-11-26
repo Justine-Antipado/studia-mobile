@@ -27,7 +27,7 @@
 -- ---------------------------------------------------------------- 1. time limit
 -- Parallel to `late` in migration 011: stamped by the database from ITS clock, never from the client.
 alter table public.quiz_attempts
-  add column over_time boolean not null default false;
+  add column if not exists over_time boolean not null default false;
 
 comment on column public.quiz_attempts.over_time is
   'True when the attempt was submitted more than the quiz''s time_limit_min (plus grace) after the '

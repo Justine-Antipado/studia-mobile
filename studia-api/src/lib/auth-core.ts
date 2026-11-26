@@ -84,7 +84,7 @@ export function assertAccountUsable(p: Profile, wanted?: PublicRole): void {
     );
   }
   if (p.deleted_at || p.status === "inactive") {
-    throw new ApiError("ACCOUNT_INACTIVE", "This account has been deactivated. Contact the administrator.");
+    throw new ApiError("ACCOUNT_INACTIVE", "This account is deactivated");
   }
   if (p.status === "pending_approval") {
     throw new ApiError("ACCOUNT_PENDING", "Your instructor account is waiting for administrator approval.");

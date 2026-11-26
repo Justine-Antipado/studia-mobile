@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { ActionButton, Badge, Card, CommentComposer, ConfirmDialog, ListState, PageTitle, SectionHeader, useToast } from "@/shared/components/ui";
+import { ActionButton, Avatar, Badge, Card, CommentComposer, ConfirmDialog, ListState, PageTitle, SectionHeader, useToast } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useRouteIds } from "@/core/logic/route-params";
@@ -46,7 +46,14 @@ export default function InstructorAnnouncementDetailScreen() {
         {announcement ? (
           <View style={{ gap: SPACE.lg }}>
             <Card>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: SPACE.sm }}>
+                <Avatar name={announcement.authorName} userId={announcement.authorId} size={32} />
+                <Text style={[TYPE.bodyStrong, { flex: 1 }]} numberOfLines={1}>
+                  {announcement.authorName}
+                </Text>
+                <Badge label="Instructor" tone="primary" />
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: SPACE.sm }}>
                 <Text style={TYPE.h2} numberOfLines={3}>
                   {announcement.title}
                 </Text>

@@ -107,9 +107,33 @@ export function endpoint<T>(schema: ZodType<T, z.ZodTypeDef, unknown>, run: (bod
           error: { code: "VALIDATION", message: "Please fix the highlighted fields.", fields },
         });
       } else {
-        console.error("[auth]", e instanceof Error ? e.name : "error"); // never log bodies, emails or codes
+        console.error("[auth]", describe(e)); // never log bodies, emails or codes
         res.status(500).json({ error: { code: "UNKNOWN", message: "Something went wrong. Please try again." } });
       }
     }
   };
+}
+
+/**
+ * What to put in the log for an unexpected throw.
+ *
+ * `e.name` alone was useless for the failures that actually happen here: supabase-js builds a
+ * PostgrestError as a PLAIN OBJECT, not an Error subclass, so every database failure -- a revoked
+ * grant, a missing function, a key that is not the service key -- logged the literal string "error"
+ * and nothing else. A whole-system auth outage looked exactly like a typo.
+ *
+ * `code` and `message` are the diagnosis and are safe to keep: a PostgREST message names the
+ * function, table or column, never a row's values. `details` and `hint` CAN quote those values (a
+ * duplicate-key detail repeats the email), so they stay out -- the same rule as before.
+ */
+function describe(e: unknown): string {
+  if (e && typeof e === "object") {
+    const { code, status, message } = e as Record<string, unknown>;
+    const name = e instanceof Error ? e.name : ((e as { name?: unknown }).name ?? "DbError");
+    const parts = [name, code, status, message]
+      .filter((v) => v !== undefined && v !== null && v !== "")
+      .map(String);
+    if (parts.length) return parts.join(" ");
+  }
+  return typeof e === "string" ? e : "unknown";
 }

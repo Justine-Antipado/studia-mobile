@@ -31,6 +31,12 @@ describe("task tabs", () => {
   it("treats far-future work as Upcoming", () => {
     expect(matchesTab(task("f", 24 * 10), "Upcoming")).toBe(true);
   });
+
+  it("All shows every task regardless of state", () => {
+    expect(matchesTab(task("late", -30), "All")).toBe(true);
+    expect(matchesTab(task("d", 5, { done: true }), "All")).toBe(true);
+    expect(matchesTab(task("f", 24 * 10), "All")).toBe(true);
+  });
 });
 
 describe("tasksForTab", () => {

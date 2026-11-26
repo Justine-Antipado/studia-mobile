@@ -13,6 +13,9 @@ export type AnnouncementView = {
   body: string;
   postedAt: string;
   pinned: boolean;
+  /** The instructor who posted it; null if their account no longer exists. */
+  authorId: string | null;
+  authorName: string;
   comments: Comment[];
 };
 
@@ -29,11 +32,12 @@ type AnnRow = {
   body: string;
   pinned: boolean;
   posted_at: string;
+  author_id: string | null;
   comments: CommentRow[];
 };
 
 const SELECT =
-  "id, class_id, title, body, pinned, posted_at, comments:announcement_comments(id, body, posted_at, author_id)";
+  "id, class_id, title, body, pinned, posted_at, author_id, comments:announcement_comments(id, body, posted_at, author_id)";
 const COMMENT_SELECT = "id, body, posted_at, author_id";
 
 async function ownerOf(classId: string): Promise<string | null> {
@@ -87,6 +91,8 @@ function toView(a: AnnRow, ownerId: string | null, me: string, names: Map<string
     body: a.body,
     postedAt: a.posted_at,
     pinned: a.pinned,
+    authorId: a.author_id,
+    authorName: (a.author_id ? names.get(a.author_id) : undefined) ?? "Instructor",
     comments: (a.comments ?? [])
       .sort((x, y) => x.posted_at.localeCompare(y.posted_at))
       .map((c) => toComment(c, ownerId, me, names)),
@@ -94,7 +100,7 @@ function toView(a: AnnRow, ownerId: string | null, me: string, names: Map<string
 }
 
 const authorIds = (rows: readonly AnnRow[]): (string | null)[] =>
-  rows.flatMap((a) => (a.comments ?? []).map((c) => c.author_id));
+  rows.flatMap((a) => [a.author_id, ...(a.comments ?? []).map((c) => c.author_id)]);
 
 export function listAnnouncements(classId: string): Promise<Result<AnnouncementView[]>> {
   return guard(async () => {

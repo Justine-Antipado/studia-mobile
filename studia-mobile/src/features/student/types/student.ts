@@ -25,6 +25,8 @@ export type Announcement = {
   body: string;
   postedAt: string;
   pinned: boolean;
+  authorId: string | null;
+  authorName: string;
   comments: Comment[];
 };
 

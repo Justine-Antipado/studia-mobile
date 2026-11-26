@@ -28,6 +28,8 @@ export function StreamTab({ classId }: { classId: string }) {
       timeLabel={timeAgo(a.postedAt)}
       commentCount={a.comments.length}
       pinned={a.pinned}
+      authorId={a.authorId}
+      authorName={a.authorName}
       onPress={() => open(a.id)}
     />
   );

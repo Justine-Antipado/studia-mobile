@@ -71,7 +71,7 @@ export default function QuizDetailScreen() {
                       </Text>
                     ))
                   : q.type === "identification"
-                    ? <Text style={TYPE.muted}>Answer: {q.correctAnswer}</Text>
+                    ? <Text style={TYPE.muted}>Answer: {q.correctAnswer} · Confirmed manually</Text>
                     : <Text style={TYPE.muted}>Graded manually (essay)</Text>}
               </Card>
             ))}
@@ -81,11 +81,6 @@ export default function QuizDetailScreen() {
               icon="create-outline"
               variant="secondary"
               onPress={() => router.push({ pathname: "/instructor/edit-quiz", params: { id: quiz.id } })}
-            />
-            <ActionButton
-              label="Open grading"
-              icon="document-text-outline"
-              onPress={() => router.push({ pathname: "/instructor/grading", params: { quizId: quiz.id } })}
             />
             <ActionButton label="Delete quiz" icon="trash-outline" variant="danger" onPress={() => setConfirmDelete(true)} />
           </View>

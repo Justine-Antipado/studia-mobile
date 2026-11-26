@@ -24,11 +24,19 @@ export function useSubmission(id: string | null) {
   return useQuery(id ? itemKey(id) : null, () => submissionRepository.get(id!), { ttlMs: TTL.live, enabled: !!id });
 }
 
-export function useGradeSubmission(id: string) {
+export function useGradeQuestion(attemptId: string) {
   return useMutation(
-    ({ score, feedback }: { score: string; feedback: string }) => submissionRepository.grade(id, score, feedback),
+    ({ questionId, points }: { questionId: string; points: string }) =>
+      submissionRepository.gradeQuestion(attemptId, questionId, points),
+    { invalidate: () => itemKey(attemptId) },
+  );
+}
+
+export function useReleaseGrade(attemptId: string) {
+  return useMutation(
+    ({ feedback }: { feedback: string }) => submissionRepository.release(attemptId, feedback),
     {
-      invalidate: (_args, submission) => [allKey, itemKey(id), quizKey(submission.quizId), cacheKey("instructor", "gradebook")],
+      invalidate: (_args, submission) => [allKey, itemKey(attemptId), quizKey(submission.quizId), cacheKey("instructor", "gradebook")],
     },
   );
 }

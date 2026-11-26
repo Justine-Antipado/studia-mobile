@@ -37,7 +37,7 @@ export class AuthError extends Error {
  * — password login, Google, OTP and profile completion. One constant so the wording cannot drift
  * into a generic "Something went wrong", which is what it used to say.
  */
-export const BLOCKED_MESSAGE = "This user is blocked, please contact the admin.";
+export const BLOCKED_MESSAGE = "This account is deactivated";
 
 export const isAuthError = (e: unknown): e is AuthError =>
   e instanceof AuthError ||

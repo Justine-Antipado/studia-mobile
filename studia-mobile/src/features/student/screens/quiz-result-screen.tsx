@@ -30,14 +30,23 @@ export default function StudentQuizResult() {
         {quiz && attempt ? (
           <View style={{ gap: SPACE.lg }}>
             <View style={{ alignItems: "center", gap: SPACE.sm }}>
-              <Text style={TYPE.muted}>Your score</Text>
-              <Text style={TYPE.h1}>
-                {attempt.score ?? 0}/{attempt.maxScore}
-              </Text>
               {attempt.score !== null ? (
-                <Badge label={`${toPercent(attempt.score, attempt.maxScore)}%`} tone={scoreTone(toPercent(attempt.score, attempt.maxScore))} />
-              ) : null}
-              <ProgressBar value={(attempt.score ?? 0) / Math.max(attempt.maxScore, 1)} />
+                <>
+                  <Text style={TYPE.muted}>Your score</Text>
+                  <Text style={TYPE.h1}>
+                    {attempt.score}/{attempt.maxScore}
+                  </Text>
+                  <Badge label={`${toPercent(attempt.score, attempt.maxScore)}%`} tone={scoreTone(toPercent(attempt.score, attempt.maxScore))} />
+                  <ProgressBar value={attempt.score / Math.max(attempt.maxScore, 1)} />
+                </>
+              ) : (
+                <>
+                  <Badge label="Pending grading" tone="orange" />
+                  <Text style={TYPE.muted}>
+                    Your instructor has not graded this quiz yet. You will see your score once they do.
+                  </Text>
+                </>
+              )}
             </View>
 
             {/* G2: the instructor's note, right under the score. */}

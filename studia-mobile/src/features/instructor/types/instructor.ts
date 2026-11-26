@@ -32,6 +32,8 @@ export type Announcement = {
   body: string;
   postedAt: string;
   pinned: boolean;
+  authorId: string | null;
+  authorName: string;
   comments: Comment[];
 };
 
@@ -115,6 +117,18 @@ export type QuizDraft = {
   schedule?: QuizSchedule;
 };
 
+export type SubmissionAnswer = {
+  questionId: string;
+  type: "essay" | "identification";
+  prompt: string;
+  response: string;
+  maxPoints: number;
+  /** Null until graded. Identification starts with a string-match suggestion that is still editable. */
+  awardedPoints: number | null;
+  /** Identification only, for the instructor's reference while grading. */
+  correctAnswer: string | null;
+};
+
 export type Submission = {
   id: string;
   studentName: string;
@@ -133,7 +147,8 @@ export type Submission = {
    * The answers are still scored: what an over-time attempt is worth is the instructor's call.
    */
   overTime: boolean;
-  answers: { prompt: string; response: string }[];
+  /** Essay and identification answers only: multiple choice is auto-graded and never needs review. */
+  answers: SubmissionAnswer[];
 };
 
 export type GradingGroup = {

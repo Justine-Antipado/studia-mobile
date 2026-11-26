@@ -1,5 +1,5 @@
 // app/_layout.tsx — root layout: Poppins loaded behind the splash screen (no font flicker),
-// one ErrorBoundary around the whole app, Toast host, and the root Stack transitions.
+// one ErrorBoundary around the whole app, Toast host, and the root Stack transitions..
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";

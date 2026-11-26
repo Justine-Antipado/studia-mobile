@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.18"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       ai_chat_messages: {
@@ -685,6 +710,7 @@ export type Database = {
           locked: boolean
           role: Database["public"]["Enums"]["user_role"] | null
           success: boolean
+          throttle_key: string | null
           user_agent: string | null
           user_id: string | null
         }
@@ -696,6 +722,7 @@ export type Database = {
           locked?: boolean
           role?: Database["public"]["Enums"]["user_role"] | null
           success?: boolean
+          throttle_key?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -707,6 +734,7 @@ export type Database = {
           locked?: boolean
           role?: Database["public"]["Enums"]["user_role"] | null
           success?: boolean
+          throttle_key?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -1001,6 +1029,7 @@ export type Database = {
           purpose: Database["public"]["Enums"]["otp_purpose"]
           request_ip: unknown
           sent_at: string
+          throttle_key: string | null
         }
         Insert: {
           attempts?: number
@@ -1012,6 +1041,7 @@ export type Database = {
           purpose: Database["public"]["Enums"]["otp_purpose"]
           request_ip?: unknown
           sent_at?: string
+          throttle_key?: string | null
         }
         Update: {
           attempts?: number
@@ -1023,6 +1053,7 @@ export type Database = {
           purpose?: Database["public"]["Enums"]["otp_purpose"]
           request_ip?: unknown
           sent_at?: string
+          throttle_key?: string | null
         }
         Relationships: []
       }
@@ -1256,6 +1287,7 @@ export type Database = {
           idempotency_key: string | null
           late: boolean
           max_score: number
+          over_time: boolean
           quiz_id: string
           score: number | null
           started_at: string
@@ -1271,6 +1303,7 @@ export type Database = {
           idempotency_key?: string | null
           late?: boolean
           max_score?: number
+          over_time?: boolean
           quiz_id: string
           score?: number | null
           started_at?: string
@@ -1286,6 +1319,7 @@ export type Database = {
           idempotency_key?: string | null
           late?: boolean
           max_score?: number
+          over_time?: boolean
           quiz_id?: string
           score?: number | null
           started_at?: string
@@ -1724,6 +1758,54 @@ export type Database = {
       }
     }
     Functions: {
+      admin_ai_health: { Args: never; Returns: Json }
+      admin_assessments: { Args: never; Returns: Json }
+      admin_audit_log: { Args: never; Returns: Json }
+      admin_class: { Args: { p_id: string }; Returns: Json }
+      admin_class_announcements: { Args: never; Returns: Json }
+      admin_classes: { Args: never; Returns: Json }
+      admin_content: { Args: never; Returns: Json }
+      admin_dashboard: { Args: never; Returns: Json }
+      admin_delete_class_announcements: {
+        Args: { p_ids: string[] }
+        Returns: boolean
+      }
+      admin_delete_classes: { Args: { p_ids: string[] }; Returns: boolean }
+      admin_delete_content: { Args: { p_ids: string[] }; Returns: boolean }
+      admin_delete_users: { Args: { p_ids: string[] }; Returns: Json }
+      admin_get_settings: { Args: never; Returns: Json }
+      admin_login_attempts: { Args: never; Returns: Json }
+      admin_mark_all_notifications_read: { Args: never; Returns: boolean }
+      admin_mark_notification_read: {
+        Args: { p_id: string; p_read?: boolean }
+        Returns: Json
+      }
+      admin_nav_counts: { Args: never; Returns: Json }
+      admin_notifications: { Args: never; Returns: Json }
+      admin_push_status: { Args: never; Returns: Json }
+      admin_reassign_classes: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      admin_reports: { Args: never; Returns: Json }
+      admin_save_settings: { Args: { p_patch: Json }; Returns: Json }
+      admin_set_user_active: {
+        Args: { p_active: boolean; p_ids: string[] }
+        Returns: Json
+      }
+      admin_update_ai_feature: {
+        Args: { p_enabled: boolean; p_feature: string }
+        Returns: Json
+      }
+      admin_user: { Args: { p_id: string }; Returns: Json }
+      admin_user_impact: { Args: { p_id: string }; Returns: Json }
+      admin_users: { Args: never; Returns: Json }
+      app_status: { Args: never; Returns: Json }
+      audit_admin_event: {
+        Args: { p_admin: string; p_ip: unknown; p_summary: string }
+        Returns: undefined
+      }
+      avatar_paths: { Args: { p_ids: string[] }; Returns: Json }
       class_classmates: {
         Args: { p_class_id: string }
         Returns: {
@@ -1741,16 +1823,61 @@ export type Database = {
         }
         Returns: undefined
       }
-      grade_quiz_attempt: {
-        Args: { p_attempt_id: string; p_feedback: string; p_score: number }
+      grade_quiz_question: {
+        Args: { p_attempt_id: string; p_points: number; p_question_id: string }
         Returns: undefined
       }
       instructor_analytics: { Args: never; Returns: Json }
       join_class: { Args: { p_code: string }; Returns: string }
       leave_class: { Args: { p_class_id: string }; Returns: undefined }
+      login_lock_state: { Args: { p_identifier: string }; Returns: Json }
+      otp_send_wait: {
+        Args: {
+          p_email: string
+          p_purpose: Database["public"]["Enums"]["otp_purpose"]
+        }
+        Returns: number
+      }
+      person_names: { Args: { p_ids: string[] }; Returns: Json }
+      record_login_attempt: {
+        Args: {
+          p_identifier: string
+          p_ip: unknown
+          p_key?: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_success: boolean
+          p_user_agent: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       register_push_token: {
         Args: { p_platform: string; p_token: string }
         Returns: undefined
+      }
+      release_quiz_grade: {
+        Args: { p_attempt_id: string; p_feedback: string }
+        Returns: undefined
+      }
+      reserve_ai_request: {
+        Args: {
+          p_feature: Database["public"]["Enums"]["ai_feature"]
+          p_limit: number
+          p_source_id?: string
+          p_source_type?: Database["public"]["Enums"]["ai_source_type"]
+          p_user_id: string
+        }
+        Returns: string
+      }
+      save_material_summary: {
+        Args: {
+          p_bullets: Json
+          p_count_regen: boolean
+          p_material_id: string
+          p_objectives: Json
+          p_tldr: string
+        }
+        Returns: number
       }
       save_quiz: {
         Args: { p_quiz: Json; p_replace_questions?: boolean }
@@ -1760,6 +1887,8 @@ export type Database = {
         Args: { p_material_id: string; p_text: string }
         Returns: undefined
       }
+      spend_otp_attempt: { Args: { p_otp_id: string }; Returns: Json }
+      start_quiz: { Args: { p_quiz_id: string }; Returns: Json }
       submit_assignment: {
         Args: {
           p_assignment_id: string
@@ -1820,6 +1949,7 @@ export type Database = {
         | "reset"
         | "password_change"
         | "profile_update"
+        | "admin_login"
       processing_state: "processing" | "ready" | "failed"
       question_type: "multiple_choice" | "identification" | "essay"
       quiz_source: "manual" | "ai"
@@ -1966,6 +2096,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       account_status: ["active", "inactive", "pending_approval"],
@@ -2015,6 +2148,7 @@ export const Constants = {
         "reset",
         "password_change",
         "profile_update",
+        "admin_login",
       ],
       processing_state: ["processing", "ready", "failed"],
       question_type: ["multiple_choice", "identification", "essay"],

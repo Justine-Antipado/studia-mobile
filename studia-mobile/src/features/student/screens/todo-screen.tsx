@@ -18,11 +18,12 @@ import type { Task } from "@/features/student/types/student";
 const FILTER_GROUPS: FilterGroup[] = [
   { key: "tab", title: "Show", options: TASK_TABS.map((t) => ({ value: t, label: t })) },
 ];
-const DEFAULT_FILTERS = { tab: "Today" };
+const DEFAULT_FILTERS = { tab: "All" };
 /** Stable empty list: the loading / error / empty states are drawn by ListState below the rows. */
 const NO_ROWS: Task[] = [];
 
 const EMPTY_MESSAGE: Record<TaskTab, string> = {
+  All: "Nothing here yet. Your instructors have not posted anything new.",
   Today: "Nothing due today. Check Upcoming for what is next.",
   Upcoming: "No upcoming work. Your instructors have not posted anything new.",
   Overdue: "Nothing overdue. Keep it up.",
@@ -34,7 +35,7 @@ export default function StudentTodo() {
   const goBack = useSafeBack("/student/home");
   const { data, loading, error, refetch } = useTasks();
   const toggleTask = useToggleTask();
-  const [tab, setTab] = useState<TaskTab>("Today");
+  const [tab, setTab] = useState<TaskTab>("All");
 
   const tasks = useMemo(() => data ?? [], [data]);
   const doneCount = useMemo(() => tasks.filter((t) => t.done).length, [tasks]);

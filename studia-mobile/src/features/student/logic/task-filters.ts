@@ -3,14 +3,15 @@
 import { isOverdue } from "@/features/student/logic/format";
 import type { Task } from "@/features/student/types/student";
 
-export const TASK_TABS = ["Today", "Upcoming", "Overdue", "Done"] as const;
+export const TASK_TABS = ["All", "Today", "Upcoming", "Overdue", "Done"] as const;
 export type TaskTab = (typeof TASK_TABS)[number];
 
-// G4: the sort / kind / class filter is gone. The four buckets are the only choice left and the
+// G4: the sort / kind / class filter is gone. The five buckets are the only choice left and the
 // order is always "soonest due first", which is what a to-do list is for.
 export const isDueToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
 export function matchesTab(task: Task, tab: TaskTab): boolean {
+  if (tab === "All") return true;
   if (tab === "Done") return task.done;
   if (task.done) return false;
   if (tab === "Overdue") return isOverdue(task.dueAt);

@@ -234,18 +234,21 @@ the class before doing anything.
 | `update(id, draft, publish)` | `PUT /instructor/quizzes/{id}` | Same body. **Once any attempt exists the questions, options and answer keys are frozen** (409; DB trigger in migration 011): only the title and the schedule may change, and the quiz cannot go back to `draft`. On a published quiz the due date may be extended even after it has passed. |
 | `remove(id)` | `DELETE /instructor/quizzes/{id}` | Refuse (409) once attempts exist, or archive instead. |
 
-### `SubmissionRepository` — `submissions-repository.ts` · `useAllSubmissions`, `useSubmission`, `useGradeSubmission`
+### `SubmissionRepository` — `submissions-repository.ts` · `useAllSubmissions`, `useSubmission`, `useGradeQuestion`, `useReleaseGrade`
 
 | Method | Endpoint | Notes |
 |---|---|---|
 | `list()` | `GET /instructor/submissions` | Everything gradable for this instructor; the client filters and sorts. Paginate this one first — it grows fastest. |
 | `listByQuiz(quizId)` | `GET /instructor/quizzes/{quizId}/submissions` | |
-| `get(id)` | `GET /instructor/submissions/{id}` | |
-| `grade(id, score, feedback)` | `POST /instructor/submissions/{id}/grade` | Validate `0 ≤ score ≤ maxScore` server-side. Returns the submission with `gradedAt`, which also makes the grade visible to the student. Needs `Idempotency-Key`. |
+| `get(id)` | `GET /instructor/submissions/{id}` | Includes one `answers[]` entry per essay/identification question: `{ questionId, type, prompt, response, maxPoints, awardedPoints, correctAnswer }`. Multiple choice is never listed — it is always auto-final. |
+| `gradeQuestion(attemptId, questionId, points)` | `POST /instructor/submissions/{id}/questions/{questionId}/grade` | Sets one question's points (`0 ≤ points ≤ maxPoints`, validated server-side). Does **not** reveal anything to the student by itself. Needs `Idempotency-Key`. |
+| `release(attemptId, feedback)` | `POST /instructor/submissions/{id}/release` | "Turn in": refuses (422) unless every essay/identification question already has points, then sums every question's points into the attempt score, stamps `gradedAt`, and that is what makes the grade visible to the student. Needs `Idempotency-Key`. |
 
 A quiz submission carries `late` (set by the database from its own clock) and its `score` is `null`
-while it contains an ungraded essay ("needs grading"). MC and identification are auto-scored; essay
-points are not counted until the instructor sets the total.
+while it contains an essay or identification question that has not been released yet ("needs
+grading"). Multiple choice is auto-scored and final immediately. Identification is auto-scored too,
+but only as a **suggestion** — `awardedPoints` starts pre-filled from the exact-match check and stays
+editable, and the attempt is not final until the instructor calls `release`, exactly like essay.
 
 ### `GradebookRepository` — `gradebook-repository.ts` · `useGradebook`
 

@@ -9,6 +9,7 @@ import { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { ArrowCard } from "@/shared/components/ui/arrow-card";
+import { Avatar } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 
@@ -19,6 +20,8 @@ export type AnnouncementCardProps = {
   timeLabel: string;
   commentCount: number;
   pinned?: boolean;
+  authorId: string | null;
+  authorName: string;
   onPress: () => void;
 };
 
@@ -28,13 +31,22 @@ export const AnnouncementCard = memo(function AnnouncementCard({
   timeLabel,
   commentCount,
   pinned = false,
+  authorId,
+  authorName,
   onPress,
 }: AnnouncementCardProps) {
   return (
     <ArrowCard
       onPress={onPress}
-      accessibilityLabel={`${pinned ? "Pinned announcement. " : ""}${title}. ${timeLabel}, ${commentCount} comment${commentCount === 1 ? "" : "s"}`}
+      accessibilityLabel={`${pinned ? "Pinned announcement. " : ""}${authorName}, Instructor. ${title}. ${timeLabel}, ${commentCount} comment${commentCount === 1 ? "" : "s"}`}
     >
+      <View style={s.authorRow}>
+        <Avatar name={authorName} userId={authorId} size={28} />
+        <Text style={[TYPE.bodyStrong, s.authorName]} numberOfLines={1}>
+          {authorName}
+        </Text>
+        <Badge label="Instructor" tone="primary" />
+      </View>
       {pinned ? (
         <View style={s.badgeRow}>
           <Badge label="Pinned" tone="gold" />
@@ -54,6 +66,8 @@ export const AnnouncementCard = memo(function AnnouncementCard({
 });
 
 const s = StyleSheet.create({
+  authorRow: { flexDirection: "row", alignItems: "center", gap: SPACE.sm, marginBottom: SPACE.xs },
+  authorName: { flex: 1 },
   badgeRow: { flexDirection: "row", marginBottom: SPACE.xs },
   body: { marginTop: 4 },
   meta: { marginTop: SPACE.sm },
