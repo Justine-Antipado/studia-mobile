@@ -36,7 +36,16 @@ export function AssessmentsTab({ classId }: { classId: string }) {
     >
       <View style={{ gap: SPACE.lg }}>
         <View style={{ gap: SPACE.md }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              alignItems: "center",
+              rowGap: SPACE.sm,
+              columnGap: SPACE.sm,
+            }}
+          >
             <SectionHeader title="Assignments" />
             <ActionButton
               label="New"
@@ -61,9 +70,18 @@ export function AssessmentsTab({ classId }: { classId: string }) {
         </View>
 
         <View style={{ gap: SPACE.md }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              alignItems: "center",
+              rowGap: SPACE.sm,
+              columnGap: SPACE.sm,
+            }}
+          >
             <SectionHeader title="Quizzes" />
-            <View style={{ flexDirection: "row", gap: SPACE.sm }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm }}>
               <ActionButton
                 label="AI"
                 icon="sparkles-outline"

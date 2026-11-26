@@ -25,7 +25,16 @@ export function MaterialsTab({ classId }: { classId: string }) {
 
   return (
     <View style={{ gap: SPACE.md + 2 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "center",
+          rowGap: SPACE.sm,
+          columnGap: SPACE.sm,
+        }}
+      >
         <SectionHeader title="Materials" />
         <ActionButton
           label="Add"

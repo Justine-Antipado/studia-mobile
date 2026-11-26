@@ -71,5 +71,12 @@ export function StreamTab({ classId }: { classId: string }) {
 const s = {
   root: { gap: SPACE.md + 2 },
   list: { gap: SPACE.md },
-  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  head: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
+    rowGap: SPACE.sm,
+    columnGap: SPACE.sm,
+  },
 } as const;
