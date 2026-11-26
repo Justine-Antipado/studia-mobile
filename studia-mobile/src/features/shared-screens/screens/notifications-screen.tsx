@@ -122,6 +122,7 @@ export function NotificationsScreen({ role }: { role: Role }) {
     <Screen
       role={role}
       scroll={false}
+      tabScreen
       scope={`${role}/notifications`}
       contentStyle={s.flush}
       refreshing={loading}

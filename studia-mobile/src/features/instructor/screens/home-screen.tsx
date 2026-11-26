@@ -30,7 +30,6 @@ export default function InstructorHomeScreen() {
   );
 
   const openClasses = useCallback(() => router.push("/instructor/classes"), [router]);
-  const openGradebook = useCallback(() => router.push("/instructor/gradebook"), [router]);
   const openCreateQuiz = useCallback(() => router.push("/instructor/create-quiz"), [router]);
   const openAnalytics = useCallback(() => router.push("/instructor/analytics"), [router]);
   const openAiQuiz = useCallback(() => router.push("/instructor/ai-quiz"), [router]);
@@ -80,7 +79,6 @@ export default function InstructorHomeScreen() {
                   iconColor={TONES.green.fg}
                   title="All caught up"
                   subtitle="No submissions waiting for review."
-                  onPress={openGradebook}
                 />
               )}
             </View>

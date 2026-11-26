@@ -43,7 +43,7 @@ export default function InstructorClassesScreen() {
     <View style={s.chrome}>
       <PageTitle
         title="Classes"
-        trailing={<ActionButton label="Create" icon="add" onPress={openCreate} />}
+        trailing={<ActionButton label="Create" icon="add" variant="secondary" size="sm" onPress={openCreate} />}
       />
     </View>
   );
@@ -52,6 +52,7 @@ export default function InstructorClassesScreen() {
     <Screen
       role="instructor"
       scroll={false}
+      tabScreen
       scope="instructor/classes"
       contentStyle={s.flush}
       refreshing={loading}

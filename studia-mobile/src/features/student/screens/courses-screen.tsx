@@ -43,6 +43,7 @@ export default function StudentCourses() {
     <Screen
       role="student"
       scroll={false}
+      tabScreen
       scope="student/courses"
       contentStyle={s.flush}
       refreshing={loading}

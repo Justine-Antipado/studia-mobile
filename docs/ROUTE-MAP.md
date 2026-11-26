@@ -111,7 +111,7 @@ Tabs: **home · classes · assessments · ai · notifications · account**
 (tabs)
   home (analytics overview)                   tab
   classes                                     tab
-  assessments                                 tab   segments: Quizzes · To Grade · Gradebook
+  assessments                                 tab   segments: Quizzes · To Grade
   ai                                          tab
   notifications                               tab
   account                                     tab
@@ -123,6 +123,7 @@ Stack sub pages                                     back fallback
   create-class                        (modal)       → /instructor/classes
   class-detail?id&tab                               → /instructor/classes
       tabs: Stream · Materials · Assessments · People · Grades  (tab kept in the URL)
+      Grades: every enrolled student's overall %, alphabetical by name (replaces the old standalone Gradebook screen)
   post-announcement?classId           (modal)       → /instructor/class-detail  (confirm-discard)
   announcement-detail?classId&id                    → /instructor/class-detail  (moderate comments)
   upload-material?classId             (modal)       → /instructor/class-detail  (video link OR .pdf .ppt(x) .doc(x) up to 50 MB)
@@ -138,7 +139,6 @@ Stack sub pages                                     back fallback
   quiz-detail?id                                    → /instructor/assessments   (Draft / Published)
   grading?quizId                                    → /instructor/assessments
   grade-submission?id                               → /instructor/grading
-  gradebook?classId                                 → /instructor/assessments   (assignments + quizzes; class chips hidden when classId is set; "Show" filter)
 ```
 
 Archive / delete class and delete material are confirm dialogs, not routes.

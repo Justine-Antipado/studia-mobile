@@ -10,7 +10,7 @@
 // Pull-to-refresh is NOT a prop of this list: it comes from Screen through pull-to-refresh.tsx,
 // so there is one spinner, one look, one place it is pulled from.
 import { memo, useCallback, type ReactElement } from "react";
-import { FlatList, StyleSheet, View, type ListRenderItemInfo } from "react-native";
+import { FlatList, Platform, StyleSheet, View, type ListRenderItemInfo } from "react-native";
 
 import {
   refreshControlFor,
@@ -87,7 +87,10 @@ function AppListInner<T extends Identifiable>({
       maxToRenderPerBatch={8}
       windowSize={7}
       updateCellsBatchingPeriod={50}
-      removeClippedSubviews
+      // Android has a long-standing bug where this incorrectly clips/drops rows near the
+      // viewport edge once a list is long enough to actually scroll (short lists like Classes
+      // never show it). iOS doesn't have the bug, so it keeps the memory win.
+      removeClippedSubviews={Platform.OS === "ios"}
     />
   );
 }

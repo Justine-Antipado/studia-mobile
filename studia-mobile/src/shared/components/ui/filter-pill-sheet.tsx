@@ -81,11 +81,10 @@ export function FilterPillSheet({
         <Text style={[s.label, active && s.labelOn]} numberOfLines={1}>
           Filters
         </Text>
-        {active ? (
-          <View style={s.badge}>
-            <Text style={s.badgeText}>{activeCount}</Text>
-          </View>
-        ) : null}
+        {/* Always mounted so the pill's width never changes between active and inactive. */}
+        <View style={[s.badge, !active && s.badgeHidden]}>
+          <Text style={s.badgeText}>{active ? activeCount : ""}</Text>
+        </View>
       </Pressable>
 
       <BottomSheet visible={open} title={title} onClose={close} scroll={false} height={sheetHeight}>
@@ -155,6 +154,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  badgeHidden: { backgroundColor: "transparent" },
   badgeText: { color: C.primary, fontSize: 11, lineHeight: 15, fontFamily: FONT.bold },
   fill: { flex: 1 },
   groups: { gap: SPACE.lg, paddingBottom: SPACE.sm },

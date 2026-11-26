@@ -42,6 +42,14 @@ type Props = {
   scope?: string;
   /** Hide the offline banner (screens that show their own connectivity state). */
   offlineBanner?: boolean;
+  /**
+   * This screen is one of the bottom tab screens (not pushed over the tab bar). The tab bar
+   * already pads itself by the safe-area bottom inset, so with scroll={false} adding it again
+   * here would shrink the fixed-height content view by that amount a second time — on a long
+   * list that shows up as the last row getting cut well above the tab bar instead of running
+   * down to it.
+   */
+  tabScreen?: boolean;
   children: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
 };
@@ -54,6 +62,7 @@ export function Screen({
   onRefresh,
   scope,
   offlineBanner = true,
+  tabScreen = false,
   children,
   contentStyle,
 }: Props) {
@@ -93,9 +102,15 @@ export function Screen({
   const insets = useSafeAreaInsets();
   const inner: StyleProp<ViewStyle> = [s.inner, { maxWidth: isTablet ? MAX_CONTENT_WIDTH : 640 }];
   // Sub pages are pushed over the tab bar, so nothing else keeps their last row clear of the
-  // home indicator / gesture bar. Inside a tab screen the navigator has already consumed the
-  // bottom inset, so this adds nothing there.
+  // home indicator / gesture bar.
   const safeBottom = { paddingBottom: SPACE.xl + insets.bottom };
+  // scroll={false} wraps a FlatList in a FIXED-height view, not a scrollable one: any padding
+  // here shrinks the visible list area itself rather than adding scrollable space past the last
+  // row, so on a tab screen (tabScreen above) it must be zero, overriding s.fixed's own — the tab
+  // bar already clears itself, and the list's own contentContainerStyle padding gives the last
+  // row its breathing room. Pushed sub-pages still need the full safeBottom since nothing else
+  // protects their last row from the home indicator / gesture bar.
+  const fixedBottom = tabScreen ? { paddingBottom: 0 } : safeBottom;
 
   const body = (
     <ErrorBoundary scope={scope ?? role}>
@@ -135,7 +150,7 @@ export function Screen({
         ) : (
           // The screen owns its scrolling, so its AppList picks the refresh up from here.
           <PullToRefreshProvider value={pull}>
-            <View style={[s.flex, s.fixed, safeBottom, contentStyle]}>
+            <View style={[s.flex, s.fixed, fixedBottom, contentStyle]}>
               <View style={[s.flex, inner]}>{body}</View>
             </View>
           </PullToRefreshProvider>

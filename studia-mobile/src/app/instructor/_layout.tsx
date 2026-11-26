@@ -46,7 +46,6 @@ const SUBPAGE_ROUTES = [
   "grading",
   "grade-submission",
   "grade-assignment",
-  "gradebook",
   "file-viewer",
 ] as const;
 

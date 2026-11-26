@@ -61,6 +61,14 @@ export default function QuizDetailScreen() {
               <Text style={TYPE.muted}>{`${quiz.attemptCount} submission${quiz.attemptCount === 1 ? "" : "s"}`}</Text>
             </Card>
 
+            {quiz.attemptCount > 0 ? (
+              <ActionButton
+                label="Grade submissions"
+                icon="clipboard-outline"
+                onPress={() => router.push({ pathname: "/instructor/grading", params: { quizId: quiz.id } })}
+              />
+            ) : null}
+
             {quiz.questions.map((q, i) => (
               <Card key={q.id}>
                 <Text style={TYPE.bodyStrong}>{i + 1}. {q.text}</Text>

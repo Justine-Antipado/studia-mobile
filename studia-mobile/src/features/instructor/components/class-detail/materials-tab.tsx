@@ -40,6 +40,7 @@ export function MaterialsTab({ classId }: { classId: string }) {
           label="Add"
           icon="add"
           variant="secondary"
+          size="sm"
           onPress={() => router.push({ pathname: "/instructor/upload-material", params: { classId } })}
         />
       </View>

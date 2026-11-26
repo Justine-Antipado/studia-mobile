@@ -81,7 +81,7 @@ export function AiAssistantScreen({ role }: { role: Role }) {
   );
 
   return (
-    <Screen role={role} scroll={false} contentStyle={s.fixed} scope={`${role}/ai`}>
+    <Screen role={role} scroll={false} tabScreen contentStyle={s.fixed} scope={`${role}/ai`}>
       <View style={s.flex}>
         <View style={s.header}>
           <View style={s.avatar}>

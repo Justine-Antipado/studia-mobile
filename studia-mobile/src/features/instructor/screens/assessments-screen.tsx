@@ -1,20 +1,20 @@
 // assessments-screen.tsx — Assessments tab: AI synthesizer banner, manual create, quizzes list,
-// needs-grading shortcut, gradebook summary (docs/ROUTE-MAP.md).
+// needs-grading shortcut (docs/ROUTE-MAP.md). Per-class grades live on the class's own Grades tab.
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { ActionButton, Badge, Icon, ListRow, ListState, PageTitle, HorizontalChipBar, StatCard } from "@/shared/components/ui";
+import { ActionButton, Badge, Icon, ListRow, ListState, PageTitle, HorizontalChipBar } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
 import type { Tone } from "@/shared/constants/studia-colors";
 import { SPACE } from "@/shared/constants/tokens";
-import { scoreTone, timeAgo, toPercent } from "@/features/instructor/logic/format";
+import { timeAgo } from "@/features/instructor/logic/format";
 import { useQuizzes } from "@/features/instructor/hooks/use-quizzes";
 import { useAllSubmissions } from "@/features/instructor/hooks/use-submissions";
 import type { QuizStatus } from "@/features/instructor/types/instructor";
 
-const TABS = ["Quizzes", "To Grade", "Gradebook"] as const;
+const TABS = ["Quizzes", "To Grade"] as const;
 type Tab = (typeof TABS)[number];
 const STATUS_TONE: Record<QuizStatus, Tone> = { draft: "primary", published: "green" };
 const STATUS_LABEL: Record<QuizStatus, string> = { draft: "Draft", published: "Published" };
@@ -29,10 +29,6 @@ export default function InstructorAssessmentsScreen() {
     () => (submissions.data ?? []).filter((s) => s.score === null).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)),
     [submissions.data],
   );
-  const graded = useMemo(() => (submissions.data ?? []).filter((s) => s.score !== null), [submissions.data]);
-  const average = graded.length
-    ? Math.round(graded.reduce((sum, s) => sum + toPercent(s.score ?? 0, s.maxScore), 0) / graded.length)
-    : null;
 
   return (
     <Screen role="instructor" scope="instructor/assessments">
@@ -103,17 +99,6 @@ export default function InstructorAssessmentsScreen() {
             ))}
           </View>
         </ListState>
-      ) : null}
-
-      {tab === "Gradebook" ? (
-        <View style={{ gap: SPACE.lg }}>
-          <View style={{ flexDirection: "row", gap: SPACE.md }}>
-            <StatCard label="Average" value={average === null ? "–" : `${average}%`} tone={average === null ? "primary" : scoreTone(average)} />
-            <StatCard label="Graded" value={graded.length} />
-            <StatCard label="Pending" value={pending.length} tone={pending.length > 0 ? "orange" : "green"} />
-          </View>
-          <ActionButton label="Open full gradebook" icon="bar-chart-outline" onPress={() => router.push("/instructor/gradebook")} />
-        </View>
       ) : null}
     </Screen>
   );
