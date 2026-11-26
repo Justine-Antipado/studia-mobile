@@ -12,12 +12,14 @@ export function validateClassTitle(raw: string): string | null {
   return null;
 }
 
-export function validateClassSection(raw: string): string | null {
-  const text = raw.trim();
-  if (!text) return "Enter a section.";
-  if (text.length > 30) return "Keep the section under 30 characters.";
-  if (!/^(BSIT|BEED|BSBA-FM|BSBA-OM)\s+[1-4]\s*-\s*[A-E]$/i.test(text)) return "Use the format BSIT 3-A (course, year 1-4, section A-E).";
-  return null;
+// Mirrors studia-admin's core/logic/validation.js COURSES/YEARS/SECTIONS + composeSection, so a
+// class section always matches the format the admin dashboard and backend expect.
+export const CLASS_PROGRAMS = ["BSIT", "BEED", "BSBA-FM", "BSBA-OM"] as const;
+export const CLASS_YEARS = ["1", "2", "3", "4"] as const;
+export const CLASS_SECTIONS = ["A", "B", "C", "D", "E"] as const;
+
+export function composeClassSection(program: string, year: string, section: string): string {
+  return `${program} ${year}-${section}`;
 }
 
 export function validateClassCode(raw: string): string | null {
