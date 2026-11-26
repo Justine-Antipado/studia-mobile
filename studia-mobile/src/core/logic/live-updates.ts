@@ -2,22 +2,42 @@
 //   - returning to the app after a while reloads every query
 //   - a new row in `notifications` (created by database triggers for new announcements, lessons,
 //     assignments, quizzes, grades, ...) arrives over Supabase Realtime and reloads every query
+//   - the admin deactivating this account (status -> 'inactive') ends the session right away:
+//     a Realtime UPDATE on the user's own row catches it instantly while the app is open, and a
+//     direct re-check on returning to the foreground catches it for the time Realtime was asleep
 // Mounted once in the root layout.
+import { router } from "expo-router";
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
 import { queryCache } from "@/core/data/cache/query-cache";
 import { useUser } from "@/core/data/storage/session-store";
 import { getSupabase, supabaseConfigured } from "@/core/data/supabase/client";
+import { signOut } from "@/core/logic/sign-out";
 import { publishNotification, toIncoming } from "@/core/logic/notification-stream";
+import type { Role } from "@/core/types/role";
 
 const STALE_AFTER_MS = 20_000;
 
+type StatusRow = { status?: string; deleted_at?: string | null } | null | undefined;
+
+/** True once this account can no longer use the app (deactivated or deleted by the admin). */
+const isBlocked = (row: StatusRow) => !row || row.status !== "active" || !!row.deleted_at;
+
+/** Ends the session and sends the device to /auth with a banner explaining why. */
+function forceSignOutBlocked(role: Role): void {
+  void signOut();
+  router.replace({ pathname: "/auth", params: { role, reason: "blocked" } });
+}
+
 export function useLiveUpdates(): void {
-  const signedIn = !!useUser();
+  const user = useUser();
+  const signedIn = !!user;
+  const role = user?.role;
 
   useEffect(() => {
-    if (!signedIn) return;
+    if (!signedIn || !role || !supabaseConfigured) return;
+    const client = getSupabase();
     let hiddenAt: number | null = null;
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
@@ -25,15 +45,28 @@ export function useLiveUpdates(): void {
         // Realtime sleeps while the app is in the background, so catch up on the alerts right away.
         else queryCache.invalidate("notifications");
         hiddenAt = null;
+        // ...and on whether the admin deactivated this account while Realtime was asleep too.
+        void client.auth.getSession().then(({ data }) => {
+          const uid = data.session?.user.id;
+          if (!uid) return;
+          void client
+            .from("users")
+            .select("status, deleted_at")
+            .eq("id", uid)
+            .maybeSingle()
+            .then(({ data: row }) => {
+              if (isBlocked(row)) forceSignOutBlocked(role);
+            });
+        });
       } else if (hiddenAt === null) {
         hiddenAt = Date.now();
       }
     });
     return () => sub.remove();
-  }, [signedIn]);
+  }, [signedIn, role]);
 
   useEffect(() => {
-    if (!signedIn || !supabaseConfigured) return;
+    if (!signedIn || !role || !supabaseConfigured) return;
     const client = getSupabase();
     let cancelled = false;
     let cleanup: (() => void) | null = null;
@@ -49,6 +82,9 @@ export function useLiveUpdates(): void {
           const incoming = toIncoming(payload.new);
           if (incoming) publishNotification(incoming);
         })
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "users", filter: `id=eq.${uid}` }, (payload) => {
+          if (isBlocked(payload.new as StatusRow)) forceSignOutBlocked(role);
+        })
         .subscribe();
       cleanup = () => void client.removeChannel(channel);
     });
@@ -56,5 +92,5 @@ export function useLiveUpdates(): void {
       cancelled = true;
       cleanup?.();
     };
-  }, [signedIn]);
+  }, [signedIn, role]);
 }

@@ -187,9 +187,11 @@ export default function Auth() {
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const params = useLocalSearchParams<{ role?: string }>();
+  const params = useLocalSearchParams<{ role?: string; reason?: string }>();
   // Never trust the route param blindly: anything that is not "instructor" is a student.
   const role: Role = params.role === "instructor" ? "instructor" : "student";
+  // Set by live-updates.ts when the admin deactivates this account while it was signed in.
+  const blocked = params.reason === "blocked";
 
   const compact = height < 700;
   const topPad = insets.top + (compact ? 8 : 14);
@@ -248,6 +250,14 @@ export default function Auth() {
       if (mounted.current) setBanner(null);
     }, BANNER_MS);
   }, []);
+
+  // Landed here because live-updates.ts force-signed the account out mid-session: say why, once.
+  useEffect(() => {
+    if (!blocked) return;
+    const t = setTimeout(() => showBanner("error", BLOCKED_MESSAGE), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked]);
 
   const setField = (key: FieldKey, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));

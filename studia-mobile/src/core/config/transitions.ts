@@ -45,12 +45,18 @@ export const STACK_SUBPAGE = {
   contentStyle: CONTENT_STYLE,
 } as const;
 
-/** Create / upload / take-quiz flows: come up from the bottom, dismissable. */
+/**
+ * Create / upload / take-quiz flows: come up from the bottom.
+ * gestureEnabled is off: the native swipe-to-dismiss gesture calls the navigator's GO_BACK
+ * directly, bypassing useSafeBack/useUnsavedGuard, so a dirty form could be swiped away without
+ * the discard confirmation. These screens must be left through their own back button.
+ */
 export const MODAL_SHEET = {
   headerShown: false,
   presentation: "modal",
   animation: "slide_from_bottom",
   animationDuration: DURATION.base,
+  gestureEnabled: false,
   contentStyle: CONTENT_STYLE,
 } as const;
 
