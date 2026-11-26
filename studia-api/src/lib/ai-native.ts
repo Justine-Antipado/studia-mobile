@@ -5,7 +5,7 @@ import type { Completion } from "./ai.js";
 import { ApiError } from "./http.js";
 
 const GEMINI_HOST = "generativelanguage.googleapis.com";
-const DEFAULT_MODEL = "gemini-4-hydrogen";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 const MAX_ATTEMPTS = 2; // the free tier returns 503 "overloaded" often enough to be worth one retry
 const RETRY_DELAY_MS = 500;
 const OVERALL_BUDGET_MS = 45_000; // leaves headroom under the function's 60 s cap for request/DB overhead

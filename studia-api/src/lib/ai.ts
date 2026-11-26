@@ -7,7 +7,7 @@
 import { ApiError } from "./http.js";
 
 const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta/openai";
-const DEFAULT_MODEL = "gemini-4-hydrogen";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 const TIMEOUT_MS = 24_000; // Vercel functions here are capped at 30 s (vercel.json)
 const MAX_ATTEMPTS = 2; // the free tier returns 503 "overloaded" often enough to be worth one retry;
 // kept low since each attempt can take up to TIMEOUT_MS and the function itself is capped at 60 s
