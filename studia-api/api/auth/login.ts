@@ -69,6 +69,13 @@ export default endpoint(Body, async ({ identifier, password, role }, req) => {
       // One generic message for "no such account" and "wrong password" (no account enumeration).
       throw new ApiError("INVALID_CREDENTIALS", BAD_CREDENTIALS);
     }
+    if (error?.code === "user_banned") {
+      // admin_set_user_active() (026) sets banned_until as well as status = 'inactive', so a
+      // deactivated account never reaches the profile-status check below -- GoTrue rejects the
+      // sign-in itself. Same oracle reasoning as email_not_confirmed: the password WAS right.
+      await attempt(false, null);
+      throw new ApiError("ACCOUNT_INACTIVE", "This account is deactivated");
+    }
     throw error ?? new Error("login failed");
   }
 

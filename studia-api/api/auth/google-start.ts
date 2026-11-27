@@ -19,6 +19,9 @@ export default endpoint(Body, async ({ idToken, role }, req) => {
     if (error?.status === 400 && /gmail\.com/i.test(error.message)) {
       throw new ApiError("VALIDATION", "Use a Gmail (@gmail.com) Google account.");
     }
+    // Deactivated accounts are banned at the Auth layer too (migration 026), so a blocked user
+    // never reaches the profile-status check below -- say so instead of a generic sign-in failure.
+    if (error?.code === "user_banned") throw new ApiError("ACCOUNT_INACTIVE", "This account is deactivated");
     if (error && (error.status ?? 0) >= 500) throw error;
     throw new ApiError("INVALID_CREDENTIALS", "Google sign-in failed. Please try again.");
   }
