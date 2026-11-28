@@ -92,8 +92,10 @@ async function manualBlocks(me: string, startIso: string, endIso: string): Promi
 /** One block per pending task due inside [startIso, endIso], auto-placed on its own due date. */
 async function taskBlocks(startIso: string, endIso: string): Promise<PlannerBlock[]> {
   const result = await taskRepository.list();
+  // Fail the whole read rather than show a planner silently missing every assignment and quiz.
+  if (!result.ok) throw result.error;
   const blocks: PlannerBlock[] = [];
-  for (const t of result.ok ? result.value : []) {
+  for (const t of result.value) {
     const day = toLocalIso(new Date(t.dueAt));
     if (day < startIso || day > endIso) continue;
     blocks.push({
