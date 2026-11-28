@@ -127,39 +127,27 @@ export type Task = {
   done: boolean;
 };
 
+export type PlannerPriority = "high" | "medium" | "low";
+
 export type PlannerBlock = {
   id: string;
   dayIso: string;
   startHour: number;
   durationHours: number;
   title: string;
+  /** Typed by the student for a manual plan; a short auto note ("Assignment due in BSIT101 ·
+   *  11:59 PM") for a block generated from a due task. */
+  notes: string;
+  priority: PlannerPriority;
+  /** Set when this block tracks a real assignment/quiz due date; null for a plan the student added. */
   taskId: string | null;
   done: boolean;
 };
 
 export type PlannerExam = { id: string; title: string; dateIso: string };
 
-/**
- * G6: what actually happens on a day, next to the generated study blocks — an assignment or quiz
- * due that day, or an announcement posted that day. Read-only: these come from the class, not from
- * the planner, so they cannot be moved or ticked.
- */
-export type PlannerEventKind = "assignment" | "quiz" | "announcement";
-
-export type PlannerEvent = {
-  id: string;
-  dayIso: string;
-  kind: PlannerEventKind;
-  title: string;
-  classCode: string;
-  /** "Due 11:59 PM" / "Posted 8:12 AM" — already formatted. */
-  timeLabel: string;
-};
-
-export type PlannerWeek = {
-  weekStartIso: string;
+export type PlannerData = {
+  /** Manual plans plus one auto block per pending task due, each placed on its own due date. */
   blocks: PlannerBlock[];
   exams: PlannerExam[];
-  /** Due dates and announcements inside the 7-day window, in day order. */
-  events: PlannerEvent[];
 };

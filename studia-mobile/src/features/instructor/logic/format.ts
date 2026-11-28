@@ -3,6 +3,7 @@
 export {
   PASSING_PERCENT,
   dueLabel,
+  greeting,
   isOverdue,
   materialDetail,
   plural,

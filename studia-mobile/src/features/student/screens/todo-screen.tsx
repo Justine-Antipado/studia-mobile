@@ -9,7 +9,6 @@ import { StyleSheet, View } from "react-native";
 import { AppList, FilterPillSheet, ListState, PageTitle, ProgressBar, type FilterGroup } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE } from "@/shared/constants/tokens";
-import { useSafeBack } from "@/shared/hooks/use-safe-back";
 import { TaskRow } from "@/features/student/components/task-row";
 import { useTasks, useToggleTask } from "@/features/student/hooks/use-tasks";
 import { TASK_TABS, tasksForTab, type TaskTab } from "@/features/student/logic/task-filters";
@@ -32,7 +31,6 @@ const EMPTY_MESSAGE: Record<TaskTab, string> = {
 
 export default function StudentTodo() {
   const router = useSafeRouter();
-  const goBack = useSafeBack("/student/home");
   const { data, loading, error, refetch } = useTasks();
   const toggleTask = useToggleTask();
   const [tab, setTab] = useState<TaskTab>("All");
@@ -66,7 +64,7 @@ export default function StudentTodo() {
   // area: pull-to-refresh then comes from directly under the header, exactly like Home.
   const chrome = (
     <View style={s.chrome}>
-      <PageTitle title="To-do" onBack={goBack} />
+      <PageTitle title="To-do" />
       <ProgressBar
         value={tasks.length ? doneCount / tasks.length : 0}
         label={`${doneCount}/${tasks.length} done`}
@@ -84,6 +82,7 @@ export default function StudentTodo() {
     <Screen
       role="student"
       scroll={false}
+      tabScreen
       scope="student/todo"
       contentStyle={s.flush}
       refreshing={loading}

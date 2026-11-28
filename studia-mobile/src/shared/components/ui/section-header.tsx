@@ -8,14 +8,17 @@ export function SectionHeader({
   title,
   action,
   onAction,
+  compact = false,
 }: {
   title: string;
   action?: string;
   onAction?: () => void;
+  /** Lighter-weight heading for secondary/utility sections (e.g. Quick actions), not the page's top anchor. */
+  compact?: boolean;
 }) {
   return (
     <View style={s.row}>
-      <Text style={[TYPE.h2, s.title]} numberOfLines={1}>
+      <Text style={[compact ? TYPE.label : TYPE.h2, s.title, compact && s.compactTitle]} numberOfLines={1}>
         {title}
       </Text>
       {action && onAction ? (
@@ -35,5 +38,6 @@ export function SectionHeader({
 const s = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   title: { flexShrink: 1 },
+  compactTitle: { color: C.muted, textTransform: "uppercase", letterSpacing: 0.4 },
   action: { color: C.primary, fontSize: 13, fontFamily: FONT.semibold },
 });

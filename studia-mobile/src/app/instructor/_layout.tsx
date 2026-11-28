@@ -5,8 +5,11 @@
 // Expo's recommended pattern is tabs nested in an outer stack, which also gives a real back stack.
 //
 //   instructor/_layout.tsx        <- this Stack
-//   instructor/(tabs)/_layout.tsx <- Tabs: home, classes, assessments, ai, notifications, account
-//   instructor/class-detail.tsx, grading.tsx, ...  <- sub pages (Stack screens)
+//   instructor/(tabs)/_layout.tsx <- Tabs: home, classes, assessments, ai
+//   instructor/account.tsx, notifications.tsx, class-detail.tsx, ...  <- sub pages (Stack screens)
+//
+// account and notifications moved out of the tab bar: the header's avatar and bell (app-header.tsx)
+// open them as pushed sub pages from anywhere, not just from a dedicated tab.
 //
 // The (tabs) group adds no URL segment, so every existing router.push("/instructor/...") still
 // works. Transitions come from core/config/transitions.ts and are routed through
@@ -31,6 +34,8 @@ const MODAL_ROUTES = [
 ] as const;
 
 const SUBPAGE_ROUTES = [
+  "account",
+  "notifications",
   "account-personal",
   "account-password",
   "account-privacy",

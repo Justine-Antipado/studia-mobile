@@ -1,9 +1,10 @@
-// account-personal-screen.tsx — view / edit profile. Saving emails an OTP; the server verifies it and
-// writes the change to the database, and the session user is only updated after that succeeds.
+// account-personal-screen.tsx — view / edit profile. Opens read-only ("view"); "Edit Info" switches
+// to the editable form ("edit"). Saving emails an OTP; the server verifies it and writes the change
+// to the database, and the session user is only updated after that succeeds.
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useRoleUser } from "@/core/data/storage/session-store";
+import { displayName, useRoleUser } from "@/core/data/storage/session-store";
 import type { Role } from "@/core/types/role";
 import {
   COURSES,
@@ -24,11 +25,15 @@ import {
   toOptions,
   useToast,
 } from "@/shared/components/ui";
+import { Avatar } from "@/shared/components/ui/avatar";
+import { Icon } from "@/shared/components/ui/icon";
 import { Screen } from "@/shared/components/ui/screen";
+import { C } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 import { useSafeBack } from "@/shared/hooks/use-safe-back";
+import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 
-type Step = "form" | "otp";
+type Step = "view" | "edit" | "otp";
 
 // Built once: the values are what the database stores, the labels only read better in the sheet.
 const COURSE_OPTIONS = toOptions(COURSES);
@@ -36,11 +41,20 @@ const YEAR_OPTIONS = toOptions(YEARS, (y) => `Year ${y}`);
 const SECTION_OPTIONS = toOptions(SECTIONS, (s) => `Section ${s}`);
 const DEPARTMENT_OPTIONS = toOptions(DEPARTMENTS);
 
+const labelFor = (options: { value: string; label: string }[], value: string) =>
+  options.find((o) => o.value === value)?.label ?? value;
+
 export function AccountPersonalScreen({ role }: { role: Role }) {
   const user = useRoleUser(role);
+  const router = useSafeRouter();
   const toast = useToast();
-  const goBack = useSafeBack(`/${role}/account`);
-  const [step, setStep] = useState<Step>("form");
+  const [step, setStep] = useState<Step>("view");
+  // While editing, Android hardware/gesture back should act like "Cancel" (close the form) rather
+  // than leaving the screen.
+  const goBack = useSafeBack(`/${role}/account`, {
+    blocked: step === "edit",
+    onBlocked: () => setStep("view"),
+  });
   const [devCode, setDevCode] = useState<string | undefined>();
   const [name, setName] = useState(user?.fullName ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
@@ -52,6 +66,17 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
   const [busy, setBusy] = useState(false);
 
   if (!user) return null;
+
+  const startEdit = () => {
+    setName(user.fullName);
+    setPhone(user.phone ?? "");
+    setCourse(user.course ?? "");
+    setYear(user.year ?? "");
+    setSection(user.section ?? "");
+    setDepartment(user.department ?? "");
+    setErrors({});
+    setStep("edit");
+  };
 
   const patch = (): ProfilePatch =>
     role === "student"
@@ -76,13 +101,17 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
     const r = await profileRepository.updateProfile(user, patch(), code);
     if (!r.ok) return r.error.message;
     toast.show("Profile updated", { tone: "green" });
-    goBack();
+    setStep("view");
     return null;
   };
 
+  // No back arrow while editing — "Cancel" (below) is the only way out of the form, so an
+  // in-progress edit is never lost to an accidental swipe-back.
+  const back = step === "otp" ? () => setStep("edit") : step === "edit" ? undefined : goBack;
+
   return (
     <Screen role={role} scope={`${role}/account-personal`}>
-      <PageTitle title="Personal Information" onBack={goBack} />
+      <PageTitle title="Personal Information" onBack={back} />
       {step === "otp" ? (
         <OtpStep
           email={isEmail(user.email) ? user.email : "your email"}
@@ -90,6 +119,44 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
           onSubmit={apply}
           onResend={sendCode}
         />
+      ) : step === "view" ? (
+        <View style={{ gap: SPACE.md }}>
+          <View style={s.avatarRow}>
+            <View style={s.avatarWrap}>
+              <Avatar name={displayName(user)} uri={user.avatarUri} size={88} />
+              <Pressable
+                onPress={() => router.push(`/${role}/account-photo`)}
+                style={s.photoBadge}
+                accessibilityRole="button"
+                accessibilityLabel="Change profile photo"
+                hitSlop={8}
+              >
+                <Icon name="camera" size="sm" color={C.white} />
+              </Pressable>
+            </View>
+            <Pressable onPress={() => router.push(`/${role}/account-photo`)}>
+              <Text style={s.photoLink}>Change photo</Text>
+            </Pressable>
+          </View>
+
+          <FormField label="Full name" value={user.fullName} editable={false} />
+          <FormField label="Email" value={user.email} editable={false} helper="Email can't be changed here." />
+          <FormField label="Mobile" value={user.phone || "Not set"} editable={false} />
+          {role === "student" ? (
+            <>
+              <FormField label="Course" value={labelFor(COURSE_OPTIONS, user.course ?? "")} editable={false} />
+              <FormField label="Year" value={labelFor(YEAR_OPTIONS, user.year ?? "")} editable={false} />
+              <FormField label="Section" value={labelFor(SECTION_OPTIONS, user.section ?? "")} editable={false} />
+            </>
+          ) : (
+            <FormField
+              label="Department"
+              value={labelFor(DEPARTMENT_OPTIONS, user.department ?? "")}
+              editable={false}
+            />
+          )}
+          <ActionButton label="Edit Info" icon="create-outline" onPress={startEdit} />
+        </View>
       ) : (
         <View style={{ gap: SPACE.md }}>
           <FormField label="Full name" value={name} onChangeText={setName} error={errors.name} maxLength={80} />
@@ -119,6 +186,7 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
           )}
           <Text style={TYPE.caption}>Saving sends a verification code to your email.</Text>
           <ActionButton label="Save changes" icon="shield-checkmark-outline" loading={busy} onPress={sendCode} />
+          <ActionButton label="Cancel" variant="secondary" onPress={() => setStep("view")} />
         </View>
       )}
     </Screen>
@@ -127,3 +195,22 @@ export function AccountPersonalScreen({ role }: { role: Role }) {
 
 export const StudentAccountPersonal = () => <AccountPersonalScreen role="student" />;
 export const InstructorAccountPersonal = () => <AccountPersonalScreen role="instructor" />;
+
+const s = StyleSheet.create({
+  avatarRow: { alignItems: "center", gap: SPACE.sm, paddingVertical: SPACE.sm },
+  avatarWrap: { width: 88, height: 88 },
+  photoBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.primary,
+    borderWidth: 2,
+    borderColor: C.white,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoLink: { color: C.primaryDark, fontSize: 13, fontFamily: "Poppins_700Bold" },
+});

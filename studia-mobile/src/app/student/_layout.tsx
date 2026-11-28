@@ -5,8 +5,11 @@
 // Expo's recommended pattern is tabs nested in an outer stack, which also gives a real back stack.
 //
 //   student/_layout.tsx        <- this Stack
-//   student/(tabs)/_layout.tsx <- Tabs: home, courses, ai, notifications, account
-//   student/course-detail.tsx, lesson-viewer.tsx, ...  <- sub pages (Stack screens)
+//   student/(tabs)/_layout.tsx <- Tabs: home, courses, todo, planner, ai
+//   student/account.tsx, notifications.tsx, course-detail.tsx, ...  <- sub pages (Stack screens)
+//
+// account and notifications moved out of the tab bar: the header's avatar and bell (app-header.tsx)
+// open them as pushed sub pages from anywhere, not just from a dedicated tab.
 //
 // The (tabs) group adds no URL segment, so every existing router.push("/student/...") still works.
 // Transitions come from core/config/transitions.ts and are routed through useScreenAnimation so
@@ -19,16 +22,16 @@ import { RoleGate } from "@/shared/components/ui/role-gate";
 import { singularScreenId } from "@/core/logic/screen-id";
 
 /** Create / join / take-quiz flows come up from the bottom; everything else slides in. */
-const MODAL_ROUTES = ["join-class", "quiz-take"] as const;
+const MODAL_ROUTES = ["join-class", "quiz-take", "add-plan"] as const;
 
 const SUBPAGE_ROUTES = [
+  "account",
+  "notifications",
   "account-personal",
   "account-password",
   "account-privacy",
   "account-about",
   "account-photo",
-  "todo",
-  "planner",
   "course-detail",
   "announcement-detail",
   "lesson-viewer",

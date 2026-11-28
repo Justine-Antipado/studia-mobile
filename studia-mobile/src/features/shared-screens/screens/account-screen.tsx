@@ -17,10 +17,12 @@ import { PageTitle } from "@/shared/components/ui/page-title";
 import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
 import { RADIUS, SHADOW, SPACE, TYPE } from "@/shared/constants/tokens";
+import { useSafeBack } from "@/shared/hooks/use-safe-back";
 
 export function AccountScreen({ role }: { role: Role }) {
   const user = useRoleUser(role);
   const router = useSafeRouter();
+  const goBack = useSafeBack(`/${role}/home`);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   if (!user) return null;
 
@@ -34,7 +36,7 @@ export function AccountScreen({ role }: { role: Role }) {
 
   return (
     <Screen role={role} scope={`${role}/account`}>
-      <PageTitle title="Account" />
+      <PageTitle title="Account" onBack={goBack} />
       <View style={s.profileCard}>
         <Avatar name={displayName(user)} uri={user.avatarUri} size={60} />
         <View style={{ flex: 1, gap: 4 }}>
@@ -53,7 +55,7 @@ export function AccountScreen({ role }: { role: Role }) {
       <ListRow
         icon="person-outline"
         title="Personal Information"
-        subtitle="Name, section, mobile"
+        subtitle="Name, section, mobile, photo"
         onPress={() => router.push(`/${role}/account-personal`)}
       />
       <ListRow
@@ -74,13 +76,6 @@ export function AccountScreen({ role }: { role: Role }) {
         subtitle={`STUDIA Mobile v${Constants.expoConfig?.version ?? "1.0.0"}`}
         onPress={() => router.push(`/${role}/account-about`)}
       />
-      <ListRow
-        icon="camera-outline"
-        title="Change Profile Photo"
-        subtitle="Camera, gallery or remove"
-        onPress={() => router.push(`/${role}/account-photo`)}
-      />
-
       <Pressable
         onPress={() => setConfirmingLogout(true)}
         style={s.logoutCard}

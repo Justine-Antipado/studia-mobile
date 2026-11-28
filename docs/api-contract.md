@@ -158,13 +158,24 @@ return a `studentId` or email in a comment.
 
 ### `PlannerRepository` — `planner-repository.ts` · `usePlanner`
 
+Manual, not AI-generated: the student is the one who schedules their own plans and exam dates.
+The only automatic placement is a block per pending task (assignment/quiz), computed from
+`student_tasks` at read time on its real due date — never stored, so posting a task places it on
+the planner without a write of its own.
+
 | Method | Endpoint | Notes |
 |---|---|---|
-| `getWeek()` | `GET /student/planner/week` | The AI-generated study schedule plus exam dates, for the caller only. The plan is a **rolling 7-day window starting today** (not a calendar week); the server rebuilds it when the day changes and keeps the exams. A block whose task is already turned in is returned as `done`. |
-| `moveBlock(blockId, dayIso, startHour)` | `PATCH /student/planner/blocks/{blockId}` | Body `{ dayIso, startHour }`. |
+| `list()` | `GET /student/planner` | The caller's manual blocks plus exam dates for a ±365-day window around today, merged with the computed task blocks. A block whose task is already turned in is returned as `done`. |
+| `addPlan(input)` | `POST /student/planner/blocks` | Body `{ dayIso, title, notes, priority, startHour, durationHours }`. |
+| `updatePlan(blockId, input)` | `PATCH /student/planner/blocks/{blockId}` | Same body as `addPlan`; full replace, not a partial move. Only ever called on a manual block — a task-derived block has no row to update. |
 | `markBlockDone(blockId, done)` | `PATCH /student/planner/blocks/{blockId}` | Body `{ done }`. |
-| `addExam(title, dateIso)` | `POST /student/planner/exams` | `dateIso` is a calendar date (`YYYY-MM-DD`, local) and must not be in the past. The plan gains two revision blocks (2 days and 1 day before) when the exam falls inside the window. |
-| `regenerate()` | `POST /student/planner/regenerate` | Re-runs the planner from current deadlines. Expect it to be slow; the client shows its own progress state. |
+| `deleteBlock(blockId)` | `DELETE /student/planner/blocks/{blockId}` | Manual blocks only. |
+| `addExam(title, dateIso)` | `POST /student/planner/exams` | `dateIso` is a calendar date (`YYYY-MM-DD`, local) and must not be in the past. Also drops two revision blocks ("Review for `<title>`", medium priority) 2 days and 1 day before, skipping either that would land before today. |
+
+A daily job (not a request a client makes) notifies a student the morning before each exam they
+added — see `private.send_exam_reminders()`, migration 045. Every other notification in this app
+is trigger-based (fires off a row insert/update); this is the one exception, since nothing is
+written on the day itself for a trigger to fire from.
 
 ## Instructor
 
@@ -288,6 +299,7 @@ formats the age. The mobile mock produces them from these events:
 | Quiz attempt submitted | class owner | Grade |
 | Material or video link added | enrolled students | Lesson |
 | Student joins a class | class owner | Class |
+| Exam added to the planner, morning before | that student | Reminder |
 
 `markRead` is allowed only for the row's owner (RLS). The tab badge is the unread count of this feed.
 

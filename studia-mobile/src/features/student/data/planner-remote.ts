@@ -1,16 +1,22 @@
-// planner-remote.ts: the student's rolling 7-day study plan, stored in planner_weeks / planner_blocks /
-// planner_exams. The plan is generated on the device from the student's pending tasks and exams
-//, then persisted; it is rebuilt when the window moves to a new day.
+// planner-remote.ts: the student's planner. planner_weeks / planner_blocks hold the student's own
+// manual plans (and planner_exams their exam dates); a block due to an assignment or quiz is never
+// stored — it is computed from the `student_tasks` view at read time, on its real due date, so
+// posting a task places it on the planner without any write of its own.
 import { appError, type Result } from "@/core/data/errors/app-error";
 import { db, guard, must, mustOk, myId } from "@/core/data/supabase/remote";
 import { taskId } from "@/features/student/data/tasks-remote";
 import { taskRepository } from "@/features/student/data/tasks-repository";
-import type { PlannerRepository } from "@/features/student/data/planner-repository";
-import type { PlannerBlock, PlannerEvent, PlannerExam, PlannerWeek, TaskKind } from "@/features/student/types/student";
-import { addDaysIso, clockLabel, toLocalIso } from "@/shared/utils/format";
+import type { AddPlanInput, PlannerRepository } from "@/features/student/data/planner-repository";
+import type { PlannerBlock, PlannerData, PlannerExam, PlannerPriority, TaskKind } from "@/features/student/types/student";
+import { addDaysIso, clockLabel, mondayOf, toLocalIso } from "@/shared/utils/format";
 
-const WINDOW_DAYS = 7;
-const HOURS = [16, 17, 18, 19, 20, 15, 14];
+/** How far back/forward "Today / Monthly / Yearly" ever needs to look. */
+const RANGE_PAST_DAYS = 365;
+const RANGE_FUTURE_DAYS = 365;
+/** A task has no priority of its own; it shows as a medium card until the student raises it. */
+const TASK_PRIORITY: PlannerPriority = "medium";
+/** Evening slot for the two auto-added exam revision blocks. */
+const REVISION_HOUR = 18;
 
 type BlockRow = {
   id: string;
@@ -18,20 +24,14 @@ type BlockRow = {
   start_hour: number;
   duration_hours: number;
   title: string;
+  notes: string;
+  priority: PlannerPriority;
   task_kind: TaskKind | null;
   task_ref_id: string | null;
   done: boolean;
 };
-type NewBlock = Omit<BlockRow, "id">;
 
-const todayIso = () => toLocalIso(new Date());
-
-/** Monday of the week containing `iso` (planner_weeks.week_start must be a Monday). */
-function mondayOf(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  const back = (d.getDay() + 6) % 7;
-  return addDaysIso(iso, -back);
-}
+const BLOCK_COLUMNS = "id, day_date, start_hour, duration_hours, title, notes, priority, task_kind, task_ref_id, done";
 
 const toBlock = (b: BlockRow): PlannerBlock => ({
   id: b.id,
@@ -39,190 +39,203 @@ const toBlock = (b: BlockRow): PlannerBlock => ({
   startHour: b.start_hour,
   durationHours: b.duration_hours,
   title: b.title,
+  notes: b.notes,
+  priority: b.priority,
   taskId: b.task_kind && b.task_ref_id ? taskId(b.task_kind, b.task_ref_id) : null,
   done: b.done,
 });
 
-/**
- * G6: the real dates of the window — assignment and quiz due dates (from the same `student_tasks`
- * view the To-do uses) and announcements posted in those days. The announcements query is scoped
- * by RLS to the classes the student joined, so no class filter is needed here.
- */
-async function windowEvents(startIso: string, endIso: string): Promise<PlannerEvent[]> {
-  const events: PlannerEvent[] = [];
+/** Finds or creates the planner_weeks row that owns `dayIso`, for inserting a manual block into. */
+async function weekRowFor(me: string, dayIso: string): Promise<string> {
+  const monday = mondayOf(dayIso);
+  const found = must(
+    await db().from("planner_weeks").select("id").eq("student_id", me).eq("week_start", monday).maybeSingle(),
+  ) as { id: string } | null;
+  if (found) return found.id;
+  const created = must(
+    await db().from("planner_weeks").insert({ student_id: me, week_start: monday }).select("id").single(),
+  ) as { id: string };
+  return created.id;
+}
 
-  const tasks = await taskRepository.list();
-  for (const t of tasks.ok ? tasks.value : []) {
+/** The student's own manual blocks whose day falls inside [startIso, endIso]. */
+async function manualBlocks(me: string, startIso: string, endIso: string): Promise<PlannerBlock[]> {
+  const weeks = must(
+    await db()
+      .from("planner_weeks")
+      .select("id")
+      .eq("student_id", me)
+      .gte("week_start", mondayOf(startIso))
+      .lte("week_start", mondayOf(endIso)),
+  ) as { id: string }[];
+  if (!weeks.length) return [];
+  const rows = must(
+    await db()
+      .from("planner_blocks")
+      .select(BLOCK_COLUMNS)
+      .in(
+        "week_id",
+        weeks.map((w) => w.id),
+      )
+      .gte("day_date", startIso)
+      .lte("day_date", endIso)
+      .order("day_date")
+      .order("start_hour"),
+  ) as BlockRow[];
+  return rows.map(toBlock);
+}
+
+/** One block per pending task due inside [startIso, endIso], auto-placed on its own due date. */
+async function taskBlocks(startIso: string, endIso: string): Promise<PlannerBlock[]> {
+  const result = await taskRepository.list();
+  const blocks: PlannerBlock[] = [];
+  for (const t of result.ok ? result.value : []) {
     const day = toLocalIso(new Date(t.dueAt));
     if (day < startIso || day > endIso) continue;
-    events.push({
-      id: `due-${t.id}`,
+    blocks.push({
+      id: t.id,
       dayIso: day,
-      kind: t.kind,
+      startHour: new Date(t.dueAt).getHours(),
+      durationHours: 1,
       title: t.title,
-      classCode: t.classCode,
-      timeLabel: `Due ${clockLabel(t.dueAt)}`,
+      notes: `${t.kind === "assignment" ? "Assignment" : "Quiz"} due in ${t.classCode} · ${clockLabel(t.dueAt)}`,
+      priority: TASK_PRIORITY,
+      taskId: t.id,
+      done: t.done,
     });
   }
-
-  type AnnRow = { id: string; title: string; posted_at: string; class_id: string };
-  const anns = must(
-    await db()
-      .from("announcements")
-      .select("id, title, posted_at, class_id")
-      .is("deleted_at", null)
-      .gte("posted_at", `${startIso}T00:00:00`)
-      .order("posted_at", { ascending: true }),
-  ) as AnnRow[];
-
-  const classIds = [...new Set(anns.map((a) => a.class_id))];
-  const codes = new Map<string, string>();
-  if (classIds.length) {
-    const rows = must(await db().from("classes").select("id, subject_code").in("id", classIds)) as {
-      id: string;
-      subject_code: string;
-    }[];
-    rows.forEach((c) => codes.set(c.id, c.subject_code));
-  }
-
-  for (const a of anns) {
-    const day = toLocalIso(new Date(a.posted_at));
-    if (day < startIso || day > endIso) continue;
-    events.push({
-      id: `ann-${a.id}`,
-      dayIso: day,
-      kind: "announcement",
-      title: a.title,
-      classCode: codes.get(a.class_id) ?? "",
-      timeLabel: `Posted ${clockLabel(a.posted_at)}`,
-    });
-  }
-
-  return events.sort((x, y) => x.dayIso.localeCompare(y.dayIso) || x.timeLabel.localeCompare(y.timeLabel));
-}
-
-async function exams(me: string): Promise<PlannerExam[]> {
-  const rows = must(await db().from("planner_exams").select("id, title, exam_date").eq("student_id", me).order("exam_date")) as {
-    id: string;
-    title: string;
-    exam_date: string;
-  }[];
-  return rows.map((e) => ({ id: e.id, title: e.title, dateIso: e.exam_date }));
-}
-
-async function generate(startIso: string, examList: PlannerExam[], gen: number): Promise<NewBlock[]> {
-  const result = await taskRepository.list();
-  const tasks = (result.ok ? result.value : []).filter((t) => !t.done).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
-  const endIso = addDaysIso(startIso, WINDOW_DAYS - 1);
-  const taken = new Set<string>();
-  const clamp = (iso: string) => (iso < startIso ? startIso : iso > endIso ? endIso : iso);
-
-  const place = (dayIso: string, title: string, task?: { kind: TaskKind; refId: string }): NewBlock => {
-    let day = dayIso;
-    let hour = -1;
-    for (let spill = 0; spill < WINDOW_DAYS && hour < 0; spill++) {
-      day = clamp(addDaysIso(dayIso, spill));
-      const free = HOURS.map((_, k) => HOURS[(k + gen) % HOURS.length]!).find((h) => !taken.has(`${day}|${h}`));
-      if (free !== undefined) hour = free;
-    }
-    if (hour < 0) hour = HOURS[0]!;
-    taken.add(`${day}|${hour}`);
-    return { day_date: day, start_hour: hour, duration_hours: 1, title: title.slice(0, 140), task_kind: task?.kind ?? null, task_ref_id: task?.refId ?? null, done: false };
-  };
-
-  const blocks: NewBlock[] = [];
-  tasks.slice(0, 8).forEach((task, i) => {
-    const dueDay = toLocalIso(new Date(task.dueAt));
-    const target = dueDay > endIso ? addDaysIso(startIso, (i + gen) % WINDOW_DAYS) : clamp(addDaysIso(dueDay, -1));
-    blocks.push(place(target, `Review for ${task.title}`, { kind: task.kind, refId: task.refId }));
-  });
-  examList.forEach((exam) => {
-    if (exam.dateIso < startIso || exam.dateIso > endIso) return;
-    blocks.push(place(clamp(addDaysIso(exam.dateIso, -2)), `Revise for ${exam.title}`));
-    blocks.push(place(clamp(addDaysIso(exam.dateIso, -1)), `Final review: ${exam.title}`));
-  });
   return blocks;
 }
 
-async function weekRow(me: string): Promise<{ id: string; generated_at: string }> {
-  const monday = mondayOf(todayIso());
-  const found = must(await db().from("planner_weeks").select("id, generated_at").eq("student_id", me).eq("week_start", monday).maybeSingle()) as { id: string; generated_at: string } | null;
-  if (found) return found;
-  return must(await db().from("planner_weeks").insert({ student_id: me, week_start: monday }).select("id, generated_at").single()) as { id: string; generated_at: string };
+/** A revision block 2 days and 1 day before an exam, skipping any that would land before today. */
+async function addRevisionBlocks(me: string, examTitle: string, examDateIso: string): Promise<void> {
+  const today = toLocalIso(new Date());
+  for (const daysBefore of [2, 1]) {
+    const day = addDaysIso(examDateIso, -daysBefore);
+    if (day < today) continue;
+    const weekId = await weekRowFor(me, day);
+    mustOk(
+      await db().from("planner_blocks").insert({
+        week_id: weekId,
+        day_date: day,
+        start_hour: REVISION_HOUR,
+        duration_hours: 1,
+        title: `Review for ${examTitle}`,
+        notes: `Exam in ${daysBefore} day${daysBefore > 1 ? "s" : ""}.`,
+        priority: "medium",
+        task_kind: null,
+        task_ref_id: null,
+        done: false,
+      }),
+    );
+  }
 }
 
-async function rebuild(me: string, weekId: string, gen: number): Promise<void> {
-  const list = await exams(me);
-  const fresh = await generate(todayIso(), list, gen);
-  mustOk(await db().from("planner_blocks").delete().eq("week_id", weekId));
-  if (fresh.length) mustOk(await db().from("planner_blocks").insert(fresh.map((b) => ({ ...b, week_id: weekId }))));
-  mustOk(await db().from("planner_weeks").update({ generated_at: new Date().toISOString() }).eq("id", weekId));
-}
-
-async function ensure(me: string, force = false, gen = 0): Promise<string> {
-  const week = await weekRow(me);
-  const stale = toLocalIso(new Date(week.generated_at)) !== todayIso();
-  const empty = must(await db().from("planner_blocks").select("id").eq("week_id", week.id).limit(1)) as unknown[];
-  if (force || stale || empty.length === 0) await rebuild(me, week.id, gen);
-  return week.id;
-}
-
-async function view(me: string, weekId: string): Promise<PlannerWeek> {
-  const start = todayIso();
-  const end = addDaysIso(start, WINDOW_DAYS - 1);
+async function examsInRange(me: string, startIso: string, endIso: string): Promise<PlannerExam[]> {
   const rows = must(
-    await db().from("planner_blocks").select("id, day_date, start_hour, duration_hours, title, task_kind, task_ref_id, done").eq("week_id", weekId).gte("day_date", start).lte("day_date", end).order("day_date").order("start_hour"),
-  ) as BlockRow[];
-  const tasks = await taskRepository.list();
-  const doneTasks = new Set((tasks.ok ? tasks.value : []).filter((t) => t.done).map((t) => t.id));
-  return {
-    weekStartIso: start,
-    exams: await exams(me),
-    events: await windowEvents(start, end),
-    blocks: rows.map(toBlock).map((b) => ({ ...b, done: b.done || (b.taskId !== null && doneTasks.has(b.taskId)) })),
-  };
+    await db()
+      .from("planner_exams")
+      .select("id, title, exam_date")
+      .eq("student_id", me)
+      .gte("exam_date", startIso)
+      .lte("exam_date", endIso)
+      .order("exam_date"),
+  ) as { id: string; title: string; exam_date: string }[];
+  return rows.map((e) => ({ id: e.id, title: e.title, dateIso: e.exam_date }));
 }
 
 export class RemotePlannerRepository implements PlannerRepository {
-  getWeek(): Promise<Result<PlannerWeek>> {
+  list(): Promise<Result<PlannerData>> {
     return guard(async () => {
       const me = await myId();
-      return view(me, await ensure(me));
+      const today = toLocalIso(new Date());
+      const start = addDaysIso(today, -RANGE_PAST_DAYS);
+      const end = addDaysIso(today, RANGE_FUTURE_DAYS);
+      const [manual, auto, exams] = await Promise.all([
+        manualBlocks(me, start, end),
+        taskBlocks(start, end),
+        examsInRange(me, start, end),
+      ]);
+      return {
+        blocks: [...manual, ...auto].sort((a, b) => a.dayIso.localeCompare(b.dayIso) || a.startHour - b.startHour),
+        exams,
+      };
     });
   }
 
-  async moveBlock(blockId: string, dayIso: string, startHour: number): Promise<Result<PlannerBlock>> {
+  async addPlan(input: AddPlanInput): Promise<Result<PlannerBlock>> {
     return guard(async () => {
+      const me = await myId();
+      const weekId = await weekRowFor(me, input.dayIso);
       const row = must(
-        await db().from("planner_blocks").update({ day_date: dayIso, start_hour: startHour }).eq("id", blockId).select("id, day_date, start_hour, duration_hours, title, task_kind, task_ref_id, done").maybeSingle(),
-      ) as BlockRow | null;
-      if (!row) throw appError("not_found", "This planner block no longer exists.");
+        await db()
+          .from("planner_blocks")
+          .insert({
+            week_id: weekId,
+            day_date: input.dayIso,
+            start_hour: input.startHour,
+            duration_hours: input.durationHours,
+            title: input.title.trim(),
+            notes: input.notes.trim(),
+            priority: input.priority,
+            task_kind: null,
+            task_ref_id: null,
+            done: false,
+          })
+          .select(BLOCK_COLUMNS)
+          .single(),
+      ) as BlockRow;
       return toBlock(row);
-    }, "This planner block no longer exists.");
+    });
+  }
+
+  async updatePlan(blockId: string, input: AddPlanInput): Promise<Result<PlannerBlock>> {
+    return guard(async () => {
+      const me = await myId();
+      const weekId = await weekRowFor(me, input.dayIso);
+      const row = must(
+        await db()
+          .from("planner_blocks")
+          .update({
+            week_id: weekId,
+            day_date: input.dayIso,
+            start_hour: input.startHour,
+            duration_hours: input.durationHours,
+            title: input.title.trim(),
+            notes: input.notes.trim(),
+            priority: input.priority,
+          })
+          .eq("id", blockId)
+          .select(BLOCK_COLUMNS)
+          .maybeSingle(),
+      ) as BlockRow | null;
+      if (!row) throw appError("not_found", "This plan no longer exists.");
+      return toBlock(row);
+    }, "This plan no longer exists.");
   }
 
   async markBlockDone(blockId: string, done: boolean): Promise<Result<PlannerBlock>> {
     return guard(async () => {
       const row = must(
-        await db().from("planner_blocks").update({ done }).eq("id", blockId).select("id, day_date, start_hour, duration_hours, title, task_kind, task_ref_id, done").maybeSingle(),
+        await db().from("planner_blocks").update({ done }).eq("id", blockId).select(BLOCK_COLUMNS).maybeSingle(),
       ) as BlockRow | null;
-      if (!row) throw appError("not_found", "This planner block no longer exists.");
+      if (!row) throw appError("not_found", "This plan no longer exists.");
       return toBlock(row);
-    }, "This planner block no longer exists.");
+    }, "This plan no longer exists.");
+  }
+
+  async deleteBlock(blockId: string): Promise<Result<void>> {
+    return guard(async () => {
+      mustOk(await db().from("planner_blocks").delete().eq("id", blockId));
+    });
   }
 
   async addExam(title: string, dateIso: string): Promise<Result<void>> {
     return guard(async () => {
       const me = await myId();
-      mustOk(await db().from("planner_exams").insert({ student_id: me, title: title.trim(), exam_date: dateIso }));
-      await ensure(me, true);
-    });
-  }
-
-  async regenerate(): Promise<Result<PlannerWeek>> {
-    return guard(async () => {
-      const me = await myId();
-      return view(me, await ensure(me, true, 1 + Math.floor(Math.random() * 6)));
+      const cleanTitle = title.trim();
+      mustOk(await db().from("planner_exams").insert({ student_id: me, title: cleanTitle, exam_date: dateIso }));
+      await addRevisionBlocks(me, cleanTitle, dateIso);
     });
   }
 }

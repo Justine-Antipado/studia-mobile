@@ -20,6 +20,7 @@ import { Screen } from "@/shared/components/ui/screen";
 import type { NotificationItem } from "@/features/shared-screens/types/shared-screens";
 import { C } from "@/shared/constants/studia-colors";
 import { FONT, HIT_SLOP, SPACE, TYPE } from "@/shared/constants/tokens";
+import { useSafeBack } from "@/shared/hooks/use-safe-back";
 
 /** "Read" joins All and Unread; the three live in the Filters sheet. */
 type Filter = "all" | "unread" | "read";
@@ -28,6 +29,7 @@ const DEFAULT_FILTERS = { show: "all" };
 const NO_ROWS: NotificationItem[] = [];
 
 export function NotificationsScreen({ role }: { role: Role }) {
+  const goBack = useSafeBack(`/${role}/home`);
   const [filter, setFilter] = useState<Filter>("all");
   const { data, loading, error, refetch } = useNotifications(role);
   const items = useMemo(() => data ?? [], [data]);
@@ -95,6 +97,7 @@ export function NotificationsScreen({ role }: { role: Role }) {
     <View style={s.chrome}>
       <PageTitle
         title="Alerts"
+        onBack={goBack}
         trailing={
           unreadCount > 0 ? (
             <Pressable
@@ -122,7 +125,6 @@ export function NotificationsScreen({ role }: { role: Role }) {
     <Screen
       role={role}
       scroll={false}
-      tabScreen
       scope={`${role}/notifications`}
       contentStyle={s.flush}
       refreshing={loading}

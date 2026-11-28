@@ -11,9 +11,14 @@ navigator with hidden children:
 ```
 app/_layout.tsx                    Stack (root): index · learn-more · explore · auth · student · instructor
 app/student/_layout.tsx            Stack: (tabs) + every student sub page
-app/student/(tabs)/_layout.tsx     Tabs: home · courses · ai · notifications · account
+app/student/(tabs)/_layout.tsx     Tabs: home · courses · todo · planner · ai
 app/student/course-detail.tsx      a Stack screen, pushed over the tab bar
 ```
+
+Account and Alerts (notifications) are not tabs: the header (`shared/components/ui/app-header.tsx`,
+rendered by `Screen` on every page) opens them from the avatar and the bell icon, as ordinary pushed
+sub pages. They sit in `SUBPAGE_ROUTES` like any other sub page, with `/<role>/home` as their back
+fallback.
 
 The first attempt registered sub pages inside the Tabs navigator with `href: null`. Navigating to
 one of them fell back to the first tab — the URL flashed the sub page and then snapped back to
@@ -62,24 +67,26 @@ Consequences worth knowing:
 
 ## Student — `/student/*`
 
-Tabs: **home · courses · ai · notifications · account**
+Tabs: **home · courses · todo · planner · ai**. Account (avatar) and Alerts (bell) live in the
+header, not the tab bar.
 
 ```
 (tabs)
   home                                        tab
   courses                                     tab
+  todo                                        tab
+  planner                                     tab
   ai                                          tab   segments: Chat · Summarizer · Practice
-  notifications                               tab   taps deep-link into the target screen
-  account                                     tab
 
 Stack sub pages                                     back fallback
+  account                                           → /student/home       (opened from the header avatar)
+  notifications                                     → /student/home       (opened from the header bell; taps deep-link into the target screen)
   account-personal                                  → /student/account   (edit profile, email OTP before saving)
   account-password                                  → /student/account   (email OTP, then new password)
   account-privacy                                   → /student/account
   account-about                                     → /student/account
   account-photo                                     → /student/account   (camera / gallery / remove; cropped + resized on device)
-  todo                                              → /student/home
-  planner                                           → /student/home
+  add-plan                            (modal)       → /student/planner    (add a plan or an exam date)
   join-class                          (modal)       → /student/courses
   course-detail?id&tab                              → /student/courses
       tabs: Stream · Lessons · Tasks · Grades · People  (tab kept in the URL)
@@ -95,8 +102,8 @@ Notes
 - **No duplicate pushes:** every `Stack.Screen` has `getId` (`core/logic/screen-id.ts`), the route
   params, so a rapid double/triple tap opens one copy of a sub page and one Back returns. Opening a
   *different* item (other `id`) still stacks.
-- To-do and Study Planner are reached from the Home tab (quick actions), so the tab bar stays at
-  five items.
+- Study Planner joined the tab bar (it was previously reached from the Home quick action only), so
+  the tab bar is now five items: Home · Courses · To-do · Planner · AI.
 - Leave class is a confirm dialog inside `course-detail` (People tab), not a route.
 - The assignment late rule lives in `assignment-detail`: when late submissions are not allowed the
   picked file stays an attached draft and a "Turn in" button appears on reopen; when they are
@@ -105,7 +112,8 @@ Notes
 
 ## Instructor — `/instructor/*`
 
-Tabs: **home · classes · assessments · ai · notifications · account**
+Tabs: **home · classes · assessments · ai**. Account (avatar) and Alerts (bell) live in the header,
+not the tab bar.
 
 ```
 (tabs)
@@ -113,10 +121,10 @@ Tabs: **home · classes · assessments · ai · notifications · account**
   classes                                     tab
   assessments                                 tab   segments: Quizzes · To Grade
   ai                                          tab
-  notifications                               tab
-  account                                     tab
 
 Stack sub pages                                     back fallback
+  account                                           → /instructor/home   (opened from the header avatar)
+  notifications                                     → /instructor/home   (opened from the header bell)
   account-personal / account-password / account-privacy / account-about
                                                     → /instructor/account (same screens as the student group)
   analytics                                         → /instructor/home

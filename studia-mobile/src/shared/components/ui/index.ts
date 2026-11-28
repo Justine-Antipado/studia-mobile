@@ -61,6 +61,7 @@ export {
   type PullToRefresh,
 } from "@/shared/components/ui/pull-to-refresh";
 export { QuickAction } from "@/shared/components/ui/quick-action";
+export { Reveal } from "@/shared/components/ui/reveal";
 export { RoleGate } from "@/shared/components/ui/role-gate";
 export { Screen } from "@/shared/components/ui/screen";
 export { SectionHeader } from "@/shared/components/ui/section-header";

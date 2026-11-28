@@ -550,7 +550,11 @@ export default function Auth() {
         goMode("login");
         break;
       default:
-        router.back();
+        // After a logout, signOut() replaces the stack with /auth, so there is nothing left to
+        // pop back to — fall back to the logical parent (docs/ROUTE-MAP.md) instead of letting
+        // expo-router's GO_BACK hit an empty history.
+        if (router.canGoBack()) router.back();
+        else router.replace("/explore");
     }
   };
 

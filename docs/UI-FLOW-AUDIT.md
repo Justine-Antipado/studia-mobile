@@ -72,7 +72,7 @@ Ang mga pangalang gaya ng "Classwork", "To review" at "Return" ay mungkahi lang.
 2. Class → Classwork → item → detail (instructions, due date, points, "Your work")
 3. Assignment: Add file → Turn in → Unsubmit kung may babaguhin
 4. Quiz: detail → **Start** → sagot → result
-5. To-do: **Assigned · Missing · Done**, kapalit ng limang filter ngayon
+5. To-do: **Assigned · Missing · Done**, kapalit ng limang filter ngayon. Ilipat din ang To-do sa tab nav (bottom tabs) ng student UI sa halip na stack subpage — kasama ang Courses, hindi kapalit nito, kaya apat na tabs: Home · Courses · To-do · AI
 6. Ang grade ay makikita sa item mismo, kaya puwede nang alisin ang Grades tab ng student.
 
 ### Instructor

@@ -805,3 +805,47 @@ access). The findings above are the ones that pass missed, or that later migrati
 
 *Static review only. No code was modified and no runtime testing was performed. Findings that depend
 on configuration outside the repository are marked as such.*
+
+---
+
+## Addendum — reported issue, 2026-11-27 (not investigated, no code changed)
+
+**Reported by:** Justine, after manually testing the `banned_until = 'infinity'` fix
+(`20260101000043_fix_banned_until_infinity.sql`) on a real device.
+
+**Symptom:** On Android, running the mobile app in **Expo Go**: a test account was deactivated via
+the admin portal, then reactivated. After reactivation, opening the app and editing the profile,
+pressing **Save profile** signs the user out immediately with the banner "This account is
+deactivated" — even though the account's `status` is `active` again.
+
+**What is confirmed:** nothing — this was reported, not reproduced or root-caused. No code was
+changed for it. It is logged here so it is not lost before someone picks it up.
+
+**Where `BLOCKED_MESSAGE` ("This account is deactivated") can currently fire**, for whoever
+investigates:
+1. `features/auth/screens/auth-screen.tsx` — `ACCOUNT_INACTIVE` from a login/Google/OTP call.
+2. `core/logic/live-updates.ts` (`forceSignOutBlocked`) — the Realtime subscription on the user's own
+   `users` row, and the foreground re-check, both navigate to `/auth?reason=blocked` on any row where
+   `status !== 'active'`.
+3. `features/shared-screens/data/profile-remote.ts` (`toError`) — an `ACCOUNT_INACTIVE` from
+   `me/profile-update` itself.
+
+**Untested hypotheses, in order of how cheap they are to rule out:**
+- **Stale session from the earlier deactivation.** `admin_set_user_active(false)` deletes every row
+  in `auth.sessions` for that user (migration 026), which revokes refresh tokens. If this device's
+  session was never fully re-established (fresh sign-in) after the account was reactivated — e.g. the
+  Expo Go JS context survived across the deactivate/reactivate cycle via Fast Refresh instead of a
+  cold restart — a token refresh triggered by the Save action could fail in a way that is currently
+  mislabeled as "deactivated" rather than "session expired".
+- **Expo Go specifically.** The report calls out Expo Go, not a dev/production build. Expo Go keeps
+  the JS runtime alive across Fast Refresh and backgrounding in ways a standalone build does not; the
+  `useLiveUpdates` effect in (2) above closes over `role`/`signedIn` and resubscribes on change, so a
+  stale closure from before reactivation is worth ruling out first.
+- **Self-triggered Realtime event.** Save profile itself issues an `UPDATE` on the same `public.users`
+  row that `live-updates.ts` subscribes to. If that round-trip, for any reason, is misread as a block
+  (e.g. a payload shape the client does not expect), the UI consequence would look exactly like this.
+
+**Suggested first repro step** (not done yet): after reactivating, fully kill and relaunch Expo Go
+(cold start, fresh login) rather than continuing the session that was open during deactivation. If the
+bug disappears on a cold start, the fault is in session/state continuity on the device, not the
+server; if it still reproduces, the server-side status/session state is not what it appears to be.

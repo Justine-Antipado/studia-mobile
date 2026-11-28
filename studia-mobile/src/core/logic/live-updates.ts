@@ -2,9 +2,13 @@
 //   - returning to the app after a while reloads every query
 //   - a new row in `notifications` (created by database triggers for new announcements, lessons,
 //     assignments, quizzes, grades, ...) arrives over Supabase Realtime and reloads every query
-//   - the admin deactivating this account (status -> 'inactive') ends the session right away:
-//     a Realtime UPDATE on the user's own row catches it instantly while the app is open, and a
-//     direct re-check on returning to the foreground catches it for the time Realtime was asleep
+//   - the admin deactivating this account (status -> 'inactive') ends the session the next time
+//     the app comes to the foreground (see STALE_AFTER_MS below). The UPDATE subscription further
+//     down is meant to catch it instantly while the app stays open, but `public.users` was never
+//     added to the `supabase_realtime` publication (only `public.notifications` was, migration
+//     20260101000018) -- Realtime only broadcasts tables in that publication, so that handler
+//     subscribes but never actually receives anything right now. Add the table to the publication
+//     to make it live; until then, this is the only path that works.
 // Mounted once in the root layout.
 import { router } from "expo-router";
 import { useEffect } from "react";
@@ -54,7 +58,14 @@ export function useLiveUpdates(): void {
             .select("status, deleted_at")
             .eq("id", uid)
             .maybeSingle()
-            .then(({ data: row }) => {
+            .then(({ data: row, error }) => {
+              // A failed read (offline, a slow reconnect after switching apps/networks, any
+              // transient error) is not proof the account was deactivated -- it is proof we
+              // could not ask. Treating "no answer" the same as "blocked" signed real, active
+              // accounts out with a false "This account is deactivated" banner. Only a row that
+              // actually says so may sign the device out; a failed check is retried next time
+              // the app comes to the foreground instead.
+              if (error) return;
               if (isBlocked(row)) forceSignOutBlocked(role);
             });
         });

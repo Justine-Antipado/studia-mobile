@@ -11,6 +11,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { ArrowCard } from "@/shared/components/ui/arrow-card";
 import { Avatar } from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
+import { Icon } from "@/shared/components/ui/icon";
+import { C } from "@/shared/constants/studia-colors";
 import { SPACE, TYPE } from "@/shared/constants/tokens";
 
 export type AnnouncementCardProps = {
@@ -58,9 +60,13 @@ export const AnnouncementCard = memo(function AnnouncementCard({
       <Text style={[TYPE.muted, s.body]} numberOfLines={2}>
         {body}
       </Text>
-      <Text style={[TYPE.caption, s.meta]}>
-        {timeLabel} · {commentCount} comment{commentCount === 1 ? "" : "s"}
-      </Text>
+      <View style={s.meta}>
+        <Text style={TYPE.caption}>{timeLabel}</Text>
+        <View style={s.commentMeta}>
+          <Icon name="chatbubble-outline" size="xs" color={C.muted} />
+          <Text style={TYPE.caption}>{commentCount}</Text>
+        </View>
+      </View>
     </ArrowCard>
   );
 });
@@ -70,5 +76,11 @@ const s = StyleSheet.create({
   authorName: { flex: 1 },
   badgeRow: { flexDirection: "row", marginBottom: SPACE.xs },
   body: { marginTop: 4 },
-  meta: { marginTop: SPACE.sm },
+  meta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: SPACE.sm,
+  },
+  commentMeta: { flexDirection: "row", alignItems: "center", gap: 4 },
 });

@@ -71,6 +71,23 @@ export function addDaysIso(iso: string, days: number): string {
   return toLocalIso(d);
 }
 
+/** Monday of the calendar week containing `iso` ("YYYY-MM-DD", local). */
+export function mondayOf(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  const back = (d.getDay() + 6) % 7;
+  return addDaysIso(iso, -back);
+}
+
+/** "Nov 24 – 30, 2026", or "Nov 30 – Dec 6, 2026" across a month boundary. */
+export function weekRangeLabel(weekStartIso: string): string {
+  const start = new Date(`${weekStartIso}T00:00:00`);
+  const end = new Date(`${addDaysIso(weekStartIso, 6)}T00:00:00`);
+  const sameMonth = start.getMonth() === end.getMonth();
+  const startLabel = start.toLocaleDateString(LOCALE, { month: "short", day: "numeric" });
+  const endLabel = end.toLocaleDateString(LOCALE, sameMonth ? { day: "numeric" } : { month: "short", day: "numeric" });
+  return `${startLabel} – ${endLabel}, ${end.getFullYear()}`;
+}
+
 export function dayLabel(dayIso: string): string {
   return new Date(`${dayIso}T00:00:00`).toLocaleDateString(LOCALE, {
     weekday: "short",
@@ -101,6 +118,16 @@ export function clockLabel(iso: string): string {
     minute: "2-digit",
     timeZone: TIME_ZONE,
   });
+}
+
+/** Time-of-day greeting in the campus time zone, for the Home header. */
+export function greeting(now = new Date()): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: TIME_ZONE }).format(now),
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
