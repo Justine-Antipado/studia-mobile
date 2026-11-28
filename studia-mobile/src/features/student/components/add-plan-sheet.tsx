@@ -81,13 +81,19 @@ export function AddPlanSheet({
       toast.show("Enter a title for the plan.", { tone: "red" });
       return;
     }
-    if (dayIso < today) {
+    // A new plan (or a moved date) can't be in the past, but an existing plan stays editable on
+    // its own old date, so notes / priority / title can still be fixed after it is overdue.
+    if (dayIso < today && !(editingBlock && dayIso === editingBlock.dayIso)) {
       toast.show("The plan date can't be in the past.", { tone: "red" });
+      return;
+    }
+    if (toHour <= fromHour) {
+      toast.show("The end time must be after the start time.", { tone: "red" });
       return;
     }
 
     const start = fromHour;
-    const durationHours = Math.max(1, Math.min(24 - start, toHour - start));
+    const durationHours = Math.min(24 - start, toHour - start);
 
     if (isEdit && editingBlock) {
       const result = await updatePlan.run({
@@ -135,7 +141,7 @@ export function AddPlanSheet({
         label="Date"
         value={new Date(`${dayIso}T00:00:00`)}
         onChange={(d) => setDayIso(toLocalIso(d))}
-        minimumDate={new Date()}
+        minimumDate={editingBlock && editingBlock.dayIso < today ? new Date(`${editingBlock.dayIso}T00:00:00`) : new Date()}
         fromHour={fromHour}
         toHour={toHour}
         onFromHourChange={setFromHour}

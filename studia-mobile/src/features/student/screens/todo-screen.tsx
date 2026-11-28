@@ -10,7 +10,7 @@ import { AppList, FilterPillSheet, ListState, PageTitle, ProgressBar, type Filte
 import { Screen } from "@/shared/components/ui/screen";
 import { SPACE } from "@/shared/constants/tokens";
 import { TaskRow } from "@/features/student/components/task-row";
-import { useTasks, useToggleTask } from "@/features/student/hooks/use-tasks";
+import { useTasks } from "@/features/student/hooks/use-tasks";
 import { TASK_TABS, tasksForTab, type TaskTab } from "@/features/student/logic/task-filters";
 import type { Task } from "@/features/student/types/student";
 
@@ -32,14 +32,11 @@ const EMPTY_MESSAGE: Record<TaskTab, string> = {
 export default function StudentTodo() {
   const router = useSafeRouter();
   const { data, loading, error, refetch } = useTasks();
-  const toggleTask = useToggleTask();
   const [tab, setTab] = useState<TaskTab>("All");
 
   const tasks = useMemo(() => data ?? [], [data]);
   const doneCount = useMemo(() => tasks.filter((t) => t.done).length, [tasks]);
   const shown = useMemo(() => tasksForTab(tasks, tab), [tasks, tab]);
-
-  const toggle = useCallback((id: string) => void toggleTask.run(id), [toggleTask]);
 
   const openTask = useCallback(
     (task: Task) =>
@@ -55,9 +52,9 @@ export default function StudentTodo() {
 
   const renderRow = useCallback(
     (task: Task) => (
-      <TaskRow task={task} onToggle={() => toggle(task.id)} onPress={() => openTask(task)} />
+      <TaskRow task={task} onPress={() => openTask(task)} />
     ),
-    [toggle, openTask],
+    [openTask],
   );
 
   // The page chrome rides inside the list so the list itself starts at the top of the content

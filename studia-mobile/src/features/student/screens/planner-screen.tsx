@@ -12,13 +12,11 @@ import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
 import { FONT, HIT_SLOP, RADIUS, SPACE, TYPE } from "@/shared/constants/tokens";
 import { addDaysIso, dayLabel, mondayOf, toLocalIso, weekRangeLabel } from "@/features/student/logic/format";
-import { queryCache } from "@/core/data/cache/query-cache";
 import { AddPlanSheet } from "@/features/student/components/add-plan-sheet";
 import { PlannerItemRow } from "@/features/student/components/planner-item-row";
 import { PlannerWeekGrid } from "@/features/student/components/planner-week-grid";
 import { PriorityTaskCard } from "@/features/student/components/priority-task-card";
-import { plannerKey, useMarkBlockDone, usePlanner } from "@/features/student/hooks/use-planner";
-import { useToggleTask } from "@/features/student/hooks/use-tasks";
+import { useMarkBlockDone, usePlanner } from "@/features/student/hooks/use-planner";
 import type { PlannerBlock, PlannerPriority } from "@/features/student/types/student";
 
 type PlannerTab = "Today" | "Weekly" | "Monthly" | "Yearly";
@@ -34,8 +32,10 @@ const PRIORITY_CARD_TONE: Record<PlannerPriority, "red" | "blue" | "green"> = {
   low: "green",
 };
 
-function matchesTab(dayIso: string, tab: PlannerTab, today: string): boolean {
-  if (tab === "Today") return dayIso === today;
+function matchesTab(block: PlannerBlock, tab: PlannerTab, today: string): boolean {
+  const dayIso = block.dayIso;
+  // Same rule as To-do: due today, or overdue and not done yet.
+  if (tab === "Today") return dayIso === today || (dayIso < today && !block.done);
   if (tab === "Weekly") {
     const monday = mondayOf(today);
     return dayIso >= monday && dayIso <= addDaysIso(monday, 6);
@@ -49,7 +49,6 @@ export default function StudentPlanner() {
   const toast = useToast();
   const { data, loading, error, refetch, mutate } = usePlanner();
   const markDone = useMarkBlockDone();
-  const toggleTask = useToggleTask();
 
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<PlannerTab>("Today");
@@ -81,32 +80,19 @@ export default function StudentPlanner() {
     [mutate],
   );
 
-  // A block whose server row is already gone (deleted elsewhere, or a stale on-device cache from
-  // before a reset) is dropped from the list on the spot, quietly: it is a stale row, not an error
-  // the student can act on. Otherwise it would fail again on every tap, since a failed write never
-  // touches the cache.
-  const removeBlock = useCallback(
-    (id: string) => mutate((current) => (current ? { ...current, blocks: current.blocks.filter((b) => b.id !== id) } : current!)),
-    [mutate],
-  );
-
+  // Only the student's own plans can be ticked; assignment/quiz blocks are checked by submitting.
   const toggleDone = useCallback(
     async (block: PlannerBlock) => {
+      if (block.taskId) return;
       const nextDone = !block.done;
       patchBlockDone(block.id, nextDone);
-      const result = block.taskId ? await toggleTask.run(block.taskId) : await markDone.run({ id: block.id, done: nextDone });
-      if (result.ok) {
-        // The server has the last word: a task this cached block still showed as open may already be submitted.
-        if (result.value.done !== nextDone) patchBlockDone(block.id, result.value.done);
-      } else if (result.error.code === "not_found") {
-        removeBlock(block.id);
-        queryCache.invalidate(plannerKey);
-      } else {
-        toast.show(result.error.message, { tone: "red" });
+      const result = await markDone.run({ id: block.id, done: nextDone });
+      if (!result.ok) {
         patchBlockDone(block.id, block.done);
+        toast.show(result.error.message, { tone: "red" });
       }
     },
-    [toggleTask, markDone, patchBlockDone, removeBlock, toast],
+    [markDone, patchBlockDone, toast],
   );
 
   // A task-derived block has no plan row of its own to edit — its title/date/time come straight
@@ -134,7 +120,14 @@ export default function StudentPlanner() {
   );
 
   const priorityCards = useMemo(() => {
-    const open = blocks.filter((b) => !b.done).sort((a, b) => a.dayIso.localeCompare(b.dayIso));
+    // Upcoming first (soonest), overdue after, so old leftovers never crowd out what is next.
+    const open = blocks
+      .filter((b) => !b.done)
+      .sort((a, b) => {
+        const aLate = a.dayIso < today ? 1 : 0;
+        const bLate = b.dayIso < today ? 1 : 0;
+        return aLate - bLate || a.dayIso.localeCompare(b.dayIso);
+      });
     const soonExams = exams.filter((e) => e.dateIso >= today).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
     return { open: open.slice(0, 6), exams: soonExams.slice(0, 4) };
   }, [blocks, exams, today]);
@@ -147,7 +140,7 @@ export default function StudentPlanner() {
   const rows = useMemo(
     () =>
       searched
-        .filter((b) => showAll || matchesTab(b.dayIso, tab, today))
+        .filter((b) => showAll || matchesTab(b, tab, today))
         .sort((a, b) => a.dayIso.localeCompare(b.dayIso) || a.startHour - b.startHour),
     [searched, showAll, tab, today],
   );

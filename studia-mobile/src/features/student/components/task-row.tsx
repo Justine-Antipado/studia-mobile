@@ -10,30 +10,24 @@ import type { Task } from "@/features/student/types/student";
 
 export const TaskRow = memo(function TaskRow({
   task,
-  onToggle,
   onPress,
 }: {
   task: Task;
-  onToggle: () => void;
   onPress: () => void;
 }) {
   const overdue = !task.done && isOverdue(task.dueAt);
 
   return (
     <View style={s.card}>
-      {/* Submitted work is done for good: the check is locked and opens the submission instead. */}
-      <Pressable
-        onPress={task.submitted ? onPress : onToggle}
-        hitSlop={8}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: task.done, disabled: task.submitted }}
-        accessibilityLabel={
-          task.submitted ? `${task.title} is submitted` : `Mark ${task.title} as ${task.done ? "not done" : "done"}`
-        }
+      {/* Display only: a task is checked automatically once it is submitted (late too). */}
+      <View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={task.done ? `${task.title} is submitted` : `${task.title} is not submitted yet`}
         style={[s.check, task.done && s.checkOn]}
       >
         {task.done ? <Icon name="checkmark" size="sm" color={C.white} /> : null}
-      </Pressable>
+      </View>
 
       <Pressable onPress={onPress} style={s.text} accessibilityRole="button">
         <Text style={[TYPE.h3, task.done && s.done]} numberOfLines={2}>

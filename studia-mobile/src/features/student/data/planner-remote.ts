@@ -3,8 +3,7 @@
 // stored — it is computed from the `student_tasks` view at read time, on its real due date, so
 // posting a task places it on the planner without any write of its own.
 import { appError, type Result } from "@/core/data/errors/app-error";
-import { db, guard, must, mustOk, myId } from "@/core/data/supabase/remote";
-import { taskId } from "@/features/student/data/tasks-remote";
+import { db, guard, must, myId } from "@/core/data/supabase/remote";
 import { taskRepository } from "@/features/student/data/tasks-repository";
 import type { AddPlanInput, PlannerRepository } from "@/features/student/data/planner-repository";
 import type { PlannerBlock, PlannerData, PlannerExam, PlannerPriority, TaskKind } from "@/features/student/types/student";
@@ -39,9 +38,9 @@ const toBlock = (b: BlockRow): PlannerBlock => ({
   title: b.title,
   notes: b.notes,
   priority: b.priority,
-  taskId: b.task_kind && b.task_ref_id ? taskId(b.task_kind, b.task_ref_id) : null,
-  // addPlan/updatePlan always write task_kind/task_ref_id as null — a manual block is never
-  // task-derived — so there is no class id to carry here either.
+  // A stored block is always the student's own plan (task blocks are computed, see taskBlocks);
+  // legacy rows that carry a task_kind are filtered out of the read, so none is task-derived here.
+  taskId: null,
   taskKind: null,
   taskClassId: null,
   taskRefId: null,
@@ -81,6 +80,7 @@ async function manualBlocks(me: string, startIso: string, endIso: string): Promi
         "week_id",
         weeks.map((w) => w.id),
       )
+      .is("task_kind", null)
       .gte("day_date", startIso)
       .lte("day_date", endIso)
       .order("day_date")
@@ -212,7 +212,8 @@ export class RemotePlannerRepository implements PlannerRepository {
 
   async deleteBlock(blockId: string): Promise<Result<void>> {
     return guard(async () => {
-      mustOk(await db().from("planner_blocks").delete().eq("id", blockId));
-    });
+      const rows = must(await db().from("planner_blocks").delete().eq("id", blockId).select("id")) as { id: string }[];
+      if (!rows.length) throw appError("not_found", "This plan no longer exists.");
+    }, "This plan no longer exists.");
   }
 }

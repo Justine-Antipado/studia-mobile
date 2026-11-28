@@ -33,19 +33,28 @@ export const PlannerItemRow = memo(function PlannerItemRow({
 
   return (
     <View style={s.card}>
-      {/* Submitted work is done for good: the check is locked and opens the submission instead. */}
-      <Pressable
-        onPress={block.submitted ? onPress : onToggleDone}
-        hitSlop={8}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: block.done, disabled: block.submitted }}
-        accessibilityLabel={
-          block.submitted ? `${block.title} is submitted` : `Mark ${block.title} as ${block.done ? "not done" : "done"}`
-        }
-        style={[s.check, block.done && s.checkOn]}
-      >
-        {block.done ? <Icon name="checkmark" size="sm" color={C.white} /> : null}
-      </Pressable>
+      {/* An assignment/quiz block is display only (checked by submitting it); only own plans toggle. */}
+      {block.taskId ? (
+        <View
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={block.done ? `${block.title} is submitted` : `${block.title} is not submitted yet`}
+          style={[s.check, block.done && s.checkOn]}
+        >
+          {block.done ? <Icon name="checkmark" size="sm" color={C.white} /> : null}
+        </View>
+      ) : (
+        <Pressable
+          onPress={onToggleDone}
+          hitSlop={8}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: block.done }}
+          accessibilityLabel={`Mark ${block.title} as ${block.done ? "not done" : "done"}`}
+          style={[s.check, block.done && s.checkOn]}
+        >
+          {block.done ? <Icon name="checkmark" size="sm" color={C.white} /> : null}
+        </Pressable>
+      )}
 
       <Pressable onPress={onPress} disabled={!onPress} style={s.text} accessibilityRole="button">
         <Text style={[TYPE.h3, block.done && s.done]} numberOfLines={2}>

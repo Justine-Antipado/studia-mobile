@@ -12,7 +12,7 @@ import { ClassCard } from "@/features/student/components/class-card";
 import { TaskRow } from "@/features/student/components/task-row";
 import { dueLabel, greeting, isOverdue } from "@/features/student/logic/format";
 import { useClasses } from "@/features/student/hooks/use-classes";
-import { useTasks, useToggleTask } from "@/features/student/hooks/use-tasks";
+import { useTasks } from "@/features/student/hooks/use-tasks";
 import type { Task } from "@/features/student/types/student";
 
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
@@ -22,7 +22,6 @@ export default function StudentHome() {
   const user = useRoleUser("student");
   const classes = useClasses();
   const tasks = useTasks();
-  const toggleTask = useToggleTask();
 
   // Derived once per data change: Home re-renders on every cache notification, and these
   // feed memoized rows, so recomputing them would re-render every row for nothing.
@@ -55,8 +54,6 @@ export default function StudentHome() {
   const openTodo = useCallback(() => go("todo"), [go]);
   const openPlanner = useCallback(() => go("planner"), [go]);
   const openAi = useCallback(() => go("ai"), [go]);
-
-  const toggle = useCallback((id: string) => void toggleTask.run(id), [toggleTask]);
 
   const openTask = useCallback(
     (task: Task) =>
@@ -131,7 +128,7 @@ export default function StudentHome() {
                 />
               ) : (
                 todayTasks.map((task) => (
-                  <TaskRow key={task.id} task={task} onToggle={() => toggle(task.id)} onPress={() => openTask(task)} />
+                  <TaskRow key={task.id} task={task} onPress={() => openTask(task)} />
                 ))
               )}
             </ListState>
