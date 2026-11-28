@@ -27,7 +27,7 @@ export default function StudentHome() {
   // feed memoized rows, so recomputing them would re-render every row for nothing.
   const { todayTasks, upcoming, todayCount, upcomingCount } = useMemo(() => {
     const pending = (tasks.data ?? []).filter((t) => !t.done);
-    const today = pending.filter((t) => isToday(t.dueAt) || isOverdue(t.dueAt));
+    const today = pending.filter((t) => !!t.dueAt && (isToday(t.dueAt) || isOverdue(t.dueAt)));
     const todayIds = new Set(today.map((t) => t.id));
     const rest = pending.filter((t) => !todayIds.has(t.id));
     return {
@@ -147,7 +147,7 @@ export default function StudentHome() {
                     key={task.id}
                     icon={task.kind === "quiz" ? "help-circle-outline" : "document-text-outline"}
                     title={task.title}
-                    subtitle={`${task.classCode} · ${dueLabel(task.dueAt)}`}
+                    subtitle={`${task.classCode} · ${task.dueAt ? dueLabel(task.dueAt) : "No due date"}`}
                     onPress={openTodo}
                   />
                 ))

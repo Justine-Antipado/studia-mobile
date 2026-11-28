@@ -15,7 +15,7 @@ export const TaskRow = memo(function TaskRow({
   task: Task;
   onPress: () => void;
 }) {
-  const overdue = !task.done && isOverdue(task.dueAt);
+  const overdue = !task.done && !!task.dueAt && isOverdue(task.dueAt);
 
   return (
     <View style={s.card}>
@@ -34,7 +34,7 @@ export const TaskRow = memo(function TaskRow({
           {task.title}
         </Text>
         <Text style={[TYPE.muted, overdue && s.overdue]} numberOfLines={1}>
-          {task.classCode} · {dueLabel(task.dueAt)}
+          {task.classCode} · {task.dueAt ? dueLabel(task.dueAt) : "No due date"}
         </Text>
       </Pressable>
 

@@ -8,18 +8,19 @@ export type TaskTab = (typeof TASK_TABS)[number];
 
 // G4: the sort / kind / class filter is gone. The five buckets are the only choice left and the
 // order is always "soonest due first", which is what a to-do list is for.
-export const isDueToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+export const isDueToday = (iso: string | null) => !!iso && new Date(iso).toDateString() === new Date().toDateString();
+const late = (iso: string | null) => !!iso && isOverdue(iso);
 
 export function matchesTab(task: Task, tab: TaskTab): boolean {
   if (tab === "All") return true;
   if (tab === "Done") return task.done;
   if (task.done) return false;
-  if (tab === "Overdue") return isOverdue(task.dueAt);
-  if (tab === "Today") return isDueToday(task.dueAt) || isOverdue(task.dueAt);
-  return !isOverdue(task.dueAt) && !isDueToday(task.dueAt);
+  if (tab === "Overdue") return late(task.dueAt);
+  if (tab === "Today") return isDueToday(task.dueAt) || late(task.dueAt);
+  return !late(task.dueAt) && !isDueToday(task.dueAt);
 }
 
 /** The tasks of one bucket, soonest due first. */
 export function tasksForTab(tasks: Task[], tab: TaskTab): Task[] {
-  return tasks.filter((t) => matchesTab(t, tab)).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  return tasks.filter((t) => matchesTab(t, tab)).sort((a, b) => (a.dueAt ?? "\uffff").localeCompare(b.dueAt ?? "\uffff"));
 }

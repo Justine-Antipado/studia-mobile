@@ -123,7 +123,8 @@ export type Task = {
   classCode: string;
   refId: string;
   title: string;
-  dueAt: string;
+  /** null for a quiz posted without a due date: it shows in To-do but has no place in the Planner. */
+  dueAt: string | null;
   done: boolean;
   /** Done because of a real submission (not a manual tick), so it cannot be unchecked. */
   submitted: boolean;

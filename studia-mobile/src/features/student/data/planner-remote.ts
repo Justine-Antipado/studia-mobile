@@ -96,6 +96,7 @@ async function taskBlocks(startIso: string, endIso: string): Promise<PlannerBloc
   if (!result.ok) throw result.error;
   const blocks: PlannerBlock[] = [];
   for (const t of result.value) {
+    if (!t.dueAt) continue; // no due date, nowhere to place it; it still shows in To-do
     const day = toLocalIso(new Date(t.dueAt));
     if (day < startIso || day > endIso) continue;
     blocks.push({

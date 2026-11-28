@@ -23,14 +23,13 @@ async function loadTasks(): Promise<Task[]> {
     ...(must(turnedInRes) as { assignment_id: string }[]).map((s) => taskId("assignment", s.assignment_id)),
     ...(must(attemptRes) as { quiz_id: string }[]).map((a) => taskId("quiz", a.quiz_id)),
   ]);
-  const dated = rows.filter((r) => r.due_at);
-  const classIds = [...new Set(dated.map((r) => r.class_id))];
+  const classIds = [...new Set(rows.map((r) => r.class_id))];
   const codes = new Map<string, string>();
   if (classIds.length) {
     const classes = must(await db().from("classes").select("id, subject_code").in("id", classIds)) as { id: string; subject_code: string }[];
     classes.forEach((c) => codes.set(c.id, c.subject_code));
   }
-  return dated
+  return rows
     .map<Task>((r) => {
       const id = taskId(r.kind, r.ref_id);
       const isSubmitted = submitted.has(id);
@@ -41,12 +40,12 @@ async function loadTasks(): Promise<Task[]> {
         classCode: codes.get(r.class_id) ?? "",
         refId: r.ref_id,
         title: r.title,
-        dueAt: r.due_at!,
+        dueAt: r.due_at,
         done: isSubmitted,
         submitted: isSubmitted,
       };
     })
-    .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+    .sort((a, b) => (a.dueAt ?? "\uffff").localeCompare(b.dueAt ?? "\uffff"));
 }
 
 export class RemoteTaskRepository implements TaskRepository {
