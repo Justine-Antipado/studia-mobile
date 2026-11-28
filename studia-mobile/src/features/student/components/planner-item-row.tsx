@@ -21,8 +21,8 @@ export const PlannerItemRow = memo(function PlannerItemRow({
 }: {
   block: PlannerBlock;
   onToggleDone: () => void;
-  /** Opens the manual plan for editing; omitted for an auto task block, which has nothing of its
-   *  own to edit (mark-done already syncs with the assignment/quiz behind it). */
+  /** Opens the manual plan for editing, or the assignment/quiz behind an auto task block —
+   *  every row is tappable to something, even though a task block has no plan row of its own. */
   onPress?: () => void;
 }) {
   const badge = block.done ? { label: "Done", tone: "green" as const } : PRIORITY_BADGE[block.priority];

@@ -31,40 +31,59 @@ const PERIODS = ["AM", "PM"];
 const ITEM_H = 40;
 const VISIBLE_ROWS = 5;
 
-/** Snapping scroll wheel: scroll (or tap a row) to choose; the centred row is the value. */
-function Wheel({ label, items, index, onSelect }: { label: string; items: string[]; index: number; onSelect: (i: number) => void }) {
+/**
+ * Snapping scroll wheel: scroll (or tap a row) to choose; the centred row is the value.
+ * `itemHeight`/`visibleRows` default to this file's own hour/minute/period size; a caller that
+ * needs a shorter wheel (fewer rows visible at once) can pass smaller ones.
+ */
+export function Wheel({
+  label,
+  items,
+  index,
+  onSelect,
+  itemHeight = ITEM_H,
+  visibleRows = VISIBLE_ROWS,
+}: {
+  label: string;
+  items: string[];
+  index: number;
+  onSelect: (i: number) => void;
+  itemHeight?: number;
+  visibleRows?: number;
+}) {
   const ref = useRef<ScrollViewInstance>(null);
+  const bandTop = itemHeight * Math.floor(visibleRows / 2);
 
   const settle = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+    const i = Math.round(e.nativeEvent.contentOffset.y / itemHeight);
     const clamped = Math.min(items.length - 1, Math.max(0, i));
     if (clamped !== index) onSelect(clamped);
   };
 
   return (
-    <View style={s.wheel} accessibilityLabel={`${label} ${items[index]}`}>
-      <View pointerEvents="none" style={s.wheelBand} />
+    <View style={[s.wheel, { height: itemHeight * visibleRows }]} accessibilityLabel={`${label} ${items[index]}`}>
+      <View pointerEvents="none" style={[s.wheelBand, { top: bandTop, height: itemHeight }]} />
       <ScrollView
         ref={ref}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={ITEM_H}
+        snapToInterval={itemHeight}
         decelerationRate="fast"
-        onLayout={() => ref.current?.scrollTo({ y: index * ITEM_H, animated: false })}
+        onLayout={() => ref.current?.scrollTo({ y: index * itemHeight, animated: false })}
         onMomentumScrollEnd={settle}
         onScrollEndDrag={settle}
-        contentContainerStyle={s.wheelContent}
+        contentContainerStyle={[s.wheelContent, { paddingVertical: bandTop }]}
       >
         {items.map((t, i) => (
           <Pressable
             key={t}
             onPress={() => {
-              ref.current?.scrollTo({ y: i * ITEM_H, animated: true });
+              ref.current?.scrollTo({ y: i * itemHeight, animated: true });
               onSelect(i);
             }}
             accessibilityRole="button"
             accessibilityState={{ selected: i === index }}
-            style={s.wheelItem}
+            style={[s.wheelItem, { height: itemHeight }]}
           >
             <Text style={[s.wheelText, i === index && s.wheelTextActive]}>{t}</Text>
           </Pressable>

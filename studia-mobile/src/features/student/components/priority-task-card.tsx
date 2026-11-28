@@ -7,7 +7,7 @@ import { C } from "@/shared/constants/studia-colors";
 import { RADIUS, SPACE, TYPE } from "@/shared/constants/tokens";
 import { dayLabel } from "@/features/student/logic/format";
 
-const BG = { blue: C.blue, orange: C.orange, red: C.red } as const;
+const BG = { blue: C.blue, orange: C.orange, red: C.red, green: C.green } as const;
 type CardTone = keyof typeof BG;
 
 export const PriorityTaskCard = memo(function PriorityTaskCard({

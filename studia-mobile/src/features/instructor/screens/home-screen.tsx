@@ -59,18 +59,6 @@ export default function InstructorHomeScreen() {
         </Reveal>
 
         <Reveal index={1}>
-          <Card style={s.actionsCard}>
-            <SectionHeader title="Quick actions" compact />
-            <View style={s.actions}>
-              <QuickAction icon="people-outline" label="My Classes" tone="primary" onPress={openClasses} />
-              <QuickAction icon="create-outline" label="Create Quiz" tone="blue" onPress={openCreateQuiz} />
-              <QuickAction icon="bar-chart-outline" label="Analytics" tone="green" onPress={openAnalytics} />
-              <QuickAction icon="sparkles-outline" label="AI Quiz" tone="gold" onPress={openAiQuiz} />
-            </View>
-          </Card>
-        </Reveal>
-
-        <Reveal index={2}>
           <ListState loading={stats.loading} error={null}>
             {stats.data ? (
               <View style={s.block}>
@@ -107,6 +95,18 @@ export default function InstructorHomeScreen() {
               </View>
             ) : null}
           </ListState>
+        </Reveal>
+
+        <Reveal index={2}>
+          <Card style={s.actionsCard}>
+            <SectionHeader title="Quick actions" compact />
+            <View style={s.actions}>
+              <QuickAction icon="people-outline" label="My Classes" tone="primary" onPress={openClasses} />
+              <QuickAction icon="create-outline" label="Create Quiz" tone="blue" onPress={openCreateQuiz} />
+              <QuickAction icon="bar-chart-outline" label="Analytics" tone="green" onPress={openAnalytics} />
+              <QuickAction icon="sparkles-outline" label="AI Quiz" tone="gold" onPress={openAiQuiz} />
+            </View>
+          </Card>
         </Reveal>
 
         <Reveal index={3}>

@@ -21,7 +21,7 @@ export { Avatar } from "@/shared/components/ui/avatar";
 export { Badge } from "@/shared/components/ui/badge";
 export { BottomSheet } from "@/shared/components/ui/bottom-sheet";
 export { Card } from "@/shared/components/ui/card";
-export { DateTimeField, formatDate, formatDateTime } from "@/shared/components/ui/date-time-field";
+export { DateTimeField, formatDate, formatDateTime, Wheel } from "@/shared/components/ui/date-time-field";
 export { SelectField, type SelectOption } from "@/shared/components/ui/select-field";
 export { Chip } from "@/shared/components/ui/chip";
 export { CommentComposer } from "@/shared/components/ui/comment-composer";

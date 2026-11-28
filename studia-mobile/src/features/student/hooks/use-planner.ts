@@ -7,7 +7,7 @@ import { useQuery } from "@/core/data/repository/use-query";
 import type { AddPlanInput } from "@/features/student/data/planner-repository";
 import { plannerRepository } from "@/features/student/data/planner-repository";
 
-const plannerKey = cacheKey("planner");
+export const plannerKey = cacheKey("planner");
 
 export function usePlanner() {
   return useQuery(plannerKey, () => plannerRepository.list(), { ttlMs: TTL.live });
@@ -31,11 +31,4 @@ export function useMarkBlockDone() {
 
 export function useDeleteBlock() {
   return useMutation((id: string) => plannerRepository.deleteBlock(id), { invalidate: () => plannerKey });
-}
-
-export function useAddExam() {
-  return useMutation(
-    (args: { title: string; dateIso: string }) => plannerRepository.addExam(args.title, args.dateIso),
-    { invalidate: () => plannerKey },
-  );
 }

@@ -141,6 +141,10 @@ export type PlannerBlock = {
   priority: PlannerPriority;
   /** Set when this block tracks a real assignment/quiz due date; null for a plan the student added. */
   taskId: string | null;
+  /** Set together with taskId, so the student can open the real assignment/quiz behind the block. */
+  taskKind: TaskKind | null;
+  taskClassId: string | null;
+  taskRefId: string | null;
   done: boolean;
 };
 

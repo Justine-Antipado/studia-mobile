@@ -4,16 +4,19 @@
 // done and deleting stay List-view actions (there is no room for a checkbox in a chip this size).
 // Two blocks sharing the same day and hour simply overlap — rare enough for a personal planner
 // that splitting them into side-by-side lanes isn't worth the complexity yet.
+// Sits in a white card (same radius/shadow as every other Planner row) instead of bare grid lines
+// floating on the screen background, and "today" is a filled circle on the date — like the
+// calendar's own day picker — instead of tinting the whole column.
 import { memo, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { C, TONES, type Tone } from "@/shared/constants/studia-colors";
-import { FONT, RADIUS, TYPE } from "@/shared/constants/tokens";
+import { FONT, RADIUS, SHADOW, SPACE, TYPE } from "@/shared/constants/tokens";
 import { addDaysIso, weekdayShort } from "@/features/student/logic/format";
 import type { PlannerBlock, PlannerPriority } from "@/features/student/types/student";
 
-const ROW_HEIGHT = 40;
-const HOUR_COL_WIDTH = 32;
+const ROW_HEIGHT = 44;
+const HOUR_COL_WIDTH = 36;
 /** A typical day, widened only when a block actually falls outside it (e.g. a quiz due at 11:59 PM). */
 const DEFAULT_LO_HOUR = 6;
 const DEFAULT_HI_HOUR = 21;
@@ -65,15 +68,20 @@ export const PlannerWeekGrid = memo(function PlannerWeekGrid({
   const gridHeight = hours.length * ROW_HEIGHT;
 
   return (
-    <View>
+    <View style={s.card}>
       <View style={s.headerRow}>
         <View style={{ width: HOUR_COL_WIDTH }} />
-        {days.map((d) => (
-          <View key={d} style={s.dayHead}>
-            <Text style={TYPE.caption}>{weekdayShort(d)}</Text>
-            <Text style={[TYPE.h3, d === todayIso && s.today]}>{Number(d.slice(8, 10))}</Text>
-          </View>
-        ))}
+        {days.map((d) => {
+          const isToday = d === todayIso;
+          return (
+            <View key={d} style={s.dayHead}>
+              <Text style={[TYPE.caption, isToday && s.todayLabel]}>{weekdayShort(d)}</Text>
+              <View style={[s.dayNum, isToday && s.dayNumToday]}>
+                <Text style={[TYPE.h3, isToday && s.dayNumTextToday]}>{Number(d.slice(8, 10))}</Text>
+              </View>
+            </View>
+          );
+        })}
       </View>
 
       <View style={[s.body, { height: gridHeight }]}>
@@ -119,20 +127,30 @@ export const PlannerWeekGrid = memo(function PlannerWeekGrid({
 });
 
 const s = StyleSheet.create({
+  card: {
+    backgroundColor: C.white,
+    borderRadius: RADIUS.xl,
+    padding: SPACE.md,
+    ...SHADOW.card,
+  },
   headerRow: { flexDirection: "row" },
-  dayHead: { flex: 1, alignItems: "center", gap: 2, paddingBottom: 6 },
-  today: { color: C.primary },
+  dayHead: { flex: 1, alignItems: "center", gap: 4, paddingBottom: SPACE.sm },
+  todayLabel: { color: C.primary, fontFamily: FONT.semibold },
+  dayNum: { width: 28, height: 28, borderRadius: RADIUS.pill, alignItems: "center", justifyContent: "center" },
+  dayNumToday: { backgroundColor: C.primary },
+  dayNumTextToday: { color: C.white },
   body: { flexDirection: "row" },
-  hourCell: { alignItems: "flex-end", paddingRight: 4 },
+  hourCell: { alignItems: "flex-end", paddingRight: 6 },
   rowLine: { borderTopWidth: 1, borderColor: C.border },
   dayCol: { flex: 1, position: "relative", borderLeftWidth: 1, borderColor: C.border },
   dayColToday: { backgroundColor: C.lavenderSoft },
   chip: {
     position: "absolute",
-    left: 1,
-    right: 1,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 3,
+    left: 2,
+    right: 2,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
     justifyContent: "center",
   },
   chipText: { ...TYPE.caption, color: C.white, fontFamily: FONT.semibold },

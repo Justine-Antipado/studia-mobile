@@ -15,8 +15,6 @@ const RANGE_PAST_DAYS = 365;
 const RANGE_FUTURE_DAYS = 365;
 /** A task has no priority of its own; it shows as a medium card until the student raises it. */
 const TASK_PRIORITY: PlannerPriority = "medium";
-/** Evening slot for the two auto-added exam revision blocks. */
-const REVISION_HOUR = 18;
 
 type BlockRow = {
   id: string;
@@ -42,6 +40,11 @@ const toBlock = (b: BlockRow): PlannerBlock => ({
   notes: b.notes,
   priority: b.priority,
   taskId: b.task_kind && b.task_ref_id ? taskId(b.task_kind, b.task_ref_id) : null,
+  // addPlan/updatePlan always write task_kind/task_ref_id as null — a manual block is never
+  // task-derived — so there is no class id to carry here either.
+  taskKind: null,
+  taskClassId: null,
+  taskRefId: null,
   done: b.done,
 });
 
@@ -101,34 +104,13 @@ async function taskBlocks(startIso: string, endIso: string): Promise<PlannerBloc
       notes: `${t.kind === "assignment" ? "Assignment" : "Quiz"} due in ${t.classCode} · ${clockLabel(t.dueAt)}`,
       priority: TASK_PRIORITY,
       taskId: t.id,
+      taskKind: t.kind,
+      taskClassId: t.classId,
+      taskRefId: t.refId,
       done: t.done,
     });
   }
   return blocks;
-}
-
-/** A revision block 2 days and 1 day before an exam, skipping any that would land before today. */
-async function addRevisionBlocks(me: string, examTitle: string, examDateIso: string): Promise<void> {
-  const today = toLocalIso(new Date());
-  for (const daysBefore of [2, 1]) {
-    const day = addDaysIso(examDateIso, -daysBefore);
-    if (day < today) continue;
-    const weekId = await weekRowFor(me, day);
-    mustOk(
-      await db().from("planner_blocks").insert({
-        week_id: weekId,
-        day_date: day,
-        start_hour: REVISION_HOUR,
-        duration_hours: 1,
-        title: `Review for ${examTitle}`,
-        notes: `Exam in ${daysBefore} day${daysBefore > 1 ? "s" : ""}.`,
-        priority: "medium",
-        task_kind: null,
-        task_ref_id: null,
-        done: false,
-      }),
-    );
-  }
 }
 
 async function examsInRange(me: string, startIso: string, endIso: string): Promise<PlannerExam[]> {
@@ -227,15 +209,6 @@ export class RemotePlannerRepository implements PlannerRepository {
   async deleteBlock(blockId: string): Promise<Result<void>> {
     return guard(async () => {
       mustOk(await db().from("planner_blocks").delete().eq("id", blockId));
-    });
-  }
-
-  async addExam(title: string, dateIso: string): Promise<Result<void>> {
-    return guard(async () => {
-      const me = await myId();
-      const cleanTitle = title.trim();
-      mustOk(await db().from("planner_exams").insert({ student_id: me, title: cleanTitle, exam_date: dateIso }));
-      await addRevisionBlocks(me, cleanTitle, dateIso);
     });
   }
 }

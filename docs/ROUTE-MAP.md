@@ -86,7 +86,6 @@ Stack sub pages                                     back fallback
   account-privacy                                   → /student/account
   account-about                                     → /student/account
   account-photo                                     → /student/account   (camera / gallery / remove; cropped + resized on device)
-  add-plan                            (modal)       → /student/planner    (add a plan or an exam date)
   join-class                          (modal)       → /student/courses
   course-detail?id&tab                              → /student/courses
       tabs: Stream · Lessons · Tasks · Grades · People  (tab kept in the URL)

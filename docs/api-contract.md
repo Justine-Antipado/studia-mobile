@@ -158,24 +158,26 @@ return a `studentId` or email in a comment.
 
 ### `PlannerRepository` — `planner-repository.ts` · `usePlanner`
 
-Manual, not AI-generated: the student is the one who schedules their own plans and exam dates.
-The only automatic placement is a block per pending task (assignment/quiz), computed from
-`student_tasks` at read time on its real due date — never stored, so posting a task places it on
-the planner without a write of its own.
+Manual, not AI-generated: the student is the one who schedules their own plans. The only automatic
+placement is a block per pending task (assignment/quiz), computed from `student_tasks` at read
+time on its real due date — never stored, so posting a task places it on the planner without a
+write of its own.
 
 | Method | Endpoint | Notes |
 |---|---|---|
-| `list()` | `GET /student/planner` | The caller's manual blocks plus exam dates for a ±365-day window around today, merged with the computed task blocks. A block whose task is already turned in is returned as `done`. |
+| `list()` | `GET /student/planner` | The caller's manual blocks plus any exam dates for a ±365-day window around today, merged with the computed task blocks. A block whose task is already turned in is returned as `done`. |
 | `addPlan(input)` | `POST /student/planner/blocks` | Body `{ dayIso, title, notes, priority, startHour, durationHours }`. |
 | `updatePlan(blockId, input)` | `PATCH /student/planner/blocks/{blockId}` | Same body as `addPlan`; full replace, not a partial move. Only ever called on a manual block — a task-derived block has no row to update. |
 | `markBlockDone(blockId, done)` | `PATCH /student/planner/blocks/{blockId}` | Body `{ done }`. |
 | `deleteBlock(blockId)` | `DELETE /student/planner/blocks/{blockId}` | Manual blocks only. |
-| `addExam(title, dateIso)` | `POST /student/planner/exams` | `dateIso` is a calendar date (`YYYY-MM-DD`, local) and must not be in the past. Also drops two revision blocks ("Review for `<title>`", medium priority) 2 days and 1 day before, skipping either that would land before today. |
 
-A daily job (not a request a client makes) notifies a student the morning before each exam they
-added — see `private.send_exam_reminders()`, migration 045. Every other notification in this app
-is trigger-based (fires off a row insert/update); this is the one exception, since nothing is
-written on the day itself for a trigger to fire from.
+The Add Plan form's "exam" option (and `addExam`/`POST /student/planner/exams`) was removed from
+the mobile client as redundant — there is no client call left that creates a `planner_exams` row.
+`list()` still returns any exam dates that already exist, because `private.send_exam_reminders()`
+(migration 045) depends on that table: a daily job that notifies a student the morning before each
+exam date on record. Every other notification in this app is trigger-based (fires off a row
+insert/update); this is the one exception, since nothing is written on the day itself for a
+trigger to fire from.
 
 ## Instructor
 

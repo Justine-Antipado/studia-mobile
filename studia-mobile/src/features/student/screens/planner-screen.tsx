@@ -1,32 +1,45 @@
 // planner-screen.tsx — Study Planner tab: a priority carousel, then either a flat list (grouped
 // into Today / Monthly / Yearly) or a calendar/week grid of every plan/task/exam. Posting an
 // assignment or quiz places it here automatically, on its due date; the student can also add their
-// own plan (with notes + priority) or an exam date.
+// own plan (with notes + priority). Any exam dates already on record (no longer addable from the
+// app) still show here too.
 import { useSafeRouter } from "@/shared/hooks/use-safe-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { AppList, HorizontalChipBar, ListState, PageTitle, useToast, Icon } from "@/shared/components/ui";
+import { AppList, HorizontalChipBar, ListState, PageTitle, SectionHeader, useToast, Icon } from "@/shared/components/ui";
 import { Screen } from "@/shared/components/ui/screen";
 import { C } from "@/shared/constants/studia-colors";
 import { FONT, HIT_SLOP, RADIUS, SPACE, TYPE } from "@/shared/constants/tokens";
-import { addDaysIso, dayLabel, hourLabel, mondayOf, toLocalIso, weekRangeLabel } from "@/features/student/logic/format";
+import { addDaysIso, dayLabel, mondayOf, toLocalIso, weekRangeLabel } from "@/features/student/logic/format";
+import { queryCache } from "@/core/data/cache/query-cache";
+import { AddPlanSheet } from "@/features/student/components/add-plan-sheet";
 import { PlannerItemRow } from "@/features/student/components/planner-item-row";
 import { PlannerWeekGrid } from "@/features/student/components/planner-week-grid";
 import { PriorityTaskCard } from "@/features/student/components/priority-task-card";
-import { useMarkBlockDone, usePlanner } from "@/features/student/hooks/use-planner";
+import { plannerKey, useMarkBlockDone, usePlanner } from "@/features/student/hooks/use-planner";
 import { useToggleTask } from "@/features/student/hooks/use-tasks";
-import type { PlannerBlock } from "@/features/student/types/student";
+import type { PlannerBlock, PlannerPriority } from "@/features/student/types/student";
 
-type PlannerTab = "Today" | "Monthly" | "Yearly";
-const TABS: PlannerTab[] = ["Today", "Monthly", "Yearly"];
+type PlannerTab = "Today" | "Weekly" | "Monthly" | "Yearly";
+const TABS: PlannerTab[] = ["Today", "Weekly", "Monthly", "Yearly"];
 type PlannerView = "List" | "Week";
 const VIEWS: PlannerView[] = ["List", "Week"];
 /** Stable empty list: the loading / error / empty states are drawn by ListState below the rows. */
 const NO_ROWS: PlannerBlock[] = [];
+/** Matches the Badge/chip colors used for the same priority everywhere else in the Planner. */
+const PRIORITY_CARD_TONE: Record<PlannerPriority, "red" | "blue" | "green"> = {
+  high: "red",
+  medium: "blue",
+  low: "green",
+};
 
 function matchesTab(dayIso: string, tab: PlannerTab, today: string): boolean {
   if (tab === "Today") return dayIso === today;
+  if (tab === "Weekly") {
+    const monday = mondayOf(today);
+    return dayIso >= monday && dayIso <= addDaysIso(monday, 6);
+  }
   if (tab === "Monthly") return dayIso.slice(0, 7) === today.slice(0, 7);
   return dayIso.slice(0, 4) === today.slice(0, 4);
 }
@@ -34,7 +47,7 @@ function matchesTab(dayIso: string, tab: PlannerTab, today: string): boolean {
 export default function StudentPlanner() {
   const router = useSafeRouter();
   const toast = useToast();
-  const { data, loading, error, refetch } = usePlanner();
+  const { data, loading, error, refetch, mutate } = usePlanner();
   const markDone = useMarkBlockDone();
   const toggleTask = useToggleTask();
 
@@ -48,37 +61,81 @@ export default function StudentPlanner() {
   const blocks = useMemo(() => data?.blocks ?? [], [data]);
   const exams = useMemo(() => data?.exams ?? [], [data]);
 
-  const openAddPlan = useCallback(() => router.push("/student/add-plan"), [router]);
-  const openEditPlan = useCallback(
-    (block: PlannerBlock) => router.push({ pathname: "/student/add-plan", params: { blockId: block.id } }),
-    [router],
+  const [sheet, setSheet] = useState<{ open: boolean; editingBlock: PlannerBlock | null }>({
+    open: false,
+    editingBlock: null,
+  });
+  const openAddPlan = useCallback(() => setSheet({ open: true, editingBlock: null }), []);
+  const openEditPlan = useCallback((block: PlannerBlock) => setSheet({ open: true, editingBlock: block }), []);
+  const closeSheet = useCallback(() => setSheet((s) => ({ ...s, open: false })), []);
+
+  // Flips `done` on this one block in the cached planner data immediately, so the checkbox
+  // responds right away instead of waiting on a round trip — the server call below still runs,
+  // and a failure flips it back and surfaces the real error instead of silently reloading
+  // (which used to blank the whole list while it refetched).
+  const patchBlockDone = useCallback(
+    (id: string, done: boolean) =>
+      mutate((current) =>
+        current ? { ...current, blocks: current.blocks.map((b) => (b.id === id ? { ...b, done } : b)) } : current!,
+      ),
+    [mutate],
+  );
+
+  // A block whose server row is already gone (deleted elsewhere, or a stale on-device cache from
+  // before a reset) must be dropped from the list on the spot — otherwise it just sits there and
+  // throws "no longer exists" again on every next tap, since a failed write never touches the
+  // cache. Dropping it here also means the ghost itself, not just the error, goes away.
+  const removeBlock = useCallback(
+    (id: string) => mutate((current) => (current ? { ...current, blocks: current.blocks.filter((b) => b.id !== id) } : current!)),
+    [mutate],
   );
 
   const toggleDone = useCallback(
     async (block: PlannerBlock) => {
-      const result = block.taskId ? await toggleTask.run(block.taskId) : await markDone.run({ id: block.id, done: !block.done });
-      if (!result.ok) toast.show(result.error.message, { tone: "red" });
-      else if (block.taskId) refetch();
+      const nextDone = !block.done;
+      patchBlockDone(block.id, nextDone);
+      const result = block.taskId ? await toggleTask.run(block.taskId) : await markDone.run({ id: block.id, done: nextDone });
+      if (!result.ok) {
+        toast.show(result.error.message, { tone: "red" });
+        if (result.error.code === "not_found") {
+          removeBlock(block.id);
+          queryCache.invalidate(plannerKey);
+        } else {
+          patchBlockDone(block.id, block.done);
+        }
+      }
     },
-    [toggleTask, markDone, refetch, toast],
+    [toggleTask, markDone, patchBlockDone, removeBlock, toast],
   );
 
-  // A task-derived block has nothing of its own to edit; the grid's chip is too small to show its
-  // full title, so tapping one there just surfaces it instead of opening anything.
+  // A task-derived block has no plan row of its own to edit — its title/date/time come straight
+  // from the assignment or quiz the instructor posted — so tapping it opens that instead.
+  const openTaskDetail = useCallback(
+    (block: PlannerBlock) => {
+      if (!block.taskKind || !block.taskClassId || !block.taskRefId) return;
+      router.push(
+        block.taskKind === "assignment"
+          ? { pathname: "/student/assignment-detail", params: { classId: block.taskClassId, id: block.taskRefId } }
+          : block.done
+            ? { pathname: "/student/quiz-result", params: { classId: block.taskClassId, quizId: block.taskRefId } }
+            : { pathname: "/student/quiz-take", params: { classId: block.taskClassId, quizId: block.taskRefId } },
+      );
+    },
+    [router],
+  );
+
   const pressBlock = useCallback(
     (block: PlannerBlock) => {
-      if (block.taskId) toast.show(`${block.title} — ${dayLabel(block.dayIso)} · ${hourLabel(block.startHour)}`);
+      if (block.taskId) openTaskDetail(block);
       else openEditPlan(block);
     },
-    [openEditPlan, toast],
+    [openEditPlan, openTaskDetail],
   );
 
   const priorityCards = useMemo(() => {
-    const high = blocks
-      .filter((b) => !b.done && b.priority === "high")
-      .sort((a, b) => a.dayIso.localeCompare(b.dayIso));
+    const open = blocks.filter((b) => !b.done).sort((a, b) => a.dayIso.localeCompare(b.dayIso));
     const soonExams = exams.filter((e) => e.dateIso >= today).sort((a, b) => a.dateIso.localeCompare(b.dateIso));
-    return { high: high.slice(0, 6), exams: soonExams.slice(0, 4) };
+    return { open: open.slice(0, 6), exams: soonExams.slice(0, 4) };
   }, [blocks, exams, today]);
 
   const searched = useMemo(() => {
@@ -96,7 +153,7 @@ export default function StudentPlanner() {
 
   const renderRow = useCallback(
     (block: PlannerBlock) => (
-      <PlannerItemRow block={block} onToggleDone={() => void toggleDone(block)} onPress={block.taskId ? undefined : () => pressBlock(block)} />
+      <PlannerItemRow block={block} onToggleDone={() => void toggleDone(block)} onPress={() => pressBlock(block)} />
     ),
     [toggleDone, pressBlock],
   );
@@ -124,34 +181,54 @@ export default function StudentPlanner() {
         />
       </View>
 
-      {priorityCards.high.length > 0 || priorityCards.exams.length > 0 ? (
-        <View style={{ gap: SPACE.sm }}>
-          <Text style={TYPE.label}>My Priority Task</Text>
+      <HorizontalChipBar items={VIEWS} value={view} onChange={setView} label="Planner view" />
+
+      <View style={{ gap: SPACE.sm }}>
+        <SectionHeader title="My Priority Task" />
+        {priorityCards.open.length > 0 || priorityCards.exams.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.carousel}>
-            {priorityCards.high.map((b, i) => (
+            {priorityCards.open.map((b) => (
               <PriorityTaskCard
                 key={b.id}
                 title={b.title}
                 notes={b.notes}
                 dayIso={b.dayIso}
                 icon={b.taskId ? "document-text-outline" : "bulb-outline"}
-                tone={i % 2 === 0 ? "blue" : "orange"}
+                tone={PRIORITY_CARD_TONE[b.priority]}
+                onPress={() => pressBlock(b)}
               />
             ))}
             {priorityCards.exams.map((e) => (
-              <PriorityTaskCard key={e.id} title={e.title} notes="Exam" dayIso={e.dateIso} icon="school-outline" tone="red" />
+              <PriorityTaskCard
+                key={e.id}
+                title={e.title}
+                notes="Exam"
+                dayIso={e.dateIso}
+                icon="school-outline"
+                tone="red"
+                onPress={() => toast.show(`${e.title} — ${dayLabel(e.dateIso)}`)}
+              />
             ))}
           </ScrollView>
-        </View>
-      ) : null}
-
-      <HorizontalChipBar items={VIEWS} value={view} onChange={setView} label="Planner view" />
+        ) : (
+          <View style={s.priorityEmpty}>
+            <Icon name="sparkles-outline" size="md" color={C.muted} />
+            <Text style={TYPE.muted}>No priority tasks yet.</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 
   if (view === "Week") {
     return (
-      <Screen role="student" scope="student/planner" refreshing={loading} onRefresh={refetch}>
+      <Screen
+        role="student"
+        scope="student/planner"
+        contentStyle={s.flush}
+        refreshing={loading}
+        onRefresh={refetch}
+      >
         <View style={s.chrome}>
           {topChrome}
 
@@ -164,8 +241,15 @@ export default function StudentPlanner() {
             >
               <Icon name="chevron-back" size="md" color={C.primaryDark} />
             </Pressable>
-            <Pressable onPress={() => setWeekStart(mondayOf(today))} accessibilityRole="button" accessibilityLabel="Jump to this week">
-              <Text style={TYPE.h3}>{weekRangeLabel(weekStart)}</Text>
+            <Pressable
+              onPress={() => setWeekStart(mondayOf(today))}
+              accessibilityRole="button"
+              accessibilityLabel="Jump to this week"
+              style={s.weekLabel}
+            >
+              <Text style={TYPE.h3} numberOfLines={1}>
+                {weekRangeLabel(weekStart)}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => setWeekStart((w) => addDaysIso(w, 7))}
@@ -185,6 +269,8 @@ export default function StudentPlanner() {
             <PlannerWeekGrid weekStartIso={weekStart} blocks={searched} todayIso={today} onPressBlock={pressBlock} />
           )}
         </View>
+
+        <AddPlanSheet visible={sheet.open} editingBlock={sheet.editingBlock} onClose={closeSheet} />
       </Screen>
     );
   }
@@ -193,12 +279,7 @@ export default function StudentPlanner() {
     <View style={s.chrome}>
       {topChrome}
 
-      <View style={s.sectionHead}>
-        <Text style={TYPE.label}>My Tasks</Text>
-        <Pressable onPress={() => setShowAll((v) => !v)} hitSlop={HIT_SLOP}>
-          <Text style={s.link}>{showAll ? "Show less" : "See All"}</Text>
-        </Pressable>
-      </View>
+      <SectionHeader title="My Tasks" action={showAll ? "Show less" : "See All"} onAction={() => setShowAll((v) => !v)} />
       {!showAll ? <HorizontalChipBar items={TABS} value={tab} onChange={setTab} label="Planner range" /> : null}
     </View>
   );
@@ -223,6 +304,8 @@ export default function StudentPlanner() {
           </ListState>
         }
       />
+
+      <AddPlanSheet visible={sheet.open} editingBlock={sheet.editingBlock} onClose={closeSheet} />
     </Screen>
   );
 }
@@ -251,7 +334,17 @@ const s = StyleSheet.create({
   },
   searchInput: { flex: 1, color: C.text, fontSize: 14, fontFamily: FONT.regular, paddingVertical: SPACE.sm },
   carousel: { gap: SPACE.md, paddingRight: SPACE.lg },
-  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  link: { ...TYPE.label, color: C.primary },
+  priorityEmpty: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACE.sm,
+    minHeight: 64,
+    paddingHorizontal: SPACE.lg - 2,
+    backgroundColor: C.white,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: RADIUS.xl,
+  },
   weekNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  weekLabel: { flexShrink: 1, paddingHorizontal: SPACE.sm },
 });

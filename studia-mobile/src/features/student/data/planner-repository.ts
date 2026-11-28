@@ -1,6 +1,8 @@
-// planner-repository.ts — the student's planner: manual plans (with notes + priority) and exam
-// dates the student adds, stored in planner_weeks / planner_blocks / planner_exams. A block due to
-// an assignment or quiz is placed automatically (computed from student_tasks, never stored).
+// planner-repository.ts — the student's planner: manual plans (with notes + priority), stored in
+// planner_weeks / planner_blocks. A block due to an assignment or quiz is placed automatically
+// (computed from student_tasks, never stored). Exam dates (planner_exams) are no longer created
+// from the app — the Add Plan form's "exam" option was removed as redundant — but any already
+// existing ones still display (list() below) for private.send_exam_reminders(), migration 045.
 import type { Result } from "@/core/data/errors/app-error";
 import { RemotePlannerRepository } from "@/features/student/data/planner-remote";
 import type { PlannerBlock, PlannerData, PlannerPriority } from "@/features/student/types/student";
@@ -20,8 +22,6 @@ export interface PlannerRepository {
   updatePlan(blockId: string, input: AddPlanInput): Promise<Result<PlannerBlock>>;
   markBlockDone(blockId: string, done: boolean): Promise<Result<PlannerBlock>>;
   deleteBlock(blockId: string): Promise<Result<void>>;
-  /** Also drops two revision blocks (2 days and 1 day before) that fall today or later. */
-  addExam(title: string, dateIso: string): Promise<Result<void>>;
 }
 
 export const plannerRepository: PlannerRepository = new RemotePlannerRepository();

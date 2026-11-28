@@ -27,6 +27,9 @@ export function useToggleTask() {
         );
       },
     },
-    invalidate: () => tasksKey,
+    // Toggling a task also changes the auto-placed block it shows as in the Planner, which reads
+    // its own "planner" cache entry independently of this one — invalidate both so the Planner
+    // picks up the change too (as a background revalidation, not a blocking refetch).
+    invalidate: () => [tasksKey, cacheKey("planner")],
   });
 }
