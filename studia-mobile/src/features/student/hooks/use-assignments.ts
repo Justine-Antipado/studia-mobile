@@ -1,5 +1,5 @@
-// use-assignments.ts — assignment detail + submission. Writes invalidate the to-do list too,
-// since tasks are derived from assignment status.
+// use-assignments.ts — assignment detail + submission. Writes invalidate the to-do list and the
+// planner too, since both derive their tasks from assignment status.
 import { cacheKey } from "@/core/data/cache/cache-keys";
 import { TTL } from "@/core/data/cache/query-cache";
 import { useMutation } from "@/core/data/repository/use-mutation";
@@ -27,6 +27,7 @@ const invalidateAssignment = (classId: string, id: string) => [
   cacheKey("assignment", classId, id),
   cacheKey("assignments", classId),
   cacheKey("tasks"),
+  cacheKey("planner"),
 ];
 
 export function useAttachAssignment(classId: string, id: string) {

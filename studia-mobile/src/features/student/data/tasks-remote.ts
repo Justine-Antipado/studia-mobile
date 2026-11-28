@@ -1,6 +1,6 @@
 // tasks-remote.ts: the student to-do from the `student_tasks` view (assignments + published quizzes
 // of joined classes; "done" is derived from real submissions). A manual tick is a row in
-// student_task_overrides, only allowed for items not already completed by a submission.
+// student_task_overrides, only written for items not already completed by a submission.
 import { appError, fail, ok, type Result } from "@/core/data/errors/app-error";
 import { db, guard, must, myId } from "@/core/data/supabase/remote";
 import type { TaskRepository } from "@/features/student/data/tasks-repository";
@@ -12,7 +12,14 @@ export const taskId = (kind: TaskKind, refId: string) => `${kind === "assignment
 
 async function loadTasks(): Promise<Task[]> {
   const me = await myId();
-  const rows = must(await db().from("student_tasks").select("kind, ref_id, class_id, title, due_at, done").eq("student_id", me)) as Row[];
+  const [taskRes, tickRes] = await Promise.all([
+    db().from("student_tasks").select("kind, ref_id, class_id, title, due_at, done").eq("student_id", me),
+    db().from("student_task_overrides").select("kind, ref_id").eq("student_id", me).eq("done", true),
+  ]);
+  const rows = must(taskRes) as Row[];
+  const ticks = must(tickRes) as { kind: TaskKind; ref_id: string }[];
+  // The view ORs a real submission with a manual tick; whatever is done without a tick was submitted.
+  const ticked = new Set(ticks.map((t) => taskId(t.kind, t.ref_id)));
   const dated = rows.filter((r) => r.due_at);
   const classIds = [...new Set(dated.map((r) => r.class_id))];
   const codes = new Map<string, string>();
@@ -30,6 +37,7 @@ async function loadTasks(): Promise<Task[]> {
       title: r.title,
       dueAt: r.due_at!,
       done: r.done,
+      submitted: r.done && !ticked.has(taskId(r.kind, r.ref_id)),
     }))
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
 }
@@ -44,12 +52,10 @@ export class RemoteTaskRepository implements TaskRepository {
     if (!all.ok) return all;
     const task = all.value.find((t) => t.id === id);
     if (!task) return fail(appError("not_found", "This task no longer exists."));
+    // A stale screen may still show a submitted task as open; it is already done, nothing to write.
+    if (task.submitted) return ok(task);
     const res = await guard(async () => {
       const me = await myId();
-      const override = must(
-        await db().from("student_task_overrides").select("done").eq("student_id", me).eq("kind", task.kind).eq("ref_id", task.refId).maybeSingle(),
-      ) as { done: boolean } | null;
-      if (task.done && !override?.done) throw appError("conflict", "Already completed via submission.", false);
       const next = !task.done;
       must(
         await db()

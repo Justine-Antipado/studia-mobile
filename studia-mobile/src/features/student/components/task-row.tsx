@@ -21,12 +21,15 @@ export const TaskRow = memo(function TaskRow({
 
   return (
     <View style={s.card}>
+      {/* Submitted work is done for good: the check is locked and opens the submission instead. */}
       <Pressable
-        onPress={onToggle}
+        onPress={task.submitted ? onPress : onToggle}
         hitSlop={8}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: task.done }}
-        accessibilityLabel={`Mark ${task.title} as ${task.done ? "not done" : "done"}`}
+        accessibilityState={{ checked: task.done, disabled: task.submitted }}
+        accessibilityLabel={
+          task.submitted ? `${task.title} is submitted` : `Mark ${task.title} as ${task.done ? "not done" : "done"}`
+        }
         style={[s.check, task.done && s.checkOn]}
       >
         {task.done ? <Icon name="checkmark" size="sm" color={C.white} /> : null}

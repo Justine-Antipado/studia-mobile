@@ -46,6 +46,7 @@ const toBlock = (b: BlockRow): PlannerBlock => ({
   taskClassId: null,
   taskRefId: null,
   done: b.done,
+  submitted: false,
 });
 
 /** Finds or creates the planner_weeks row that owns `dayIso`, for inserting a manual block into. */
@@ -108,6 +109,7 @@ async function taskBlocks(startIso: string, endIso: string): Promise<PlannerBloc
       taskClassId: t.classId,
       taskRefId: t.refId,
       done: t.done,
+      submitted: t.submitted,
     });
   }
   return blocks;

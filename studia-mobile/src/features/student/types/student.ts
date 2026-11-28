@@ -125,6 +125,8 @@ export type Task = {
   title: string;
   dueAt: string;
   done: boolean;
+  /** Done because of a real submission (not a manual tick), so it cannot be unchecked. */
+  submitted: boolean;
 };
 
 export type PlannerPriority = "high" | "medium" | "low";
@@ -146,6 +148,8 @@ export type PlannerBlock = {
   taskClassId: string | null;
   taskRefId: string | null;
   done: boolean;
+  /** A task block completed by a real submission; always false for a manual plan. */
+  submitted: boolean;
 };
 
 export type PlannerExam = { id: string; title: string; dateIso: string };

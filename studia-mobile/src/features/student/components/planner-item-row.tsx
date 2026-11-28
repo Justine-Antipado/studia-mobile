@@ -25,16 +25,23 @@ export const PlannerItemRow = memo(function PlannerItemRow({
    *  every row is tappable to something, even though a task block has no plan row of its own. */
   onPress?: () => void;
 }) {
-  const badge = block.done ? { label: "Done", tone: "green" as const } : PRIORITY_BADGE[block.priority];
+  const badge = block.submitted
+    ? { label: "Submitted", tone: "green" as const }
+    : block.done
+      ? { label: "Done", tone: "green" as const }
+      : PRIORITY_BADGE[block.priority];
 
   return (
     <View style={s.card}>
+      {/* Submitted work is done for good: the check is locked and opens the submission instead. */}
       <Pressable
-        onPress={onToggleDone}
+        onPress={block.submitted ? onPress : onToggleDone}
         hitSlop={8}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: block.done }}
-        accessibilityLabel={`Mark ${block.title} as ${block.done ? "not done" : "done"}`}
+        accessibilityState={{ checked: block.done, disabled: block.submitted }}
+        accessibilityLabel={
+          block.submitted ? `${block.title} is submitted` : `Mark ${block.title} as ${block.done ? "not done" : "done"}`
+        }
         style={[s.check, block.done && s.checkOn]}
       >
         {block.done ? <Icon name="checkmark" size="sm" color={C.white} /> : null}

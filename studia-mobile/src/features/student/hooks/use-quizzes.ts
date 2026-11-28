@@ -22,6 +22,11 @@ export function useQuiz(classId: string | null, id: string | null) {
 
 export function useSubmitQuizAttempt(classId: string, quizId: string) {
   return useMutation((answers: QuizAnswer[]) => quizRepository.submitAttempt(classId, quizId, answers), {
-    invalidate: () => [cacheKey("quiz", classId, quizId), cacheKey("quizzes", classId), cacheKey("tasks")],
+    invalidate: () => [
+      cacheKey("quiz", classId, quizId),
+      cacheKey("quizzes", classId),
+      cacheKey("tasks"),
+      cacheKey("planner"),
+    ],
   });
 }

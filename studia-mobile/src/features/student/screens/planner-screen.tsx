@@ -82,9 +82,9 @@ export default function StudentPlanner() {
   );
 
   // A block whose server row is already gone (deleted elsewhere, or a stale on-device cache from
-  // before a reset) must be dropped from the list on the spot — otherwise it just sits there and
-  // throws "no longer exists" again on every next tap, since a failed write never touches the
-  // cache. Dropping it here also means the ghost itself, not just the error, goes away.
+  // before a reset) is dropped from the list on the spot, quietly: it is a stale row, not an error
+  // the student can act on. Otherwise it would fail again on every tap, since a failed write never
+  // touches the cache.
   const removeBlock = useCallback(
     (id: string) => mutate((current) => (current ? { ...current, blocks: current.blocks.filter((b) => b.id !== id) } : current!)),
     [mutate],
@@ -95,14 +95,15 @@ export default function StudentPlanner() {
       const nextDone = !block.done;
       patchBlockDone(block.id, nextDone);
       const result = block.taskId ? await toggleTask.run(block.taskId) : await markDone.run({ id: block.id, done: nextDone });
-      if (!result.ok) {
+      if (result.ok) {
+        // The server has the last word: a task this cached block still showed as open may already be submitted.
+        if (result.value.done !== nextDone) patchBlockDone(block.id, result.value.done);
+      } else if (result.error.code === "not_found") {
+        removeBlock(block.id);
+        queryCache.invalidate(plannerKey);
+      } else {
         toast.show(result.error.message, { tone: "red" });
-        if (result.error.code === "not_found") {
-          removeBlock(block.id);
-          queryCache.invalidate(plannerKey);
-        } else {
-          patchBlockDone(block.id, block.done);
-        }
+        patchBlockDone(block.id, block.done);
       }
     },
     [toggleTask, markDone, patchBlockDone, removeBlock, toast],

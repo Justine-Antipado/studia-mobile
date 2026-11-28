@@ -11,6 +11,7 @@ const task = (id: string, hoursFromNow: number, over: Partial<Task> = {}): Task 
   title: id,
   dueAt: new Date(Date.now() + hoursFromNow * HOUR).toISOString(),
   done: false,
+  submitted: false,
   ...over,
 });
 
